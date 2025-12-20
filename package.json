@@ -1,5 +1,5 @@
 {
-	"devDependencies": {
-		"supabase": "^2.67.2"
-	}
+  "name": "sous-chef",
+  "version": "0.0.0",
+  "private": true
 }
