@@ -1,0 +1,84 @@
+{
+  "suggestedTags": ["Weeknight", "Breakfast", "Vegetarian", "High protein", "One-pan", "Use it up"],
+  "pantrySnapshot": [
+    { "id": "p_eggs", "name": "Eggs", "quantity": 8, "unit": "count" },
+    { "id": "p_milk", "name": "Milk", "quantity": 1, "unit": "l" },
+    { "id": "p_spinach", "name": "Baby spinach", "quantity": 200, "unit": "g" },
+    { "id": "p_rice", "name": "Jasmine rice", "quantity": 2, "unit": "kg" },
+    { "id": "p_tomato_sauce", "name": "Tomato sauce", "quantity": 2, "unit": "count" },
+    { "id": "p_olive_oil", "name": "Olive oil", "quantity": 750, "unit": "ml" },
+    { "id": "p_garlic", "name": "Garlic", "quantity": 1, "unit": "count" },
+    { "id": "p_pasta", "name": "Spaghetti", "quantity": 1, "unit": "count" }
+  ],
+  "recipes": [
+    {
+      "id": "rcp_spinach_eggs",
+      "title": "Spinach & Eggs Skillet",
+      "description": "A 10-minute breakfast (or dinner) that uses up spinach fast.",
+      "tags": ["Breakfast", "Weeknight", "High protein", "Use it up"],
+      "servings": 2,
+      "totalTimeMinutes": 10,
+      "ingredients": [
+        { "id": "ing_eggs", "name": "Eggs", "quantity": 4, "unit": "count", "mapping": { "inventoryItemLabel": "Eggs", "locationHint": "fridge", "suggested": true } },
+        { "id": "ing_spinach", "name": "Baby spinach", "quantity": 150, "unit": "g", "mapping": { "inventoryItemLabel": "Baby spinach", "locationHint": "fridge", "suggested": true } },
+        { "id": "ing_olive_oil", "name": "Olive oil", "quantity": 1, "unit": "tbsp", "mapping": { "inventoryItemLabel": "Olive oil", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_salt", "name": "Salt", "note": "to taste" },
+        { "id": "ing_pepper", "name": "Black pepper", "note": "to taste" }
+      ]
+    },
+    {
+      "id": "rcp_tomato_rice",
+      "title": "Tomato Rice (One-pot)",
+      "description": "Comforting pantry meal. Add any protein or frozen veg you have.",
+      "tags": ["Weeknight", "One-pan", "Vegetarian"],
+      "servings": 4,
+      "totalTimeMinutes": 30,
+      "ingredients": [
+        { "id": "ing_rice", "name": "Jasmine rice", "quantity": 2, "unit": "cup", "mapping": { "inventoryItemLabel": "Jasmine rice", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_tomato_sauce", "name": "Tomato sauce", "quantity": 1, "unit": "count", "mapping": { "inventoryItemLabel": "Tomato sauce", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_garlic", "name": "Garlic", "quantity": 2, "unit": "count", "note": "cloves", "mapping": { "inventoryItemLabel": "Garlic", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_olive_oil_2", "name": "Olive oil", "quantity": 1, "unit": "tbsp", "mapping": { "inventoryItemLabel": "Olive oil", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_water", "name": "Water", "quantity": 2, "unit": "cup" },
+        { "id": "ing_salt_2", "name": "Salt", "note": "to taste" }
+      ]
+    },
+    {
+      "id": "rcp_pasta_night",
+      "title": "5-Ingredient Tomato Pasta",
+      "description": "Fast pantry pasta. Finish with basil and parmesan if you have them.",
+      "tags": ["Weeknight", "Vegetarian"],
+      "servings": 2,
+      "totalTimeMinutes": 20,
+      "ingredients": [
+        { "id": "ing_pasta", "name": "Spaghetti", "quantity": 1, "unit": "count", "mapping": { "inventoryItemLabel": "Spaghetti", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_tomato_sauce_2", "name": "Tomato sauce", "quantity": 1, "unit": "count", "mapping": { "inventoryItemLabel": "Tomato sauce", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_olive_oil_3", "name": "Olive oil", "quantity": 1, "unit": "tbsp", "mapping": { "inventoryItemLabel": "Olive oil", "locationHint": "pantry", "suggested": true } },
+        { "id": "ing_parmesan", "name": "Parmesan", "note": "optional" },
+        { "id": "ing_basil", "name": "Basil", "note": "optional" }
+      ]
+    },
+    {
+      "id": "rcp_tacos",
+      "title": "Weeknight Tacos",
+      "description": "A flexible base: swap proteins and toppings with whatever’s on hand.",
+      "tags": ["Weeknight", "High protein", "One-pan"],
+      "servings": 3,
+      "totalTimeMinutes": 25,
+      "ingredients": [
+        { "id": "ing_tortillas", "name": "Tortillas", "quantity": 6, "unit": "count" },
+        { "id": "ing_ground_meat", "name": "Ground turkey (or beef)", "quantity": 500, "unit": "g" },
+        { "id": "ing_taco_seasoning", "name": "Taco seasoning", "note": "packet or DIY mix" },
+        { "id": "ing_onion", "name": "Onion", "quantity": 1, "unit": "count" },
+        { "id": "ing_salsa", "name": "Salsa", "note": "optional" }
+      ]
+    }
+  ],
+  "shoppingList": [
+    { "id": "sl_tortillas", "name": "Tortillas", "quantity": 10, "unit": "count", "category": "Bakery", "checked": false, "source": "from-recipe", "recipeId": "rcp_tacos" },
+    { "id": "sl_onion", "name": "Onion", "quantity": 2, "unit": "count", "category": "Produce", "checked": false, "source": "from-recipe", "recipeId": "rcp_tacos" },
+    { "id": "sl_parmesan", "name": "Parmesan", "category": "Dairy", "checked": false, "source": "from-recipe", "recipeId": "rcp_pasta_night", "note": "optional" },
+    { "id": "sl_coffee", "name": "Coffee beans", "category": "Pantry", "checked": true, "source": "manual" }
+  ]
+}
+
+

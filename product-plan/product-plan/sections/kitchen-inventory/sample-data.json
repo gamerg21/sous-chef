@@ -1,0 +1,91 @@
+{
+  "locations": [
+    { "id": "pantry", "name": "Pantry" },
+    { "id": "fridge", "name": "Fridge" },
+    { "id": "freezer", "name": "Freezer" }
+  ],
+  "inventory": [
+    {
+      "id": "inv_eggs_12",
+      "name": "Eggs",
+      "locationId": "fridge",
+      "quantity": 8,
+      "unit": "count",
+      "expiresOn": "2025-12-21",
+      "category": "Dairy",
+      "barcode": "012345678905"
+    },
+    {
+      "id": "inv_milk",
+      "name": "Milk",
+      "locationId": "fridge",
+      "quantity": 1,
+      "unit": "l",
+      "expiresOn": "2025-12-20",
+      "category": "Dairy"
+    },
+    {
+      "id": "inv_spinach",
+      "name": "Baby spinach",
+      "locationId": "fridge",
+      "quantity": 200,
+      "unit": "g",
+      "expiresOn": "2025-12-19",
+      "category": "Produce"
+    },
+    {
+      "id": "inv_rice",
+      "name": "Jasmine rice",
+      "locationId": "pantry",
+      "quantity": 2,
+      "unit": "kg",
+      "category": "Grains"
+    },
+    {
+      "id": "inv_pasta",
+      "name": "Spaghetti",
+      "locationId": "pantry",
+      "quantity": 1,
+      "unit": "lb",
+      "category": "Grains"
+    },
+    {
+      "id": "inv_tomato_sauce",
+      "name": "Tomato sauce",
+      "locationId": "pantry",
+      "quantity": 2,
+      "unit": "count",
+      "expiresOn": "2026-02-10",
+      "category": "Canned"
+    },
+    {
+      "id": "inv_chicken_breast",
+      "name": "Chicken breast",
+      "locationId": "freezer",
+      "quantity": 1.5,
+      "unit": "lb",
+      "expiresOn": "2026-01-15",
+      "category": "Protein",
+      "notes": "Freeze date: 2025-12-10"
+    },
+    {
+      "id": "inv_frozen_peas",
+      "name": "Frozen peas",
+      "locationId": "freezer",
+      "quantity": 500,
+      "unit": "g",
+      "expiresOn": "2026-06-01",
+      "category": "Frozen"
+    },
+    {
+      "id": "inv_olive_oil",
+      "name": "Olive oil",
+      "locationId": "pantry",
+      "quantity": 750,
+      "unit": "ml",
+      "category": "Staples"
+    }
+  ]
+}
+
+
