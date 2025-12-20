@@ -60,7 +60,6 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 ### AI (Optional)
 
 * Meal planning, substitutions, nutrition insights
-* **Hosted**: managed API keys
 * **Self-hosted**: user-supplied API keys only
 
 ---
@@ -70,17 +69,13 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 Sous Chef is intentionally designed to avoid vendor lock-in.
 
 ### Frontend
-
-* **Mobile-first**: React Native (Expo)
 * Web support planned via Next.js
 * Shared UI + domain packages
 
 ### Backend (Initial / Agnostic)
 
 * **Supabase-compatible stack**
-
   * PostgreSQL
-  * Auth
   * Storage (photos, labels)
   * Realtime
 * Local development via Docker
