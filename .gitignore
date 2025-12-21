@@ -44,3 +44,6 @@ localhost.pem
 localhost-key.pem
 localhost+*.pem
 localhost+*-key.pem
+
+# product plan
+product-plan/
