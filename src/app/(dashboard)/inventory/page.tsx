@@ -21,6 +21,7 @@ export default function InventoryPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [prefillData, setPrefillData] = useState<Partial<InventoryItem> | null>(null);
+  const [dateFormat, setDateFormat] = useState("YYYY-MM-DD");
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -37,9 +38,21 @@ export default function InventoryPage() {
     }
   }, []);
 
+  const fetchPreferences = useCallback(async () => {
+    try {
+      const response = await fetch("/api/user/preferences");
+      if (!response.ok) return;
+      const data = await response.json();
+      setDateFormat(data.preferences?.dateFormat || "YYYY-MM-DD");
+    } catch (error) {
+      console.error("Error fetching preferences:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchInventory();
-  }, [fetchInventory]);
+    fetchPreferences();
+  }, [fetchInventory, fetchPreferences]);
 
   const handleAddItem = useCallback(() => {
     setEditingItemId(null);
@@ -166,6 +179,7 @@ export default function InventoryPage() {
       <KitchenInventoryDashboardView
         locations={locations}
         items={items}
+        dateFormat={dateFormat}
         selectedLocationId={selectedLocationId}
         filter={filter}
         searchQuery={searchQuery}

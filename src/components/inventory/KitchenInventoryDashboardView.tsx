@@ -12,6 +12,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 export interface KitchenInventoryDashboardViewProps {
   locations: KitchenLocation[]
   items: InventoryItem[]
+  dateFormat?: string | null
   selectedLocationId?: KitchenLocationId | 'all'
   filter?: InventoryFilter
   searchQuery?: string
@@ -29,6 +30,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
   const {
     locations,
     items,
+    dateFormat,
     selectedLocationId = 'all',
     filter = 'all',
     searchQuery = '',
@@ -276,6 +278,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
                     key={item.id}
                     item={item}
                     location={locationMap[item.locationId]}
+                    dateFormat={dateFormat}
                     onEdit={onEditItem}
                     onRemove={onRemoveItem}
                   />
@@ -288,4 +291,3 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     </div>
   )
 }
-

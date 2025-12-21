@@ -338,17 +338,16 @@ export default function AccountPageClient({
                 >
                   Date Format (optional)
                 </label>
-                <input
-                  type="text"
+                <select
                   id="dateFormat"
                   name="dateFormat"
-                  defaultValue={preferences.dateFormat || ""}
-                  placeholder="YYYY-MM-DD"
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                />
-                <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-                  Date format pattern (e.g., YYYY-MM-DD, MM/DD/YYYY)
-                </p>
+                  defaultValue={preferences.dateFormat || "YYYY-MM-DD"}
+                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                >
+                  <option value="YYYY-MM-DD">YYYY-MM-DD (default)</option>
+                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                  <option value="MM-DD-YYYY">MM-DD-YYYY</option>
+                </select>
               </div>
 
               {preferencesError && (
@@ -391,4 +390,3 @@ export default function AccountPageClient({
     </div>
   );
 }
-
