@@ -14,7 +14,9 @@ export default function ShoppingListPage() {
   const fetchShoppingList = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/shopping-list");
+      const response = await fetch("/api/shopping-list", {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("Failed to fetch shopping list");
       const data = await response.json();
       setItems(data.items || []);
@@ -37,6 +39,7 @@ export default function ShoppingListPage() {
       const response = await fetch(`/api/shopping-list/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ checked: !item.checked }),
       });
 
@@ -54,6 +57,7 @@ export default function ShoppingListPage() {
     try {
       const response = await fetch(`/api/shopping-list/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error("Failed to delete item");
@@ -89,11 +93,12 @@ export default function ShoppingListPage() {
   const handleUpdateItemWithData = useCallback(
     async (id: string, itemData: Partial<ShoppingListItem>) => {
       try {
-        const response = await fetch(`/api/shopping-list/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(itemData),
-        });
+      const response = await fetch(`/api/shopping-list/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(itemData),
+      });
 
         if (!response.ok) throw new Error("Failed to update item");
         await fetchShoppingList();
@@ -147,6 +152,7 @@ export default function ShoppingListPage() {
       const response = await fetch("/api/shopping-list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(itemData),
       });
 
@@ -171,7 +177,10 @@ export default function ShoppingListPage() {
     try {
       await Promise.all(
         checkedItems.map((item) =>
-          fetch(`/api/shopping-list/${item.id}`, { method: "DELETE" })
+          fetch(`/api/shopping-list/${item.id}`, {
+            method: "DELETE",
+            credentials: "include",
+          })
         )
       );
       await fetchShoppingList();
