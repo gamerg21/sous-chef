@@ -34,6 +34,7 @@ export default async function DashboardLayout({
     { label: "Cooking & Shopping", href: "/cooking" },
     { label: "Shopping List", href: "/shopping-list" },
     { label: "Community", href: "/community" },
+    { label: "Extensions", href: "/extensions" },
   ];
 
   return (

@@ -3,7 +3,6 @@
     a. when using the mouse to grab and select a field, the modal automcally dismisses, I assume because it acts if we clicked outside the modal so the modal closes itself
 2. Date picker
     a. Right now the dat picker is generic, can we use a component that is more specific to the project? Or use Shadcn UI's date picker?
-
 3. Universal Units dropdown
- a. Dont make user type in units, just select from a dropdown. below are all of the units we support.
- b. refer to @UnitPicker UX + Data Model — Build Instructions (Sous Chef) for specific guidance on how to implement this.
+    a. Dont make user type in units, just select from a dropdown. below are all of the units we support.
+    b. refer to @UnitPicker UX + Data Model — Build Instructions (Sous Chef) for specific guidance on how to implement this.

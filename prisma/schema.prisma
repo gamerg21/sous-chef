@@ -20,14 +20,17 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  password      String?   // Hashed password for credentials authentication
+  password      String? // Hashed password for credentials authentication
+  isAppAdmin    Boolean   @default(false) // App-level administrator
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts    Account[]
-  sessions    Session[]
-  households  HouseholdMember[]
-  preferences UserPreferences?
+  accounts       Account[]
+  sessions       Session[]
+  households     HouseholdMember[]
+  preferences    UserPreferences?
+  communityLikes CommunityRecipeLike[]
+  communitySaves CommunityRecipeSave[]
 }
 
 model Account {
@@ -75,11 +78,14 @@ model Household {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members        HouseholdMember[]
-  locations      KitchenLocation[]
-  inventoryItems InventoryItem[]
-  recipes        Recipe[]
-  shoppingList   ShoppingList?
+  members             HouseholdMember[]
+  locations           KitchenLocation[]
+  inventoryItems      InventoryItem[]
+  recipes             Recipe[]
+  shoppingList        ShoppingList?
+  installedExtensions InstalledExtension[]
+  integrations        Integration[]
+  aiProviderSettings  AiProviderSettings[]
 }
 
 enum HouseholdRole {
@@ -201,11 +207,13 @@ model Recipe {
   updatedAt        DateTime  @updatedAt
   lastCookedAt     DateTime?
 
-  household         Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household         Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
   ingredients       RecipeIngredient[]
   steps             RecipeStep[]
   mediaAssets       MediaAsset[]
   shoppingListItems ShoppingListItem[]
+  communityLikes    CommunityRecipeLike[]
+  communitySaves    CommunityRecipeSave[]
 
   @@index([householdId])
   @@index([visibility])
@@ -286,4 +294,116 @@ model UserPreferences {
   updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Community & Extensions models
+model CommunityRecipeLike {
+  id        String   @id @default(cuid())
+  recipeId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, userId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model CommunityRecipeSave {
+  id        String   @id @default(cuid())
+  recipeId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, userId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model ExtensionListing {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @db.Text
+  category    String
+  tags        String[]
+  authorName  String
+  authorUrl   String?
+  pricing     String // 'free' | 'paid' | 'trial'
+  rating      Float?
+  installs    Int      @default(0)
+  permissions String[]
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  installedExtensions InstalledExtension[]
+
+  @@index([category])
+  @@index([enabled])
+}
+
+model InstalledExtension {
+  id                 String   @id @default(cuid())
+  extensionId        String
+  householdId        String
+  enabled            Boolean  @default(true)
+  needsConfiguration Boolean  @default(false)
+  configuration      String?  @db.Text // JSON config
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  extension ExtensionListing @relation(fields: [extensionId], references: [id], onDelete: Cascade)
+  household Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([extensionId, householdId])
+  @@index([householdId])
+  @@index([extensionId])
+}
+
+model Integration {
+  id           String    @id @default(cuid())
+  householdId  String
+  provider     String // e.g., 'instacart', 'google-drive'
+  name         String
+  description  String    @db.Text
+  status       String // 'connected' | 'disconnected' | 'error'
+  scopes       String[]
+  accessToken  String?   @db.Text // Encrypted
+  refreshToken String?   @db.Text // Encrypted
+  expiresAt    DateTime?
+  lastSyncAt   DateTime?
+  config       String?   @db.Text // JSON config
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, provider])
+  @@index([householdId])
+  @@index([provider])
+}
+
+model AiProviderSettings {
+  id           String    @id @default(cuid())
+  householdId  String
+  providerId   String // e.g., 'openai', 'anthropic', 'google'
+  providerName String
+  apiKey       String?   @db.Text // Encrypted
+  model        String? // e.g., 'gpt-4', 'claude-3.5-sonnet'
+  status       String    @default("needs-key") // 'ready' | 'needs-key' | 'error'
+  isActive     Boolean   @default(false)
+  lastTestedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, providerId])
+  @@index([householdId])
+  @@index([providerId])
 }

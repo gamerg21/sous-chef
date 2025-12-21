@@ -3,11 +3,6 @@
 Sous Chef is an **open-source, self-hostable personal kitchen assistant**.
 It helps individuals and households keep their **pantry, refrigerator/freezer, recipes, and shopping** organized — all while remaining **community-first** and **privacy-respecting**.
 
-Sous Chef is designed to work equally well:
-
-* **Self-hosted** (local server, NAS, homelab, offline-friendly)
-* **Hosted** (future managed service with optional premium features)
-
 The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* for any kitchen, without locking users into a closed ecosystem.
 
 ---
@@ -16,7 +11,6 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 
 * **Community-first & Open Source**
 * **Self-host agnostic** (runs locally or in the cloud)
-* **Feature parity** between self-hosted and hosted versions
 * **Offline-tolerant** mobile experience
 * **Household-based** (multiple users, shared kitchen)
 * **Extensible** (AI, integrations, scanners, future hardware)
