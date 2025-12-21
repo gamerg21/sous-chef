@@ -95,7 +95,7 @@ enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
 # Uncomment to expose additional ports for testing user applications that send emails.
-# smtp_port = 54325
+smtp_port = 1025
 # pop3_port = 54326
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
@@ -105,12 +105,18 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Uncomment to configure local storage buckets
-# [storage.buckets.images]
-# public = false
-# file_size_limit = "50MiB"
-# allowed_mime_types = ["image/png", "image/jpeg"]
-# objects_path = "./images"
+# Configure storage buckets for Sous Chef
+[storage.buckets.inventory-photos]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+objects_path = "./storage/inventory-photos"
+
+[storage.buckets.recipe-photos]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+objects_path = "./storage/recipe-photos"
 
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]

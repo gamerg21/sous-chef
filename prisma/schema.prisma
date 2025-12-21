@@ -12,3 +12,278 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// NextAuth required models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Hashed password for credentials authentication
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  households  HouseholdMember[]
+  preferences UserPreferences?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Household models
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members        HouseholdMember[]
+  locations      KitchenLocation[]
+  inventoryItems InventoryItem[]
+  recipes        Recipe[]
+  shoppingList   ShoppingList?
+}
+
+enum HouseholdRole {
+  owner
+  admin
+  member
+}
+
+model HouseholdMember {
+  id          String        @id @default(cuid())
+  userId      String
+  householdId String
+  role        HouseholdRole @default(member)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, householdId])
+  @@index([userId])
+  @@index([householdId])
+}
+
+// Core data models
+model FoodItem {
+  id            String   @id @default(cuid())
+  name          String
+  canonicalName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  barcodes          Barcode[]
+  inventoryItems    InventoryItem[]
+  recipeIngredients RecipeIngredient[]
+  shoppingListItems ShoppingListItem[]
+}
+
+model Barcode {
+  id         String   @id @default(cuid())
+  foodItemId String
+  code       String // UPC/EAN
+  type       String // 'UPC' | 'EAN'
+  createdAt  DateTime @default(now())
+
+  foodItem FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Cascade)
+
+  @@unique([code])
+  @@index([foodItemId])
+}
+
+model KitchenLocation {
+  id          String   @id @default(cuid())
+  householdId String
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household      Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@index([householdId])
+}
+
+model InventoryItem {
+  id          String    @id @default(cuid())
+  householdId String
+  foodItemId  String
+  locationId  String
+  quantity    Float
+  unit        String
+  expiresOn   DateTime?
+  category    String?
+  notes       String?   @db.Text
+  photoUrl    String?
+  barcode     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  household   Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  foodItem    FoodItem        @relation(fields: [foodItemId], references: [id])
+  location    KitchenLocation @relation(fields: [locationId], references: [id])
+  mediaAssets MediaAsset[]
+
+  @@index([householdId])
+  @@index([locationId])
+  @@index([foodItemId])
+  @@index([expiresOn])
+}
+
+model MediaAsset {
+  id              String   @id @default(cuid())
+  url             String
+  recipeId        String?
+  inventoryItemId String?
+  uploadedAt      DateTime @default(now())
+
+  recipe        Recipe?        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+  @@index([inventoryItemId])
+}
+
+model Recipe {
+  id               String    @id @default(cuid())
+  householdId      String
+  title            String
+  description      String?   @db.Text
+  photoUrl         String?
+  tags             String[]
+  visibility       String    @default("private") // 'private' | 'household' | 'public' | 'unlisted'
+  servings         Int?
+  totalTimeMinutes Int?
+  sourceUrl        String?
+  notes            String?   @db.Text
+  favorited        Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastCookedAt     DateTime?
+
+  household         Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ingredients       RecipeIngredient[]
+  steps             RecipeStep[]
+  mediaAssets       MediaAsset[]
+  shoppingListItems ShoppingListItem[]
+
+  @@index([householdId])
+  @@index([visibility])
+}
+
+model RecipeIngredient {
+  id         String   @id @default(cuid())
+  recipeId   String
+  foodItemId String?
+  name       String
+  quantity   Float?
+  unit       String?
+  note       String?
+  order      Int
+  createdAt  DateTime @default(now())
+
+  recipe   Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  foodItem FoodItem? @relation(fields: [foodItemId], references: [id])
+
+  @@index([recipeId])
+  @@index([foodItemId])
+}
+
+model RecipeStep {
+  id        String   @id @default(cuid())
+  recipeId  String
+  text      String   @db.Text
+  order     Int
+  createdAt DateTime @default(now())
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model ShoppingList {
+  id          String   @id @default(cuid())
+  householdId String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items     ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  id             String   @id @default(cuid())
+  shoppingListId String
+  foodItemId     String?
+  name           String
+  quantity       Float?
+  unit           String?
+  category       String?
+  checked        Boolean  @default(false)
+  note           String?  @db.Text
+  source         String? // 'manual' | 'from-recipe' | 'low-stock'
+  recipeId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  foodItem     FoodItem?    @relation(fields: [foodItemId], references: [id])
+  recipe       Recipe?      @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  @@index([shoppingListId])
+  @@index([foodItemId])
+}
+
+model UserPreferences {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  measurementSystem String   @default("metric") // 'metric' | 'imperial'
+  defaultWeightUnit String   @default("g") // 'g' | 'kg' | 'oz' | 'lb'
+  defaultVolumeUnit String   @default("ml") // 'ml' | 'l' | 'cup' | 'tbsp' | 'tsp'
+  timezone          String?
+  dateFormat        String?  @default("YYYY-MM-DD")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

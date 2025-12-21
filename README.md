@@ -69,8 +69,9 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 Sous Chef is intentionally designed to avoid vendor lock-in.
 
 ### Frontend
-* Web support planned via Next.js
-* Shared UI + domain packages
+* Next.js web application
+* React 19 with TypeScript
+* Tailwind CSS for styling
 
 ### Backend (Initial / Agnostic)
 
@@ -108,32 +109,31 @@ All inventory and recipes are scoped to a household.
 
 ## 🔐 Authentication & Security
 
-* Supabase Auth (email/password, magic links)
-* Strict Row Level Security (RLS)
-* No cross-household data access
+* NextAuth.js with Prisma adapter
+* Email/password authentication
+* Magic link support (via email provider)
+* PostgreSQL database (Supabase-compatible)
+* Household-based access control
 * Self-hosters fully control auth + storage
 
 ---
 
-## 📦 Monorepo Structure
+## 📦 Project Structure
 
 ```
 sous-chef/
-├─ apps/
-│  └─ mobile/          # Expo React Native app
-├─ packages/
-│  └─ domain/          # Shared domain types & rules
-├─ supabase/
-│  ├─ migrations/      # SQL migrations (source of truth)
-│  └─ config.toml
-├─ README.md
-└─ LICENSE
+├─ src/                 # Next.js application source
+├─ prisma/              # Prisma schema and migrations
+│  ├─ schema.prisma
+│  └─ migrations/
+├─ supabase/            # Supabase local development config
+│  ├─ migrations/       # SQL migrations
+│  ├─ config.toml
+│  └─ storage/
+├─ public/              # Static assets
+├─ scripts/             # Utility scripts
+└─ README.md
 ```
-
-### `@sous-chef/domain`
-
-Contains **pure business logic and types** — no UI, no Supabase, no Expo.
-This ensures portability and future backend flexibility.
 
 ---
 
@@ -143,27 +143,76 @@ This ensures portability and future backend flexibility.
 
 * Node.js **20 LTS** (recommended)
 * pnpm
-* Docker
+* Docker (required for Supabase local development)
 
-### Install dependencies
+### 1. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### Start Supabase locally
+### 2. Start Supabase locally
 
 ```bash
+# Initialize Supabase (if not already done)
 pnpm supabase init
+
+# Start Supabase services (PostgreSQL, Auth, Storage, etc.)
 pnpm supabase start
+
+# Check status and get connection details
 pnpm supabase status
 ```
 
-### Start the mobile app
+After running `supabase status`, you'll see connection details including the database URL.
+
+### 3. Set up environment variables
+
+Create a `.env` file in the root directory with the following variables:
 
 ```bash
-cd apps/mobile
-pnpm start
+# Get the database URL from: pnpm supabase status
+# It will look like: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+
+# NextAuth secret (generate a random string)
+# You can generate one with: openssl rand -base64 32
+NEXTAUTH_SECRET="your-secret-key-here"
+
+# NextAuth URL (for local development)
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+### 4. Run database migrations
+
+```bash
+# Run Prisma migrations to set up the database schema
+# This will also generate the Prisma client automatically
+pnpm prisma migrate dev
+
+# If you need to generate the Prisma client separately (e.g., after schema changes)
+pnpm prisma generate
+```
+
+### 5. Start the development server
+
+```bash
+pnpm dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+### Additional Commands
+
+```bash
+# View Supabase Studio (database admin UI)
+# Open: http://localhost:54323
+
+# Stop Supabase services
+pnpm supabase stop
+
+# Reset Supabase (clears all data)
+pnpm supabase db reset
 ```
 
 ---
