@@ -86,6 +86,62 @@ export default function ShoppingListPage() {
     });
   }, []);
 
+  const handleUpdateItemWithData = useCallback(
+    async (id: string, itemData: Partial<ShoppingListItem>) => {
+      try {
+        const response = await fetch(`/api/shopping-list/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(itemData),
+        });
+
+        if (!response.ok) throw new Error("Failed to update item");
+        await fetchShoppingList();
+      } catch (error) {
+        console.error("Error updating item:", error);
+        alert("Failed to update item. Please try again.");
+      }
+    },
+    [fetchShoppingList]
+  );
+
+  const handleEditItem = useCallback(
+    (id: string) => {
+      const item = items.find((i) => i.id === id);
+      if (!item) return;
+
+      const name = prompt("Update item name:", item.name);
+      if (!name || !name.trim()) return;
+
+      const quantityStr = prompt(
+        "Update quantity (optional):",
+        item.quantity !== undefined ? String(item.quantity) : ""
+      );
+      const quantity = quantityStr ? parseFloat(quantityStr) : undefined;
+
+      const unit = prompt(
+        "Update unit (optional, e.g., g, kg, count):",
+        item.unit || ""
+      ) || undefined;
+
+      const category = prompt(
+        "Update category (optional: Produce, Dairy, Meat & Seafood, Pantry, Frozen, Bakery, Other):",
+        item.category || ""
+      ) as ShoppingListItem["category"] | null;
+
+      const note = prompt("Update note (optional):", item.note || "") || undefined;
+
+      handleUpdateItemWithData(id, {
+        name: name.trim(),
+        quantity,
+        unit,
+        category: category || undefined,
+        note,
+      });
+    },
+    [items, handleUpdateItemWithData]
+  );
+
   const handleAddItemWithData = useCallback(async (itemData: Partial<ShoppingListItem>) => {
     try {
       const response = await fetch("/api/shopping-list", {
@@ -141,6 +197,7 @@ export default function ShoppingListPage() {
       onAddItem={handleAddItem}
       onScanBarcode={handleScanBarcode}
       onToggleItem={handleToggleItem}
+      onEditItem={handleEditItem}
       onRemoveItem={handleRemoveItem}
       onClearChecked={handleClearChecked}
     />

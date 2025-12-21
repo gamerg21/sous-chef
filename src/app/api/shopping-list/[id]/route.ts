@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const updateShoppingListItemSchema = z.object({
+  name: z.string().min(1).optional(),
   checked: z.boolean().optional(),
   quantity: z.number().positive().optional(),
   unit: z.string().optional(),
@@ -69,6 +70,7 @@ export async function PUT(
     const updated = await prisma.shoppingListItem.update({
       where: { id: params.id },
       data: {
+        name: validated.name !== undefined ? validated.name : item.name,
         checked: validated.checked !== undefined ? validated.checked : item.checked,
         quantity: validated.quantity !== undefined ? validated.quantity : item.quantity,
         unit: validated.unit !== undefined ? validated.unit : item.unit,
@@ -162,4 +164,3 @@ export async function DELETE(
     );
   }
 }
-
