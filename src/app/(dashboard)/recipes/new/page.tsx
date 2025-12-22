@@ -68,18 +68,20 @@ export default function NewRecipePage() {
   }, [router]);
 
   return (
-    <RecipeEditorView
-      pantrySnapshot={pantrySnapshot}
-      onBack={handleBack}
-      onCancel={handleCancel}
-      onSave={handleSave}
-    />
-    <AlertModal
-      isOpen={alertModal.isOpen}
-      onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
-      message={alertModal.message}
-      variant={alertModal.variant}
-    />
+    <>
+      <RecipeEditorView
+        pantrySnapshot={pantrySnapshot}
+        onBack={handleBack}
+        onCancel={handleCancel}
+        onSave={handleSave}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+    </>
   );
 }
 

@@ -106,22 +106,24 @@ export default function RecipeDetailPage() {
   }
 
   return (
-    <RecipeDetailView
-      recipe={recipe}
-      pantrySnapshot={pantrySnapshot}
-      onBack={handleBack}
-      onCook={handleCook}
-      onEdit={handleEdit}
-      onToggleFavorite={handleToggleFavorite}
-      onUploadPhoto={handleUploadPhoto}
-      onRemovePhoto={handleRemovePhoto}
-    />
-    <AlertModal
-      isOpen={alertModal.isOpen}
-      onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
-      message={alertModal.message}
-      variant={alertModal.variant}
-    />
+    <>
+      <RecipeDetailView
+        recipe={recipe}
+        pantrySnapshot={pantrySnapshot}
+        onBack={handleBack}
+        onCook={handleCook}
+        onEdit={handleEdit}
+        onToggleFavorite={handleToggleFavorite}
+        onUploadPhoto={handleUploadPhoto}
+        onRemovePhoto={handleRemovePhoto}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+    </>
   );
 }
 

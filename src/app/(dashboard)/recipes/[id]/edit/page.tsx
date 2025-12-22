@@ -105,19 +105,21 @@ export default function EditRecipePage() {
   }
 
   return (
-    <RecipeEditorView
-      recipe={recipe}
-      pantrySnapshot={pantrySnapshot}
-      onBack={handleBack}
-      onCancel={handleCancel}
-      onSave={handleSave}
-    />
-    <AlertModal
-      isOpen={alertModal.isOpen}
-      onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
-      message={alertModal.message}
-      variant={alertModal.variant}
-    />
+    <>
+      <RecipeEditorView
+        recipe={recipe}
+        pantrySnapshot={pantrySnapshot}
+        onBack={handleBack}
+        onCancel={handleCancel}
+        onSave={handleSave}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+    </>
   );
 }
 
