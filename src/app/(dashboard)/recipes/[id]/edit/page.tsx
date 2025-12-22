@@ -41,7 +41,7 @@ export default function EditRecipePage() {
       const response = await fetch("/api/inventory");
       if (!response.ok) return;
       const data = await response.json();
-      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: any) => ({
+      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: { id: string; name: string; quantity: number | null; unit: string | null }) => ({
         id: item.id,
         name: item.name,
         quantity: item.quantity,
@@ -78,7 +78,7 @@ export default function EditRecipePage() {
         const error = await response.json();
         if (error.details && Array.isArray(error.details)) {
           const errorMessages = error.details
-            .map((d: any) => `${d.path.join(".")}: ${d.message}`)
+            .map((d: { path: string[]; message: string }) => `${d.path.join(".")}: ${d.message}`)
             .join("\n");
           throw new Error(`Validation error:\n${errorMessages}`);
         }

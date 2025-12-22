@@ -71,7 +71,7 @@ function fromDraft(base: Recipe | null | undefined, draft: RecipeEditorDraft): R
       id: i.id,
       name: i.name.trim(),
       quantity: i.quantity.trim() ? Number(i.quantity) : undefined,
-      unit: i.unit.trim() ? (i.unit.trim() as any) : undefined,
+      unit: i.unit.trim() ? (i.unit.trim() as IngredientUnit) : undefined,
       note: i.note.trim() || undefined,
       mapping: i.mappingLabel.trim()
         ? { inventoryItemLabel: i.mappingLabel.trim(), suggested: false }
@@ -116,9 +116,13 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
   const [tab, setTab] = useState<EditorTab>('basics')
 
   useEffect(() => {
-    setDraft(toDraft(recipe))
-    setTab('basics')
-  }, [recipe?.id])
+    // Defer state updates to avoid synchronous setState in effect
+    const timer = setTimeout(() => {
+      setDraft(toDraft(recipe))
+      setTab('basics')
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [recipe?.id, recipe])
 
   const titleEmpty = !draft.title.trim()
 

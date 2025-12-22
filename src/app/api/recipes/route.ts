@@ -39,10 +39,10 @@ const createRecipeSchema = z.object({
 });
 
 // GET /api/recipes - List recipes
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       totalTimeMinutes: recipe.totalTimeMinutes || undefined,
       sourceUrl: recipe.sourceUrl || undefined,
       notes: recipe.notes || undefined,
-      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }, idx: number) => ({
+      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

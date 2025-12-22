@@ -83,12 +83,15 @@ export function CommunityHubView(props: CommunityHubViewProps) {
 
   // If the incoming data/page size changes, keep visible count within bounds.
   useEffect(() => {
-    setVisibleFeaturedCount((prev) =>
-      Math.min(
-        Math.max(prev, featuredRecipesPageSize),
-        featuredRecipes.length
+    // Defer state update to avoid synchronous setState in effect
+    setTimeout(() => {
+      setVisibleFeaturedCount((prev) =>
+        Math.min(
+          Math.max(prev, featuredRecipesPageSize),
+          featuredRecipes.length
+        )
       )
-    )
+    }, 0)
   }, [featuredRecipes.length, featuredRecipesPageSize])
 
   const filteredExtensions = useMemo(() => {

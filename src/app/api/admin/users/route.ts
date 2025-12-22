@@ -14,18 +14,19 @@ const createUserSchema = z.object({
   isAppAdmin: z.boolean().default(false),
 });
 
-const updateUserSchema = z.object({
-  name: z.string().min(1).optional(),
-  email: z.string().email().optional(),
-  isAppAdmin: z.boolean().optional(),
-  password: z.string().min(8).optional(),
-});
+// updateUserSchema is defined but not currently used - kept for future use
+// const updateUserSchema = z.object({
+//   name: z.string().min(1).optional(),
+//   email: z.string().email().optional(),
+//   isAppAdmin: z.boolean().optional(),
+//   password: z.string().min(8).optional(),
+// });
 
 // GET /api/admin/users - List all users in the app
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -129,7 +130,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

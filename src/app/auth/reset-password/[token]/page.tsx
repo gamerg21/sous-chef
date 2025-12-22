@@ -18,22 +18,32 @@ export default function ResetPassword() {
 
   // Validate token on page load
   useEffect(() => {
-    if (!token) {
-      setMessage("Error: Invalid reset link");
-      setIsValidating(false);
-      return;
-    }
+    const validateToken = () => {
+      if (!token) {
+        return { valid: false, message: "Error: Invalid reset link" };
+      }
 
-    // Token format validation (basic check)
-    if (token.length < 20) {
-      setMessage("Error: Invalid reset token format");
-      setIsValidating(false);
-      return;
-    }
+      // Token format validation (basic check)
+      if (token.length < 20) {
+        return { valid: false, message: "Error: Invalid reset token format" };
+      }
 
-    // Token is present and looks valid
-    setTokenValid(true);
-    setIsValidating(false);
+      // Token is present and looks valid
+      return { valid: true, message: "" };
+    };
+
+    // Defer state updates to avoid synchronous setState in effect
+    setTimeout(() => {
+      const result = validateToken();
+      if (result.valid) {
+        setTokenValid(true);
+        setMessage("");
+      } else {
+        setTokenValid(false);
+        setMessage(result.message);
+      }
+      setIsValidating(false);
+    }, 0);
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -43,7 +43,7 @@ export function DropdownMenuTrigger({ asChild, children }: DropdownMenuTriggerPr
         handleClick();
         childProps.onClick?.(e);
       },
-    } as any);
+    });
   }
 
   return (
@@ -74,7 +74,7 @@ export function DropdownMenuContent({ align = "start", children }: DropdownMenuC
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [context.open]);
+  }, [context.open, context]);
 
   if (!context.open) return null;
 

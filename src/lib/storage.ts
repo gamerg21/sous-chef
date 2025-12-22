@@ -30,7 +30,7 @@ export function validateFile(file: File): { valid: boolean; error?: string } {
   }
 
   // Check MIME type
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type as any)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number])) {
     return {
       valid: false,
       error: `File type not allowed. Allowed types: ${ALLOWED_IMAGE_TYPES.join(", ")}`,
@@ -51,10 +51,10 @@ export function generateFilePath(
   const random = Math.random().toString(36).substring(2, 15);
   const extension = originalName.split(".").pop() || "jpg";
   
-  // Sanitize filename
-  const sanitizedName = originalName
-    .replace(/[^a-zA-Z0-9.-]/g, "_")
-    .substring(0, 50);
+  // Sanitize filename (not currently used, but kept for future use)
+  // const sanitizedName = originalName
+  //   .replace(/[^a-zA-Z0-9.-]/g, "_")
+  //   .substring(0, 50);
 
   const parts: string[] = [];
   
@@ -111,7 +111,7 @@ export async function uploadFile(
       : "image/jpeg"; // Default for Buffer
 
   // Upload to Supabase Storage
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from(options.bucket)
     .upload(filePath, buffer, {
       contentType: mimeType,

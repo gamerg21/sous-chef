@@ -132,7 +132,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
                 What can I cook?
               </h1>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Discover recipes you can make now, or get a tight shopping list for what's missing.
+                Discover recipes you can make now, or get a tight shopping list for what&apos;s missing.
               </p>
             </div>
 

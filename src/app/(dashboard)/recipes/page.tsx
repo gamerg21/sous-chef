@@ -38,7 +38,7 @@ export default function RecipesPage() {
       if (!response.ok) return;
       const data = await response.json();
       // Transform inventory items to pantry snapshot
-      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: any) => ({
+      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: { id: string; name: string; quantity: number | null; unit: string | null }) => ({
         id: item.id,
         name: item.name,
         quantity: item.quantity,

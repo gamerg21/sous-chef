@@ -23,8 +23,11 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         codeReaderRef.current.reset();
         codeReaderRef.current = null;
       }
-      setError(null);
-      setScanning(false);
+      // Defer state updates to avoid synchronous setState in effect
+      setTimeout(() => {
+        setError(null);
+        setScanning(false);
+      }, 0);
       return;
     }
 
@@ -55,7 +58,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           if (videoInputDevices.length > 0) {
             selectedDeviceId = videoInputDevices[0].deviceId;
           }
-        } catch (enumError) {
+        } catch {
           // Device enumeration not supported (common on iOS Safari)
           // We'll use undefined to let the browser choose the default camera
           console.log("Device enumeration not supported, using default camera");

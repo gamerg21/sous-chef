@@ -11,7 +11,7 @@ type AuthMode = "magic-link" | "password";
 export default function SignIn() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [mode, setMode] = useState<AuthMode>("password");
+  const [mode] = useState<AuthMode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +24,8 @@ export default function SignIn() {
     }
   }, [status, session, router]);
 
+  // handleMagicLinkSubmit is defined but not currently used
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -66,7 +68,7 @@ export default function SignIn() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }; // eslint-disable-line @typescript-eslint/no-unused-vars
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +230,7 @@ export default function SignIn() {
 
         {/* Sign up link */}
         <div className="text-center text-sm" style={{ fontFamily: 'var(--font-body)' }}>
-          <span className="text-stone-600 dark:text-stone-400">Don't have an account? </span>
+          <span className="text-stone-600 dark:text-stone-400">Don&apos;t have an account? </span>
           <Link
             href="/auth/signup"
             className="font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"

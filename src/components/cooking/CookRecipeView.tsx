@@ -51,7 +51,7 @@ export function CookRecipeView({ recipe, pantrySnapshot, onBack, onConfirmCook }
             <div className="mt-4">
               <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Missing ingredients</div>
               {cookability.missingCount === 0 ? (
-                <div className="mt-2 text-sm text-stone-600 dark:text-stone-400">None — you're good to go.</div>
+                <div className="mt-2 text-sm text-stone-600 dark:text-stone-400">None — you&apos;re good to go.</div>
               ) : (
                 <ul className="mt-2 space-y-2">
                   {cookability.missingLabels.map((m) => (

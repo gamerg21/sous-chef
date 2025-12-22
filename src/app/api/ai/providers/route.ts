@@ -27,10 +27,10 @@ const AVAILABLE_PROVIDERS = [
 ];
 
 // GET /api/ai/providers - List AI providers and settings
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

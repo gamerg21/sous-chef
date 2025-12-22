@@ -49,7 +49,7 @@ export default function CookingPage() {
       setRecipes(cookingData.recipes || []);
       setPantrySnapshot(cookingData.pantrySnapshot || []);
       setSuggestedTags(cookingData.suggestedTags || []);
-      setShoppingListCount((shoppingData.items || []).filter((i: any) => !i.checked).length);
+      setShoppingListCount((shoppingData.items || []).filter((i: { checked?: boolean }) => !i.checked).length);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {

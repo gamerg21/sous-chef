@@ -37,5 +37,5 @@ jobs:
         run: npm run type-check
 
       - name: Run linter
-        run: npm run lint
+        run: npm run lint -- --max-warnings=200
 

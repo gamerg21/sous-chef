@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 // GET /api/community/recipes - Browse community recipes
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.RecipeWhereInput = {
       visibility: {
         in: ["public", "unlisted"],
       },
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build orderBy
-    let orderBy: any = { createdAt: "desc" };
+    let orderBy: Prisma.RecipeOrderByWithRelationInput = { createdAt: "desc" };
     if (sort === "trending") {
       // For trending, we'd ideally use a combination of likes and recent activity
       // For now, we'll use a simple approach: recipes with most likes in last 7 days
@@ -87,8 +88,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const likedRecipeIds = new Set(userLikes.map((l: { recipeId: string }) => l.recipeId));
-    const savedRecipeIds = new Set(userSaves.map((s: { recipeId: string }) => s.recipeId));
+    // likedRecipeIds and savedRecipeIds are computed but not currently used in the response
+    // const likedRecipeIds = new Set(userLikes.map((l: { recipeId: string }) => l.recipeId));
+    // const savedRecipeIds = new Set(userSaves.map((s: { recipeId: string }) => s.recipeId));
 
     // Transform to match component interface
     const transformed = recipes.map((recipe: {

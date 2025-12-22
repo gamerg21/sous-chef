@@ -35,7 +35,7 @@ export default function AdminUsersClient() {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, searchQuery]);
+  }, [page, searchQuery, fetchUsers]);
 
   const fetchUsers = async () => {
     try {

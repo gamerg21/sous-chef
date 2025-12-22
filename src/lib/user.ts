@@ -3,6 +3,15 @@ import { cookies } from "next/headers";
 import { authOptions } from "./auth";
 import { prisma } from "./prisma";
 
+/**
+ * Get the current user's ID from the session
+ * Returns null if not authenticated
+ */
+export async function getCurrentUserId(): Promise<string | null> {
+  const session = await getServerSession(authOptions);
+  return session?.user?.id || null;
+}
+
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;

@@ -11,7 +11,7 @@ import {
   Github, 
   CheckCircle2, 
   Shield, 
-  Server, 
+  // Server, // Unused import 
   Users, 
   ShoppingCart, 
   ChefHat, 
@@ -266,7 +266,7 @@ export default function Home() {
               Beautiful Recipe Management
             </h2>
             <p className="text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto" style={{ fontFamily: 'var(--font-body)' }}>
-              See at a glance which recipes you can cook with what's in your pantry.
+              See at a glance which recipes you can cook with what&apos;s in your pantry.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -293,7 +293,7 @@ export default function Home() {
               Track Your Kitchen Inventory
             </h2>
             <p className="text-lg text-stone-600 dark:text-stone-400 max-w-2xl mx-auto" style={{ fontFamily: 'var(--font-body)' }}>
-              Never wonder what's in your fridge again. Track quantities, expiration dates, and locations.
+              Never wonder what&apos;s in your fridge again. Track quantities, expiration dates, and locations.
             </p>
           </div>
           <div className="max-w-3xl mx-auto space-y-4">
@@ -404,7 +404,7 @@ export default function Home() {
             Ready to Organize Your Kitchen?
           </h2>
           <p className="text-lg text-stone-600 dark:text-stone-400 mb-10" style={{ fontFamily: 'var(--font-body)' }}>
-            Join the community and start managing your kitchen inventory today. It's free, open source, and ready to use.
+            Join the community and start managing your kitchen inventory today. It&apos;s free, open source, and ready to use.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link

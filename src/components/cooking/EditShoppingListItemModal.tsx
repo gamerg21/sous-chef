@@ -28,13 +28,17 @@ export function EditShoppingListItemModal({
   onClose,
   onSave,
 }: EditShoppingListItemModalProps) {
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<ShoppingListItem['category'] | ''>('')
+  const [name, setName] = useState(() => item?.name || '')
+  const [category, setCategory] = useState<ShoppingListItem['category'] | ''>(() => item?.category || '')
 
   useEffect(() => {
     if (item) {
-      setName(item.name)
-      setCategory(item.category || '')
+      // Use setTimeout to defer state updates
+      const timer = setTimeout(() => {
+        setName(item.name)
+        setCategory(item.category || '')
+      }, 0)
+      return () => clearTimeout(timer)
     }
   }, [item])
 

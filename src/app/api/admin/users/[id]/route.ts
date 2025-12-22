@@ -21,7 +21,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -96,7 +96,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -141,7 +141,12 @@ export async function PATCH(
     }
 
     // Prepare update data
-    const updateData: any = {};
+    const updateData: {
+      name?: string;
+      email?: string;
+      isAppAdmin?: boolean;
+      password?: string;
+    } = {};
     if (validated.name) updateData.name = validated.name;
     if (validated.email) updateData.email = normalizeEmail(validated.email);
     if (validated.isAppAdmin !== undefined)
@@ -212,7 +217,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

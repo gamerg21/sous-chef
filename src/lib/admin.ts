@@ -8,7 +8,7 @@ import { getCurrentHouseholdId } from "./user";
  */
 export async function isAppAdmin(): Promise<boolean> {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
+  const userId = session?.user?.id;
   if (!userId) return false;
 
   const user = await prisma.user.findUnique({
@@ -26,7 +26,7 @@ export async function isHouseholdOwnerOrAdmin(
   householdId: string
 ): Promise<boolean> {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
+  const userId = session?.user?.id;
   if (!userId) return false;
 
   const membership = await prisma.householdMember.findFirst({
@@ -45,7 +45,7 @@ export async function isHouseholdOwnerOrAdmin(
  */
 export async function isHouseholdOwner(householdId: string): Promise<boolean> {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
+  const userId = session?.user?.id;
   if (!userId) return false;
 
   const membership = await prisma.householdMember.findFirst({
@@ -66,7 +66,7 @@ export async function getCurrentHouseholdRole(): Promise<
   "owner" | "admin" | "member" | null
 > {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
+  const userId = session?.user?.id;
   if (!userId) return null;
 
   const householdId = await getCurrentHouseholdId(userId);

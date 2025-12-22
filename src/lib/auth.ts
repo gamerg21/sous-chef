@@ -94,7 +94,7 @@ export const authOptions: NextAuthOptions = {
       // Default to inventory page after sign in
       return `${baseUrl}/inventory`;
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user }) {
       try {
         console.log("[AUTH] SignIn callback called", { userId: user?.id, email: user?.email });
         // Auto-create household and preferences for new users on first sign in

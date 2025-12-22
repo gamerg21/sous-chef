@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { normalizeEmail, isValidEmail } from "@/lib/auth-utils";
-import { Prisma } from "@/generated/prisma/client";
+// Prisma import removed - not currently used
 
 const signupSchema = z.object({
   email: z
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: "Invalid request body" },
         { status: 400 }

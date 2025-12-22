@@ -7,7 +7,7 @@ import HouseholdUsersClient from "./client";
 
 export default async function HouseholdUsersPage() {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
+  const userId = session?.user?.id;
   
   if (!userId) {
     redirect("/auth/signin");

@@ -18,7 +18,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -54,7 +54,11 @@ export async function POST(
     let setting;
     if (existing) {
       // Update existing setting
-      const updateData: any = {};
+      const updateData: {
+        apiKey?: string;
+        status?: string;
+        model?: string;
+      } = {};
       if (validated.apiKey !== undefined) {
         updateData.apiKey = validated.apiKey;
         updateData.status = validated.apiKey ? "ready" : "needs-key";

@@ -15,16 +15,17 @@ const createUserSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
 });
 
-const updateUserSchema = z.object({
-  role: z.enum(["owner", "admin", "member"]).optional(),
-  name: z.string().min(1).optional(),
-});
+// updateUserSchema is defined but not currently used - kept for future use
+// const updateUserSchema = z.object({
+//   role: z.enum(["owner", "admin", "member"]).optional(),
+//   name: z.string().min(1).optional(),
+// });
 
 // GET /api/household/users - List all users in the current household
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

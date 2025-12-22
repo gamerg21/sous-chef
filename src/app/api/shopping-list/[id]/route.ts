@@ -32,7 +32,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -88,11 +88,11 @@ export async function PUT(
       id: updated.id,
       name: updated.name,
       quantity: updated.quantity || undefined,
-      unit: (updated.unit as any) || undefined,
-      category: (updated.category as any) || undefined,
+      unit: updated.unit || undefined,
+      category: updated.category || undefined,
       checked: updated.checked,
       note: updated.note || undefined,
-      source: (updated.source as any) || undefined,
+      source: updated.source || undefined,
       recipeId: updated.recipeId || undefined,
     };
 
@@ -120,7 +120,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
