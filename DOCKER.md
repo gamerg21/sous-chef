@@ -83,6 +83,47 @@ docker-compose ps
 
 The application will be available at `http://localhost:3000` (or your configured port).
 
+### 4.5. Enable HTTPS (Optional)
+
+Safari on iPhones requires HTTPS for barcode scanning. You can enable HTTPS in two ways:
+
+#### Option A: Auto-generated Self-signed Certificates (Easiest)
+
+1. **Set `ENABLE_HTTPS=true` in your `.env` file:**
+   ```env
+   ENABLE_HTTPS=true
+   NEXTAUTH_URL=https://localhost:3000
+   ```
+
+2. **Restart containers:**
+   ```bash
+   docker-compose up -d
+   ```
+
+The app will automatically generate self-signed certificates on first startup. Browsers will show a security warning, but you can proceed and Safari barcode scanning will work.
+
+#### Option B: Custom Certificates
+
+1. **Generate or obtain your SSL certificates** and place them in a `certs` directory:
+   ```bash
+   mkdir -p certs
+   # Copy your cert.pem and key.pem files here
+   # Or use the provided script:
+   ./scripts/generate-self-signed-cert.sh
+   ```
+
+2. **Enable HTTPS in `.env`:**
+   ```env
+   ENABLE_HTTPS=true
+   SSL_CERT_PATH=/app/certs/cert.pem
+   SSL_KEY_PATH=/app/certs/key.pem
+   NEXTAUTH_URL=https://yourdomain.com
+   ```
+
+3. **The certificates will be automatically mounted** via the volume in `docker-compose.yml`
+
+**Note:** For production with proper SSL certificates, consider using a reverse proxy (nginx, Traefik, Caddy) with `ENABLE_HTTPS=false` and let the proxy handle SSL termination.
+
 ### 4. Run Database Migrations
 
 Migrations run automatically on container startup. If you need to run them manually:
@@ -105,14 +146,31 @@ docker-compose exec postgres psql -U postgres -d souschef -c "UPDATE \"User\" SE
 
 ### Using a Reverse Proxy
 
-For production, use a reverse proxy (nginx, Traefik, Caddy) in front of the application:
+For production, use a reverse proxy (nginx, Traefik, Caddy) in front of the application. This is the recommended approach for production deployments.
 
-#### Example nginx configuration:
+**Important:** When using a reverse proxy, keep `ENABLE_HTTPS=false` in your `.env` file and let the proxy handle SSL termination.
+
+#### Example nginx configuration with SSL:
 
 ```nginx
 server {
     listen 80;
     server_name souschef.yourdomain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name souschef.yourdomain.com;
+
+    # SSL certificates (use Let's Encrypt for production)
+    ssl_certificate /etc/letsencrypt/live/souschef.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/souschef.yourdomain.com/privkey.pem;
+    
+    # SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -133,6 +191,7 @@ server {
 In your `.env` file, set:
 
 ```env
+ENABLE_HTTPS=false  # Let nginx handle SSL
 NEXTAUTH_URL=https://souschef.yourdomain.com
 ```
 
@@ -346,6 +405,10 @@ sudo chown -R 999:999 ./postgres_data
 | `NEXTAUTH_SECRET` | Yes | Secret for NextAuth.js | - |
 | `NEXTAUTH_URL` | Yes | Public URL of your application | `http://localhost:3000` |
 | `APP_PORT` | No | Application port (host) | `3000` |
+| `ENABLE_HTTPS` | No | Enable HTTPS mode (auto-generates self-signed certs if not provided) | `false` |
+| `SSL_CERT_PATH` | No | Path to SSL certificate file | `/app/certs/cert.pem` |
+| `SSL_KEY_PATH` | No | Path to SSL private key file | `/app/certs/key.pem` |
+| `HOSTNAME` | No | Hostname to bind to | `0.0.0.0` |
 | `SMTP_HOST` | No | SMTP server hostname | - |
 | `SMTP_PORT` | No | SMTP server port | `587` |
 | `SMTP_USER` | No | SMTP username | - |
