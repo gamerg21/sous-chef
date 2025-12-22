@@ -1,5 +1,8 @@
 import { getSupabaseAdmin, STORAGE_BUCKETS, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "./supabase";
 
+// Re-export STORAGE_BUCKETS for convenience
+export { STORAGE_BUCKETS };
+
 export interface UploadResult {
   url: string;
   path: string;
