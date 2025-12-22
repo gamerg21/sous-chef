@@ -28,7 +28,10 @@ jobs:
       - name: Set Docker username
         id: docker_meta
         run: |
-          DOCKER_USERNAME="${{ vars.DOCKER_USERNAME || 'gamerg21' }}"
+          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
+          if [ -z "$DOCKER_USERNAME" ]; then
+            DOCKER_USERNAME="gamerg21"
+          fi
           # Remove any leading/trailing slashes that might cause issues
           DOCKER_USERNAME=$(echo "$DOCKER_USERNAME" | sed 's|^/||' | sed 's|/$||')
           REGISTRY="${{ env.REGISTRY }}"
