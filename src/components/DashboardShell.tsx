@@ -1,15 +1,18 @@
-"use client";
+'use client'
 
-import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { AppShell } from "@/components/shell";
+import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
+import AppShell from './shell/AppShell'
 
-interface DashboardShellProps {
-  children: React.ReactNode;
-  navigationItems: Array<{ label: string; href: string }>;
-  user: { name: string; avatarUrl?: string };
-  households: Array<{ id: string; name: string }>;
-  currentHouseholdId: string;
+export interface DashboardShellProps {
+  children: React.ReactNode
+  navigationItems: Array<{ label: string; href: string }>
+  user: {
+    name: string
+    avatarUrl?: string
+  }
+  households: Array<{ id: string; name: string }>
+  currentHouseholdId: string
 }
 
 export function DashboardShell({
@@ -19,32 +22,32 @@ export function DashboardShell({
   households,
   currentHouseholdId,
 }: DashboardShellProps) {
-  const router = useRouter();
+  const router = useRouter()
 
-  const handleHouseholdChange = async (newHouseholdId: string) => {
+  const handleHouseholdChange = async (householdId: string) => {
     try {
-      const response = await fetch("/api/household/switch", {
-        method: "POST",
+      const response = await fetch('/api/household/switch', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ householdId: newHouseholdId }),
-      });
+        body: JSON.stringify({ householdId }),
+      })
 
       if (response.ok) {
-        router.refresh();
+        // Refresh the page to update the server-side data
+        router.refresh()
       } else {
-        const error = await response.json();
-        console.error("Failed to switch household:", error);
+        console.error('Failed to switch household')
       }
     } catch (error) {
-      console.error("Error switching household:", error);
+      console.error('Error switching household:', error)
     }
-  };
+  }
 
   const handleLogout = async () => {
-    await signOut({ redirect: true, redirectTo: "/auth/signin" });
-  };
+    await signOut({ callbackUrl: '/auth/signin' })
+  }
 
   return (
     <AppShell
@@ -57,6 +60,5 @@ export function DashboardShell({
     >
       {children}
     </AppShell>
-  );
+  )
 }
-

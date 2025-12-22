@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface AppUser {
   id: string;
@@ -28,6 +30,8 @@ export default function AdminUsersClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -73,13 +77,15 @@ export default function AdminUsersClient() {
     setShowAddModal(true);
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setUserToDelete({ id: userId, name: userName });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -89,9 +95,11 @@ export default function AdminUsersClient() {
       }
 
       await fetchUsers();
+      setUserToDelete(null);
     } catch (err) {
       console.error("Error deleting user:", err);
-      alert(err instanceof Error ? err.message : "Failed to delete user. Please try again.");
+      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to delete user. Please try again.", variant: 'error' });
+      setUserToDelete(null);
     }
   };
 
@@ -138,7 +146,7 @@ export default function AdminUsersClient() {
       await fetchUsers();
     } catch (err) {
       console.error("Error saving user:", err);
-      alert(err instanceof Error ? err.message : "Failed to save user. Please try again.");
+      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to save user. Please try again.", variant: 'error' });
     }
   };
 
@@ -350,6 +358,22 @@ export default function AdminUsersClient() {
           }}
         />
       )}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+      <ConfirmModal
+        isOpen={userToDelete !== null}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete user"
+        message={userToDelete ? `Are you sure you want to delete ${userToDelete.name}? This action cannot be undone.` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
     </>
   );
 }
@@ -373,16 +397,17 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
     password: "",
   });
   const [saving, setSaving] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email.trim() || !formData.name.trim()) {
-      alert("Email and name are required");
+      setAlertModal({ isOpen: true, message: "Email and name are required", variant: 'error' });
       return;
     }
 
     if (!user && !formData.password) {
-      alert("Password is required for new users");
+      setAlertModal({ isOpen: true, message: "Password is required for new users", variant: 'error' });
       return;
     }
 
@@ -490,6 +515,12 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
           </div>
         </form>
       </div>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { RecipeLibraryView } from "@/components/recipes";
 import type { Recipe, PantrySnapshotItem } from "@/components/recipes";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function RecipesPage() {
   const router = useRouter();
@@ -13,6 +15,8 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | "all">("all");
   const [sort, setSort] = useState<"recently-updated" | "time-asc" | "title-asc">("recently-updated");
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [recipeToDelete, setRecipeToDelete] = useState<string | null>(null);
 
   const fetchRecipes = useCallback(async () => {
     try {
@@ -61,7 +65,7 @@ export default function RecipesPage() {
 
   const handleImportRecipe = useCallback(() => {
     // TODO: Implement import flow
-    alert("Recipe import coming soon!");
+    setAlertModal({ isOpen: true, message: "Recipe import coming soon!", variant: 'info' });
   }, []);
 
   const handleExportAll = useCallback(() => {
@@ -88,12 +92,17 @@ export default function RecipesPage() {
       await fetchRecipes();
     } catch (error) {
       console.error("Error toggling favorite:", error);
-      alert("Failed to toggle favorite. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to toggle favorite. Please try again.", variant: 'error' });
     }
   }, [fetchRecipes]);
 
-  const handleDeleteRecipe = useCallback(async (id: string) => {
-    if (!confirm("Are you sure you want to delete this recipe?")) return;
+  const handleDeleteRecipe = useCallback((id: string) => {
+    setRecipeToDelete(id);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    const id = recipeToDelete;
+    if (!id) return;
 
     try {
       const response = await fetch(`/api/recipes/${id}`, {
@@ -101,11 +110,13 @@ export default function RecipesPage() {
       });
       if (!response.ok) throw new Error("Failed to delete recipe");
       await fetchRecipes();
+      setRecipeToDelete(null);
     } catch (error) {
       console.error("Error deleting recipe:", error);
-      alert("Failed to delete recipe. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to delete recipe. Please try again.", variant: 'error' });
+      setRecipeToDelete(null);
     }
-  }, [fetchRecipes]);
+  }, [recipeToDelete, fetchRecipes]);
 
   // Extract suggested tags from all recipes
   const suggestedTags = Array.from(
@@ -121,23 +132,41 @@ export default function RecipesPage() {
   }
 
   return (
-    <RecipeLibraryView
-      recipes={recipes}
-      pantrySnapshot={pantrySnapshot}
-      suggestedTags={suggestedTags}
-      searchQuery={searchQuery}
-      activeTag={activeTag}
-      sort={sort}
-      onSearchChange={setSearchQuery}
-      onSetTag={setActiveTag}
-      onSetSort={setSort}
-      onOpenRecipe={handleOpenRecipe}
-      onCreateRecipe={handleCreateRecipe}
-      onImportRecipe={handleImportRecipe}
-      onExportAll={handleExportAll}
-      onEditRecipe={handleEditRecipe}
-      onToggleFavorite={handleToggleFavorite}
-      onDeleteRecipe={handleDeleteRecipe}
-    />
+    <>
+      <RecipeLibraryView
+        recipes={recipes}
+        pantrySnapshot={pantrySnapshot}
+        suggestedTags={suggestedTags}
+        searchQuery={searchQuery}
+        activeTag={activeTag}
+        sort={sort}
+        onSearchChange={setSearchQuery}
+        onSetTag={setActiveTag}
+        onSetSort={setSort}
+        onOpenRecipe={handleOpenRecipe}
+        onCreateRecipe={handleCreateRecipe}
+        onImportRecipe={handleImportRecipe}
+        onExportAll={handleExportAll}
+        onEditRecipe={handleEditRecipe}
+        onToggleFavorite={handleToggleFavorite}
+        onDeleteRecipe={handleDeleteRecipe}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+      <ConfirmModal
+        isOpen={recipeToDelete !== null}
+        onClose={() => setRecipeToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete recipe"
+        message="Are you sure you want to delete this recipe?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+    </>
   );
 }

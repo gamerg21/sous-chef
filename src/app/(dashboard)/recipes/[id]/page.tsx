@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { RecipeDetailView } from "@/components/recipes";
 import type { Recipe, PantrySnapshotItem } from "@/components/recipes";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function RecipeDetailPage() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function RecipeDetailPage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [pantrySnapshot, setPantrySnapshot] = useState<PantrySnapshotItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchRecipe = useCallback(async () => {
     try {
@@ -77,18 +79,18 @@ export default function RecipeDetailPage() {
       await fetchRecipe();
     } catch (error) {
       console.error("Error toggling favorite:", error);
-      alert("Failed to toggle favorite. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to toggle favorite. Please try again.", variant: 'error' });
     }
   }, [fetchRecipe]);
 
   const handleUploadPhoto = useCallback(async (id: string, file: File) => {
     // TODO: Implement photo upload
-    alert("Photo upload coming soon!");
+    setAlertModal({ isOpen: true, message: "Photo upload coming soon!", variant: 'info' });
   }, []);
 
   const handleRemovePhoto = useCallback(async (id: string) => {
     // TODO: Implement photo removal
-    alert("Photo removal coming soon!");
+    setAlertModal({ isOpen: true, message: "Photo removal coming soon!", variant: 'info' });
   }, []);
 
   if (loading) {
@@ -113,6 +115,12 @@ export default function RecipeDetailPage() {
       onToggleFavorite={handleToggleFavorite}
       onUploadPhoto={handleUploadPhoto}
       onRemovePhoto={handleRemovePhoto}
+    />
+    <AlertModal
+      isOpen={alertModal.isOpen}
+      onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+      message={alertModal.message}
+      variant={alertModal.variant}
     />
   );
 }

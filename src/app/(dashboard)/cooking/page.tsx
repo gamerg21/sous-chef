@@ -10,6 +10,7 @@ import {
   type CookabilityFilter,
   type CookSort,
 } from "@/components/cooking";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 type ViewMode = "list" | "cook";
 
@@ -29,6 +30,7 @@ export default function CookingPage() {
   const [activeTag, setActiveTag] = useState<string | "all">("all");
   const [cookability, setCookability] = useState<CookabilityFilter>("all");
   const [sort, setSort] = useState<CookSort>("recent");
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchData = useCallback(async () => {
     try {
@@ -110,10 +112,10 @@ export default function CookingPage() {
       if (!response.ok) throw new Error("Failed to add missing ingredients");
       
       await fetchData();
-      alert("Missing ingredients added to shopping list!");
+      setAlertModal({ isOpen: true, message: "Missing ingredients added to shopping list!", variant: 'success' });
     } catch (error) {
       console.error("Error adding missing ingredients:", error);
-      alert("Failed to add missing ingredients. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to add missing ingredients. Please try again.", variant: 'error' });
     }
   }, [fetchData]);
 
@@ -137,10 +139,10 @@ export default function CookingPage() {
       setSelectedRecipeId(null);
       setCameFromRecipePage(null);
       setExternalRecipe(null);
-      alert("Recipe cooked! Inventory updated and missing items added to shopping list.");
+      setAlertModal({ isOpen: true, message: "Recipe cooked! Inventory updated and missing items added to shopping list.", variant: 'success' });
     } catch (error) {
       console.error("Error cooking recipe:", error);
-      alert("Failed to cook recipe. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to cook recipe. Please try again.", variant: 'error' });
     }
   }, [selectedRecipeId, fetchData]);
 
@@ -174,32 +176,48 @@ export default function CookingPage() {
 
   if (viewMode === "cook" && selectedRecipe) {
     return (
-      <CookRecipeView
-        recipe={selectedRecipe}
-        pantrySnapshot={pantrySnapshot}
-        onBack={handleBack}
-        onConfirmCook={handleConfirmCook}
-      />
+      <>
+        <CookRecipeView
+          recipe={selectedRecipe}
+          pantrySnapshot={pantrySnapshot}
+          onBack={handleBack}
+          onConfirmCook={handleConfirmCook}
+        />
+        <AlertModal
+          isOpen={alertModal.isOpen}
+          onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+          message={alertModal.message}
+          variant={alertModal.variant}
+        />
+      </>
     );
   }
 
   return (
-    <WhatCanICookView
-      recipes={recipes}
-      pantrySnapshot={pantrySnapshot}
-      suggestedTags={suggestedTags}
-      shoppingListCount={shoppingListCount}
-      searchQuery={searchQuery}
-      activeTag={activeTag}
-      cookability={cookability}
-      sort={sort}
-      onSearchChange={setSearchQuery}
-      onSetTag={setActiveTag}
-      onSetCookability={setCookability}
-      onSetSort={setSort}
-      onOpenShoppingList={handleOpenShoppingList}
-      onCookRecipe={handleCookRecipe}
-      onAddMissingToShoppingList={handleAddMissingToShoppingList}
-    />
+    <>
+      <WhatCanICookView
+        recipes={recipes}
+        pantrySnapshot={pantrySnapshot}
+        suggestedTags={suggestedTags}
+        shoppingListCount={shoppingListCount}
+        searchQuery={searchQuery}
+        activeTag={activeTag}
+        cookability={cookability}
+        sort={sort}
+        onSearchChange={setSearchQuery}
+        onSetTag={setActiveTag}
+        onSetCookability={setCookability}
+        onSetSort={setSort}
+        onOpenShoppingList={handleOpenShoppingList}
+        onCookRecipe={handleCookRecipe}
+        onAddMissingToShoppingList={handleAddMissingToShoppingList}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+    </>
   );
 }

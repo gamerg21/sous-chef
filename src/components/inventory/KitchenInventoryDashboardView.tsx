@@ -24,6 +24,7 @@ export interface KitchenInventoryDashboardViewProps {
   onEditItem?: (id: string) => void
   onRemoveItem?: (id: string) => void
   onViewExpiringSoon?: () => void
+  deletingItems?: Set<string>
 }
 
 export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardViewProps) {
@@ -42,6 +43,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     onEditItem,
     onRemoveItem,
     onViewExpiringSoon,
+    deletingItems = new Set(),
   } = props
 
   // Local state fallback to keep the design interactive in Design OS previews
@@ -281,6 +283,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
                     dateFormat={dateFormat}
                     onEdit={onEditItem}
                     onRemove={onRemoveItem}
+                    isDeleting={deletingItems.has(item.id)}
                   />
                 ))}
               </div>

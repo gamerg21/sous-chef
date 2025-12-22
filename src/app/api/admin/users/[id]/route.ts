@@ -17,7 +17,7 @@ const updateUserSchema = z.object({
 // GET /api/admin/users/[id] - Get a specific user
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -35,7 +35,8 @@ export async function GET(
       );
     }
 
-    const targetUserId = params.id;
+    const { id } = await params;
+    const targetUserId = id;
 
     const user = await prisma.user.findUnique({
       where: { id: targetUserId },
@@ -91,7 +92,7 @@ export async function GET(
 // PATCH /api/admin/users/[id] - Update a user
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -109,7 +110,8 @@ export async function PATCH(
       );
     }
 
-    const targetUserId = params.id;
+    const { id } = await params;
+    const targetUserId = id;
     const body = await request.json();
     const validated = updateUserSchema.parse(body);
 
@@ -206,7 +208,7 @@ export async function PATCH(
 // DELETE /api/admin/users/[id] - Delete a user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -224,7 +226,8 @@ export async function DELETE(
       );
     }
 
-    const targetUserId = params.id;
+    const { id } = await params;
+    const targetUserId = id;
 
     // Prevent deleting yourself
     if (targetUserId === userId) {

@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback, useEffect } from "react";
 import { RecipeEditorView } from "@/components/recipes";
 import type { Recipe, PantrySnapshotItem } from "@/components/recipes";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function NewRecipePage() {
   const router = useRouter();
   const [pantrySnapshot, setPantrySnapshot] = useState<PantrySnapshotItem[]>([]);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -61,9 +63,7 @@ export default function NewRecipePage() {
       router.push(`/recipes/${saved.id}`);
     } catch (error) {
       console.error("Error saving recipe:", error);
-      alert(
-        error instanceof Error ? error.message : "Failed to save recipe. Please try again."
-      );
+      setAlertModal({ isOpen: true, message: error instanceof Error ? error.message : "Failed to save recipe. Please try again.", variant: 'error' });
     }
   }, [router]);
 
@@ -73,6 +73,12 @@ export default function NewRecipePage() {
       onBack={handleBack}
       onCancel={handleCancel}
       onSave={handleSave}
+    />
+    <AlertModal
+      isOpen={alertModal.isOpen}
+      onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+      message={alertModal.message}
+      variant={alertModal.variant}
     />
   );
 }
