@@ -24,10 +24,10 @@ const createInventoryItemSchema = z.object({
 }));
 
 // GET /api/inventory - List inventory items
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       : validated.locationId === 'fridge' ? 'Fridge'
       : 'Freezer';
     
-    let location = await prisma.kitchenLocation.findFirst({
+    const location = await prisma.kitchenLocation.findFirst({
       where: { 
         householdId,
         name: locationName,

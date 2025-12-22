@@ -97,7 +97,7 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">Recipes</h1>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Your private-by-default recipe library, with lightweight ingredient mapping for "what can I cook?"
+                Your private-by-default recipe library, with lightweight ingredient mapping for &quot;what can I cook?&quot;
               </p>
             </div>
 

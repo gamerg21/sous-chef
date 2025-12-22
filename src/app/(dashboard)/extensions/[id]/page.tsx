@@ -12,7 +12,7 @@ type ExtensionWithInstalled = ExtensionListing & {
   installedExtension?: {
     enabled: boolean;
     needsConfiguration?: boolean;
-    configuration?: any;
+    configuration?: Record<string, unknown>;
   };
 };
 
@@ -63,10 +63,11 @@ export default function ExtensionDetailPage() {
     handleInstallAsync(id).catch(console.error);
   }, [handleInstallAsync]);
 
-  const handleUninstall = useCallback(() => {
-    if (!extension) return;
-    setShowUninstallConfirm(true);
-  }, [extension]);
+  // handleUninstall is handled by the ExtensionDetailView component
+  // const handleUninstall = useCallback(() => {
+  //   if (!extension) return;
+  //   setShowUninstallConfirm(true);
+  // }, [extension]);
 
   const handleConfirmUninstall = useCallback(async () => {
     if (!extension) return;

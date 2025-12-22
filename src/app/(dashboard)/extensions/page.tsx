@@ -38,8 +38,8 @@ export default function ExtensionsPage() {
         
         // Extract installed extensions
         const installed = extensionsData.extensions
-          ?.filter((ext: any) => ext.isInstalled)
-          .map((ext: any) => ({
+          ?.filter((ext: { isInstalled?: boolean }) => ext.isInstalled)
+          .map((ext: { id: string; installedExtension?: { enabled: boolean; needsConfiguration?: boolean } }) => ({
             extensionId: ext.id,
             enabled: ext.installedExtension?.enabled || false,
             needsConfiguration: ext.installedExtension?.needsConfiguration || false,

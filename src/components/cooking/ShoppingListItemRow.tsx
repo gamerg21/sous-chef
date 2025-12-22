@@ -19,10 +19,16 @@ export function ShoppingListItemRow({ item, onToggle, onEdit, onRemove, isDeleti
   // Track checked state changes for animation
   useEffect(() => {
     if (checked !== wasChecked) {
-      setIsAnimating(true)
-      const timer = setTimeout(() => setIsAnimating(false), 300)
-      setWasChecked(checked)
-      return () => clearTimeout(timer)
+      // Defer state updates to avoid synchronous setState in effect
+      const timer1 = setTimeout(() => {
+        setIsAnimating(true)
+        setWasChecked(checked)
+      }, 0)
+      const timer2 = setTimeout(() => setIsAnimating(false), 300)
+      return () => {
+        clearTimeout(timer1)
+        clearTimeout(timer2)
+      }
     }
   }, [checked, wasChecked])
 

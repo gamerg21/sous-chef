@@ -41,7 +41,7 @@ export default function RecipeDetailPage() {
       const response = await fetch("/api/inventory");
       if (!response.ok) return;
       const data = await response.json();
-      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: any) => ({
+      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: { id: string; name: string; quantity: number | null; unit: string | null }) => ({
         id: item.id,
         name: item.name,
         quantity: item.quantity,
@@ -83,12 +83,12 @@ export default function RecipeDetailPage() {
     }
   }, [fetchRecipe]);
 
-  const handleUploadPhoto = useCallback(async (id: string, file: File) => {
+  const handleUploadPhoto = useCallback(async (_id: string, _file: File) => {
     // TODO: Implement photo upload
     setAlertModal({ isOpen: true, message: "Photo upload coming soon!", variant: 'info' });
   }, []);
 
-  const handleRemovePhoto = useCallback(async (id: string) => {
+  const handleRemovePhoto = useCallback(async (_id: string) => {
     // TODO: Implement photo removal
     setAlertModal({ isOpen: true, message: "Photo removal coming soon!", variant: 'info' });
   }, []);

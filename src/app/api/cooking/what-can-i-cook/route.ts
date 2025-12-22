@@ -6,10 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { computeRecipeCookability, bucketForMissingCount } from "@/lib/cooking";
 
 // GET /api/cooking/what-can-i-cook - Get recipes with cookability matching
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

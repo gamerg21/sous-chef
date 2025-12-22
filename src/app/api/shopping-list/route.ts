@@ -26,10 +26,10 @@ const createShoppingListItemSchema = z.object({
 });
 
 // GET /api/shopping-list - Get shopping list
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -91,11 +91,11 @@ export async function GET(request: NextRequest) {
       id: item.id,
       name: item.name,
       quantity: item.quantity || undefined,
-      unit: (item.unit as any) || undefined,
-      category: (item.category as any) || undefined,
+      unit: item.unit || undefined,
+      category: item.category || undefined,
       checked: item.checked,
       note: item.note || undefined,
-      source: (item.source as any) || undefined,
+      source: item.source || undefined,
       recipeId: item.recipeId || undefined,
     }));
 
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -171,11 +171,11 @@ export async function POST(request: NextRequest) {
       id: item.id,
       name: item.name,
       quantity: item.quantity || undefined,
-      unit: (item.unit as any) || undefined,
-      category: (item.category as any) || undefined,
+      unit: item.unit || undefined,
+      category: item.category || undefined,
       checked: item.checked,
       note: item.note || undefined,
-      source: (item.source as any) || undefined,
+      source: item.source || undefined,
       recipeId: item.recipeId || undefined,
     };
 

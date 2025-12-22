@@ -116,7 +116,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
                 Kitchen Inventory
               </h1>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Know what you have, what's expiring soon, and what to use next.
+                Know what you have, what&apos;s expiring soon, and what to use next.
               </p>
             </div>
 

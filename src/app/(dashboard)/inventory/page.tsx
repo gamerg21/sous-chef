@@ -185,7 +185,7 @@ export default function InventoryPage() {
         const error = await response.json();
         // Show detailed validation errors if available
         if (error.details && Array.isArray(error.details)) {
-          const errorMessages = error.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join('\n');
+          const errorMessages = error.details.map((d: { path: string[]; message: string }) => `${d.path.join('.')}: ${d.message}`).join('\n');
           throw new Error(`Validation error:\n${errorMessages}`);
         }
         throw new Error(error.error || "Failed to save item");

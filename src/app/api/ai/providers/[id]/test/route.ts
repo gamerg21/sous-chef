@@ -11,7 +11,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -51,10 +51,10 @@ export async function POST(
           error: "Invalid API key format for this provider",
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       testResult = {
         success: false,
-        error: error.message || "Failed to test connection",
+        error: error instanceof Error ? error.message : "Failed to test connection",
       };
     }
 

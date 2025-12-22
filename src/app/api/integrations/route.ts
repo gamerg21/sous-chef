@@ -5,10 +5,10 @@ import { getCurrentHouseholdId } from "@/lib/user";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/integrations - List integrations for household
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

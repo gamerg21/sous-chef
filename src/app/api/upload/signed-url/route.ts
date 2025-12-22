@@ -9,7 +9,7 @@ import { getSignedUrl, STORAGE_BUCKETS } from "@/lib/storage";
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
+  const userId = session?.user?.id;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

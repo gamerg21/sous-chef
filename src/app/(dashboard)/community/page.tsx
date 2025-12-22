@@ -22,7 +22,15 @@ export default function CommunityPage() {
       const recipesResponse = await fetch("/api/community/recipes?limit=6&sort=popular");
       if (recipesResponse.ok) {
         const recipesData = await recipesResponse.json();
-        const transformed = recipesData.recipes.map((r: any) => ({
+        const transformed = recipesData.recipes.map((r: {
+          id: string;
+          title: string;
+          author: { name: string };
+          description?: string;
+          tags?: string[];
+          totalTimeMinutes?: number;
+          savedCount?: number;
+        }) => ({
           id: r.id,
           title: r.title,
           authorName: r.author.name,

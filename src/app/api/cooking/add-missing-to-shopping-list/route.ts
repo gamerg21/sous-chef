@@ -14,7 +14,7 @@ const addMissingSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
         : undefined,
     }));
 
-    // Compute cookability to find missing ingredients
-    const cookability = computeRecipeCookability(ingredients, pantrySnapshot);
+    // Compute cookability to find missing ingredients (result not currently used)
+    // const cookability = computeRecipeCookability(ingredients, pantrySnapshot);
 
     // Normalize label helper
     function normalizeLabel(s: string): string {
