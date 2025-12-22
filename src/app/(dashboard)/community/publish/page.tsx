@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublishRecipeView } from "@/components/community";
 import type { Recipe } from "@/components/recipes/types";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function PublishRecipePage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function PublishRecipePage() {
   const recipeId = searchParams.get("recipeId");
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchRecipe = useCallback(async () => {
     if (!recipeId) {
@@ -36,7 +38,7 @@ export default function PublishRecipePage() {
 
   const handlePublish = useCallback(async (data: { title: string; description?: string; tags: string[]; visibility: "public" | "unlisted" }) => {
     if (!recipeId) {
-      alert("No recipe selected");
+      setAlertModal({ isOpen: true, message: "No recipe selected", variant: 'warning' });
       return;
     }
     try {
@@ -46,11 +48,11 @@ export default function PublishRecipePage() {
         body: JSON.stringify({ recipeId, visibility: data.visibility }),
       });
       if (!response.ok) throw new Error("Failed to publish recipe");
-      alert("Recipe published successfully!");
-      router.push("/community");
+      setAlertModal({ isOpen: true, message: "Recipe published successfully!", variant: 'success' });
+      setTimeout(() => router.push("/community"), 1000);
     } catch (error) {
       console.error("Error publishing recipe:", error);
-      alert("Failed to publish recipe. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to publish recipe. Please try again.", variant: 'error' });
     }
   }, [recipeId, router]);
 
@@ -91,6 +93,12 @@ export default function PublishRecipePage() {
         }}
         onPublish={handlePublish}
         onBack={() => router.back()}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
       />
     </div>
   );

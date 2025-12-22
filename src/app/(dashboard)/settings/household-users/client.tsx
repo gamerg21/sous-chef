@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Crown } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface HouseholdUser {
   id: string;
@@ -20,6 +22,8 @@ export default function HouseholdUsersClient() {
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<HouseholdUser | null>(null);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -57,13 +61,15 @@ export default function HouseholdUsersClient() {
     setShowAddModal(true);
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to remove ${userName} from this household?`)) {
-      return;
-    }
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setUserToDelete({ id: userId, name: userName });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
 
     try {
-      const response = await fetch(`/api/household/users/${userId}`, {
+      const response = await fetch(`/api/household/users/${userToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -73,9 +79,11 @@ export default function HouseholdUsersClient() {
       }
 
       await fetchUsers();
+      setUserToDelete(null);
     } catch (err) {
       console.error("Error removing user:", err);
-      alert(err instanceof Error ? err.message : "Failed to remove user. Please try again.");
+      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to remove user. Please try again.", variant: 'error' });
+      setUserToDelete(null);
     }
   };
 
@@ -120,7 +128,7 @@ export default function HouseholdUsersClient() {
       await fetchUsers();
     } catch (err) {
       console.error("Error saving user:", err);
-      alert(err instanceof Error ? err.message : "Failed to save user. Please try again.");
+      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to save user. Please try again.", variant: 'error' });
     }
   };
 
@@ -282,6 +290,22 @@ export default function HouseholdUsersClient() {
           }}
         />
       )}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+      <ConfirmModal
+        isOpen={userToDelete !== null}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Remove user"
+        message={userToDelete ? `Are you sure you want to remove ${userToDelete.name} from this household?` : ''}
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
     </>
   );
 }
@@ -305,16 +329,17 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
     password: "",
   });
   const [saving, setSaving] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email.trim() || !formData.name.trim()) {
-      alert("Email and name are required");
+      setAlertModal({ isOpen: true, message: "Email and name are required", variant: 'error' });
       return;
     }
 
     if (!user && !formData.password) {
-      alert("Password is required for new users");
+      setAlertModal({ isOpen: true, message: "Password is required for new users", variant: 'error' });
       return;
     }
 
@@ -431,6 +456,12 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
           </div>
         </form>
       </div>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
     </div>
   );
 }

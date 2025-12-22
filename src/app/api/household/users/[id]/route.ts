@@ -14,7 +14,7 @@ const updateUserSchema = z.object({
 // PATCH /api/household/users/[id] - Update a user's role or name in the household
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -37,7 +37,8 @@ export async function PATCH(
       );
     }
 
-    const targetUserId = params.id;
+    const { id } = await params;
+    const targetUserId = id;
     const body = await request.json();
     const validated = updateUserSchema.parse(body);
 
@@ -134,7 +135,7 @@ export async function PATCH(
 // DELETE /api/household/users/[id] - Remove a user from the household
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -157,7 +158,8 @@ export async function DELETE(
       );
     }
 
-    const targetUserId = params.id;
+    const { id } = await params;
+    const targetUserId = id;
 
     // Prevent removing yourself
     if (targetUserId === userId) {
