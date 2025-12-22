@@ -90,7 +90,7 @@ export default function ExtensionsPage() {
   }, [installedExtensions, fetchData]);
 
   const handleGoToSettings = useCallback(() => {
-    router.push("/community/integrations");
+    router.push("/extensions/integrations");
   }, [router]);
 
   const filteredExtensions = extensions.filter((ext) => {

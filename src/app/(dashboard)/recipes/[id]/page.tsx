@@ -61,9 +61,8 @@ export default function RecipeDetailPage() {
   }, [router]);
 
   const handleCook = useCallback((id: string) => {
-    // TODO: Implement cook flow
-    alert("Cook flow coming soon!");
-  }, []);
+    router.push(`/cooking?recipeId=${id}`);
+  }, [router]);
 
   const handleEdit = useCallback((id: string) => {
     router.push(`/recipes/${id}/edit`);

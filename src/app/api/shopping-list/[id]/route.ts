@@ -27,9 +27,10 @@ const updateShoppingListItemSchema = z.object({
 // PUT /api/shopping-list/[id] - Update shopping list item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     if (!userId) {
@@ -54,7 +55,7 @@ export async function PUT(
     }
 
     const item = await prisma.shoppingListItem.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!item || item.shoppingListId !== shoppingList.id) {
@@ -68,7 +69,7 @@ export async function PUT(
     const validated = updateShoppingListItemSchema.parse(body);
 
     const updated = await prisma.shoppingListItem.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: validated.name !== undefined ? validated.name : item.name,
         checked: validated.checked !== undefined ? validated.checked : item.checked,
@@ -114,9 +115,10 @@ export async function PUT(
 // DELETE /api/shopping-list/[id] - Delete shopping list item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     if (!userId) {
@@ -141,7 +143,7 @@ export async function DELETE(
     }
 
     const item = await prisma.shoppingListItem.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!item || item.shoppingListId !== shoppingList.id) {
@@ -152,7 +154,7 @@ export async function DELETE(
     }
 
     await prisma.shoppingListItem.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

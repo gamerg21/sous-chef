@@ -1,27 +1,40 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { signIn, useSession } from "next-auth/react";
-import { normalizeEmail, isValidEmail } from "@/lib/auth-utils";
 
-export default function SignUp() {
-  const { data: session, status } = useSession();
+export default function ResetPassword() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const params = useParams();
+  const token = params?.token as string;
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(true);
   const [message, setMessage] = useState("");
+  const [tokenValid, setTokenValid] = useState(false);
 
-  // Redirect if already signed in
+  // Validate token on page load
   useEffect(() => {
-    if (status === "authenticated" && session) {
-      router.push("/inventory");
+    if (!token) {
+      setMessage("Error: Invalid reset link");
+      setIsValidating(false);
+      return;
     }
-  }, [status, session, router]);
+
+    // Token format validation (basic check)
+    if (token.length < 20) {
+      setMessage("Error: Invalid reset token format");
+      setIsValidating(false);
+      return;
+    }
+
+    // Token is present and looks valid
+    setTokenValid(true);
+    setIsValidating(false);
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,18 +42,6 @@ export default function SignUp() {
     setMessage("");
 
     // Client-side validation
-    if (!email.trim()) {
-      setMessage("Error: Email is required");
-      setIsLoading(false);
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setMessage("Error: Please enter a valid email address");
-      setIsLoading(false);
-      return;
-    }
-
     if (!password) {
       setMessage("Error: Password is required");
       setIsLoading(false);
@@ -65,134 +66,112 @@ export default function SignUp() {
       return;
     }
 
-    if (name && name.length > 255) {
-      setMessage("Error: Name must be less than 255 characters");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Normalize email before sending
-      const normalizedEmail = normalizeEmail(email);
-
-      // Create account
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch("/api/auth/reset-password/reset", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: normalizedEmail,
+          token,
           password,
-          name: name?.trim() || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(`Error: ${data.error || "Failed to create account"}`);
+        setMessage(`Error: ${data.error || "Failed to reset password"}`);
         setIsLoading(false);
         return;
       }
 
-      // Automatically sign in the user with normalized email
-      const signInResult = await signIn("credentials", {
-        email: normalizedEmail,
-        password,
-        redirect: false,
-        callbackUrl: "/inventory",
-      });
-
-      if (signInResult?.error) {
-        // Account created but sign-in failed - redirect to sign-in page
-        setMessage("Account created successfully! Redirecting to sign in...");
-        setIsLoading(false);
-        setTimeout(() => {
-          router.push("/auth/signin");
-        }, 1500);
-      } else if (signInResult?.ok) {
-        // Sign-in successful, redirect to inventory
-        window.location.href = "/inventory";
-      } else {
-        // Sign-in succeeded but result format is unexpected - try redirect anyway
-        setMessage("Account created! Signing you in...");
-        setTimeout(() => {
-          window.location.href = "/inventory";
-        }, 500);
-      }
+      // Success - show message and redirect
+      setMessage("Password reset successfully! Redirecting to sign in...");
+      setTimeout(() => {
+        router.push("/auth/signin");
+      }, 1500);
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error("Reset password error:", error);
       setMessage("Error: Something went wrong. Please try again.");
       setIsLoading(false);
     }
   };
 
-  // Show loading state while checking session
-  if (status === "loading") {
+  // Show loading state while validating token
+  if (isValidating) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
+        <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="text-center">
+            <p className="text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
+              Validating reset token...
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Don't render the form if already authenticated (redirect will happen)
-  if (status === "authenticated") {
+  // Show error if token is invalid
+  if (!tokenValid) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-        <div className="text-stone-600 dark:text-stone-400">Redirecting...</div>
+        <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div>
+            <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
+              Invalid Reset Link
+            </h1>
+            <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
+              {message || "This password reset link is invalid or has expired."}
+            </p>
+          </div>
+
+          {message && (
+            <div className="rounded-md p-3 text-sm bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800">
+              {message}
+            </div>
+          )}
+
+          <div className="text-center space-y-4">
+            <Link
+              href="/auth/forgot-password"
+              className="inline-block font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+            >
+              Request a new reset link
+            </Link>
+            <div className="text-sm">
+              <Link
+                href="/auth/signin"
+                className="text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 transition-colors"
+              >
+                Back to sign in
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Show reset form
   return (
     <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
         <div>
           <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
-            Create your account
+            Reset your password
           </h1>
           <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            Sign up for Sous Chef 🍳
+            Enter your new password below
           </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="sr-only">
-                Name (optional)
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-                placeholder="Name (optional)"
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
               <label htmlFor="password" className="sr-only">
-                Password
+                New Password
               </label>
               <input
                 id="password"
@@ -203,7 +182,7 @@ export default function SignUp() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-                placeholder="Password (min 8 characters)"
+                placeholder="New password (min 8 characters)"
               />
             </div>
             <div>
@@ -242,22 +221,22 @@ export default function SignUp() {
               disabled={isLoading}
               className="group relative flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
             >
-              {isLoading ? "Creating account..." : "Sign up"}
+              {isLoading ? "Resetting password..." : "Reset password"}
             </button>
           </div>
         </form>
 
         {/* Sign in link */}
         <div className="text-center text-sm" style={{ fontFamily: 'var(--font-body)' }}>
-          <span className="text-stone-600 dark:text-stone-400">Already have an account? </span>
           <Link
             href="/auth/signin"
             className="font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
           >
-            Sign in
+            Back to sign in
           </Link>
         </div>
       </div>
     </div>
   );
 }
+

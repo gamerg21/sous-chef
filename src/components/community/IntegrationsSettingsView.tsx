@@ -29,14 +29,17 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
     onSaveApiKey,
   } = props
 
+  // Safety check: ensure ai is defined with defaults
+  const safeAi = ai || { keyMode: 'bring-your-own' as const, providers: [], activeProviderId: undefined }
+
   // Local state fallback for previews
-  const [localProviderId, setLocalProviderId] = useState<string>(ai.activeProviderId ?? ai.providers[0]?.id ?? 'openai')
+  const [localProviderId, setLocalProviderId] = useState<string>(safeAi.activeProviderId ?? safeAi.providers[0]?.id ?? 'openai')
   const [reveal, setReveal] = useState(false)
   const [apiKey, setApiKey] = useState('')
 
-  const effectiveProviderId = onSelectActiveProvider ? (ai.activeProviderId ?? localProviderId) : localProviderId
+  const effectiveProviderId = onSelectActiveProvider ? (safeAi.activeProviderId ?? localProviderId) : localProviderId
 
-  const provider = useMemo(() => ai.providers.find((p) => p.id === effectiveProviderId) ?? ai.providers[0], [ai.providers, effectiveProviderId])
+  const provider = useMemo(() => safeAi.providers.find((p) => p.id === effectiveProviderId) ?? safeAi.providers[0], [safeAi.providers, effectiveProviderId])
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
@@ -91,7 +94,7 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
                 <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Provider</div>
                 <p className="mt-1 text-xs text-stone-600 dark:text-stone-400">Select which AI provider to use.</p>
                 <div className="mt-3 space-y-2">
-                  {ai.providers.map((p) => {
+                  {safeAi.providers.map((p) => {
                     const active = p.id === effectiveProviderId
                     const disabled = p.availableByok === false
                     return (
