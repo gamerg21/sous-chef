@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import type { PantrySnapshotItem, Recipe, RecipeIngredient, RecipeStep, RecipeVisibility } from './types'
+import type { PantrySnapshotItem, Recipe, RecipeIngredient, RecipeStep, RecipeVisibility, IngredientUnit } from './types'
 import { cx } from './utils'
 
 export interface RecipeEditorDraft {

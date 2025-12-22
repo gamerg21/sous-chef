@@ -43,7 +43,7 @@ export function DropdownMenuTrigger({ asChild, children }: DropdownMenuTriggerPr
         handleClick();
         childProps.onClick?.(e);
       },
-    });
+    } as React.HTMLAttributes<HTMLElement>);
   }
 
   return (

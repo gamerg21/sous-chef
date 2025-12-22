@@ -58,6 +58,7 @@ export async function POST(
         apiKey?: string;
         status?: string;
         model?: string;
+        isActive?: boolean;
       } = {};
       if (validated.apiKey !== undefined) {
         updateData.apiKey = validated.apiKey;

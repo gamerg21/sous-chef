@@ -23,12 +23,21 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
 
     // Build where clause
-    const where: { enabled: boolean; category?: { equals: string }; name?: { contains: string; mode: "insensitive" } } = {
+    const where: {
+      enabled: boolean;
+      category?: { equals: string };
+      name?: { contains: string; mode: "insensitive" };
+      OR?: Array<{
+        name?: { contains: string; mode: "insensitive" };
+        description?: { contains: string; mode: "insensitive" };
+        tags?: { has: string };
+      }>;
+    } = {
       enabled: true,
     };
 
     if (category) {
-      where.category = category;
+      where.category = { equals: category };
     }
 
     if (search) {

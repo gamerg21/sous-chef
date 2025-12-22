@@ -33,10 +33,6 @@ export default function AdminUsersClient() {
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, searchQuery, fetchUsers]);
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -66,6 +62,10 @@ export default function AdminUsersClient() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [page, searchQuery]);
 
   const handleAddUser = () => {
     setEditingUser(null);
