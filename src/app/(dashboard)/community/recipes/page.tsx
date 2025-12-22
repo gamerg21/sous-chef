@@ -53,6 +53,10 @@ export default function CommunityRecipesPage() {
     }
   }, []);
 
+  const handleTagChange = useCallback((tag: string | 'all') => {
+    setTag(tag === 'all' ? '' : tag);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -65,12 +69,12 @@ export default function CommunityRecipesPage() {
     <div className="container mx-auto px-4 py-8">
       <CommunityRecipeFeedView
         recipes={recipes}
-        query={query}
-        selectedTag={tag}
-        onQueryChange={setQuery}
-        onTagChange={setTag}
+        searchQuery={query}
+        activeTag={tag || 'all'}
+        onSearchChange={setQuery}
+        onSetTag={handleTagChange}
         onOpenRecipe={handleOpenRecipe}
-        onSaveRecipe={handleSaveRecipe}
+        onSaveToLibrary={handleSaveRecipe}
       />
     </div>
   );
