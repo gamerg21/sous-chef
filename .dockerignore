@@ -1,0 +1,70 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# Testing
+coverage
+.nyc_output
+
+# Next.js
+.next
+out
+build
+dist
+
+# Production
+*.log
+
+# Misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files
+.env
+.env*.local
+.env.production
+.env.development
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Documentation
+README.md
+*.md
+docs
+product-plan
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Supabase local dev (not needed in production)
+supabase/.branches
+supabase/.temp
+
+# Scripts (development only)
+scripts
+
+# SSL certificates (local development)
+localhost*.pem
+

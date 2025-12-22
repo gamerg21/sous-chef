@@ -211,6 +211,44 @@ pnpm supabase db reset
 
 ---
 
+## 🐳 Docker Deployment (Self-Hosting)
+
+Sous Chef can be easily deployed using Docker and Docker Compose for self-hosting.
+
+### Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd sous-chef
+   ```
+
+2. **Create environment file**
+   ```bash
+   cp .env.example .env
+   # Edit .env and set required variables (see DOCKER.md for details)
+   ```
+
+3. **Start services**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Access the application**
+   Open `http://localhost:3000` in your browser
+
+### Full Documentation
+
+For detailed Docker deployment instructions, including:
+- Production configuration
+- Reverse proxy setup
+- Database backups
+- Troubleshooting
+
+See **[DOCKER.md](./DOCKER.md)** for complete documentation.
+
+---
+
 ## 🗄️ Database Philosophy
 
 * PostgreSQL is the source of truth
