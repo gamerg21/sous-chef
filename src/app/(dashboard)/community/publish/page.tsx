@@ -87,9 +87,7 @@ export default function PublishRecipePage() {
           title: recipe.title,
           description: recipe.description,
           tags: recipe.tags || [],
-          visibility: recipe.visibility === "public" || recipe.visibility === "unlisted" 
-            ? recipe.visibility 
-            : "public",
+          visibility: "public",
         }}
         onPublish={handlePublish}
         onBack={() => router.back()}
