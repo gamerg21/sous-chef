@@ -21,10 +21,8 @@ services:
       - sous-chef-network
 
   # Sous Chef Application
-  # NOTE: Replace 'yourusername' with your Docker Hub username
-  # Or use 'ghcr.io/yourusername/sous-chef' for GitHub Container Registry
   app:
-    image: yourusername/sous-chef:latest
+    image: gamerg21/sous-chef:latest
     container_name: sous-chef-app
     restart: unless-stopped
     env_file:
