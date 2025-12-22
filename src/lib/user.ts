@@ -37,7 +37,7 @@ export async function getUserHouseholds(userId: string) {
     },
   });
 
-  return memberships.map((m) => ({
+  return memberships.map((m: { household: { id: string; name: string }; role: string }) => ({
     id: m.household.id,
     name: m.household.name,
     role: m.role,

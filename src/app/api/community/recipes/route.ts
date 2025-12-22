@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get like/save counts for current user
-    const recipeIds = recipes.map((r) => r.id);
+    const recipeIds = recipes.map((r: { id: string }) => r.id);
     const userLikes = await prisma.communityRecipeLike.findMany({
       where: {
         recipeId: { in: recipeIds },
@@ -87,11 +87,32 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const likedRecipeIds = new Set(userLikes.map((l) => l.recipeId));
-    const savedRecipeIds = new Set(userSaves.map((s) => s.recipeId));
+    const likedRecipeIds = new Set(userLikes.map((l: { recipeId: string }) => l.recipeId));
+    const savedRecipeIds = new Set(userSaves.map((s: { recipeId: string }) => s.recipeId));
 
     // Transform to match component interface
-    const transformed = recipes.map((recipe) => {
+    const transformed = recipes.map((recipe: {
+      id: string;
+      title: string;
+      description: string | null;
+      photoUrl: string | null;
+      tags: string[];
+      servings: number | null;
+      totalTimeMinutes: number | null;
+      sourceUrl: string | null;
+      visibility: string;
+      householdId: string;
+      household: {
+        id: string;
+        name: string;
+        members: Array<{ user: { id: string; name: string | null; image: string | null } | null }>;
+      };
+      ingredients: Array<{ id: string; name: string; quantity: number | null; unit: string | null; note: string | null }>;
+      steps: Array<{ id: string; text: string }>;
+      communityLikes: Array<{ id: string }>;
+      communitySaves: Array<{ id: string }>;
+      createdAt: Date;
+    }) => {
       const author = recipe.household.members[0]?.user;
       return {
         id: recipe.id,
@@ -102,14 +123,14 @@ export async function GET(request: NextRequest) {
         servings: recipe.servings || undefined,
         totalTimeMinutes: recipe.totalTimeMinutes || undefined,
         sourceUrl: recipe.sourceUrl || undefined,
-        ingredients: recipe.ingredients.map((ing) => ({
+        ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }) => ({
           id: ing.id,
           name: ing.name,
           quantity: ing.quantity || undefined,
           unit: ing.unit || undefined,
           note: ing.note || undefined,
         })),
-        steps: recipe.steps.map((step) => ({
+        steps: recipe.steps.map((step: { id: string; text: string }) => ({
           id: step.id,
           text: step.text,
         })),

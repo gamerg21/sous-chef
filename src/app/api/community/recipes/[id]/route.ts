@@ -82,14 +82,14 @@ export async function GET(
       servings: recipe.servings || undefined,
       totalTimeMinutes: recipe.totalTimeMinutes || undefined,
       sourceUrl: recipe.sourceUrl || undefined,
-      ingredients: recipe.ingredients.map((ing) => ({
+      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
         unit: ing.unit || undefined,
         note: ing.note || undefined,
       })),
-      steps: recipe.steps.map((step) => ({
+      steps: recipe.steps.map((step: { id: string; text: string }) => ({
         id: step.id,
         text: step.text,
       })),

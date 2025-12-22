@@ -65,7 +65,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           // Start decoding from video stream
           // Using undefined as deviceId will use the default/back camera
           codeReader.decodeFromVideoDevice(
-            selectedDeviceId,
+            selectedDeviceId ?? null,
             videoRef.current,
             (result, err) => {
               if (result) {

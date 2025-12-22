@@ -94,7 +94,7 @@ export async function GET(
       totalTimeMinutes: recipe.totalTimeMinutes || undefined,
       sourceUrl: recipe.sourceUrl || undefined,
       notes: recipe.notes || undefined,
-      ingredients: recipe.ingredients.map((ing) => ({
+      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
@@ -109,7 +109,7 @@ export async function GET(
             }
           : undefined,
       })),
-      steps: recipe.steps.map((step) => ({
+      steps: recipe.steps.map((step: { id: string; text: string }) => ({
         id: step.id,
         text: step.text,
       })),
@@ -221,7 +221,7 @@ export async function PUT(
       totalTimeMinutes: recipe.totalTimeMinutes || undefined,
       sourceUrl: recipe.sourceUrl || undefined,
       notes: recipe.notes || undefined,
-      ingredients: recipe.ingredients.map((ing) => ({
+      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
@@ -236,7 +236,7 @@ export async function PUT(
             }
           : undefined,
       })),
-      steps: recipe.steps.map((step) => ({
+      steps: recipe.steps.map((step: { id: string; text: string }) => ({
         id: step.id,
         text: step.text,
       })),

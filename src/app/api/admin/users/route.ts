@@ -83,7 +83,16 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
-    const formattedUsers = users.map((user) => ({
+    const formattedUsers = users.map((user: {
+      id: string;
+      name: string | null;
+      email: string;
+      image: string | null;
+      isAppAdmin: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      households: Array<{ role: string; household: { id: string; name: string } }>;
+    }) => ({
       id: user.id,
       name: user.name,
       email: user.email,
@@ -91,7 +100,7 @@ export async function GET(request: NextRequest) {
       isAppAdmin: user.isAppAdmin,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
-      households: user.households.map((h) => ({
+      households: user.households.map((h: { role: string; household: { id: string; name: string } }) => ({
         householdId: h.household.id,
         householdName: h.household.name,
         role: h.role,

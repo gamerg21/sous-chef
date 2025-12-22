@@ -24,7 +24,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform to match component interface
-    const transformed = integrations.map((integration) => ({
+    const transformed = integrations.map((integration: {
+      id: string;
+      name: string;
+      description: string;
+      status: string;
+      scopes: string[];
+      lastSyncAt: Date | null;
+    }) => ({
       id: integration.id,
       name: integration.name,
       description: integration.description,

@@ -74,7 +74,7 @@ export async function GET(
       isAppAdmin: user.isAppAdmin,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
-      households: user.households.map((h) => ({
+      households: user.households.map((h: { role: string; household: { id: string; name: string } }) => ({
         householdId: h.household.id,
         householdName: h.household.name,
         role: h.role,
@@ -184,7 +184,7 @@ export async function PATCH(
       isAppAdmin: user.isAppAdmin,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
-      households: user.households.map((h) => ({
+      households: user.households.map((h: { role: string; household: { id: string; name: string } }) => ({
         householdId: h.household.id,
         householdName: h.household.name,
         role: h.role,

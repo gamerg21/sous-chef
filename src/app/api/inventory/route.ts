@@ -56,12 +56,23 @@ export async function GET(request: NextRequest) {
 
     // Create a map of location database ID to transformed location ID for items
     const locationMap = new Map<string, "pantry" | "fridge" | "freezer">();
-    allLocations.forEach((loc) => {
+    allLocations.forEach((loc: { id: string; name: string }) => {
       locationMap.set(loc.id, transformLocation(loc).id);
     });
 
     // Transform to match component interface
-    const transformed = items.map((item) => ({
+    const transformed = items.map((item: {
+      id: string;
+      foodItem: { name: string };
+      locationId: string;
+      quantity: number;
+      unit: string;
+      expiresOn: Date | null;
+      category: string | null;
+      notes: string | null;
+      photoUrl: string | null;
+      barcode: string | null;
+    }) => ({
       id: item.id,
       name: item.foodItem.name,
       locationId: locationMap.get(item.locationId) || "pantry",

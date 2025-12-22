@@ -59,7 +59,11 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "asc" },
     });
 
-    const users = members.map((member) => ({
+    const users = members.map((member: {
+      user: { id: string; name: string | null; email: string; image: string | null; createdAt: Date };
+      role: string;
+      createdAt: Date;
+    }) => ({
       id: member.user.id,
       name: member.user.name,
       email: member.user.email,

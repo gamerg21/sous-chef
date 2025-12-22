@@ -215,37 +215,45 @@ pnpm supabase db reset
 
 Sous Chef can be easily deployed using Docker and Docker Compose for self-hosting.
 
-### Quick Start
+### Deployment Options
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd sous-chef
-   ```
+**Option 1: Pre-built Images (Recommended for End Users)**
+- No need to build from source
+- Faster setup and updates
+- Just pull the latest image and run
+- See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for instructions
+
+**Option 2: Build from Source (For Developers)**
+- Clone the repository and build locally
+- Useful for development or custom modifications
+- See **[DOCKER.md](./DOCKER.md)** for instructions
+
+### Quick Start (Pre-built Images)
+
+1. **Download deployment files**
+   - `docker-compose.prod.yml`
+   - `.env.example`
 
 2. **Create environment file**
    ```bash
    cp .env.example .env
-   # Edit .env and set required variables (see DOCKER.md for details)
+   # Edit .env and set required variables
    ```
 
-3. **Start services**
+3. **Update image name** in `docker-compose.prod.yml` (replace `yourusername` with actual Docker Hub username)
+
+4. **Start services**
    ```bash
-   docker-compose up -d
+   docker-compose -f docker-compose.prod.yml up -d
    ```
 
-4. **Access the application**
+5. **Access the application**
    Open `http://localhost:3000` in your browser
 
 ### Full Documentation
 
-For detailed Docker deployment instructions, including:
-- Production configuration
-- Reverse proxy setup
-- Database backups
-- Troubleshooting
-
-See **[DOCKER.md](./DOCKER.md)** for complete documentation.
+- **End Users**: See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for pre-built image deployment
+- **Developers**: See **[DOCKER.md](./DOCKER.md)** for building from source and publishing images
 
 ---
 

@@ -85,17 +85,17 @@ export async function POST(
         notes: communityRecipe.notes,
         favorited: false,
         ingredients: {
-          create: communityRecipe.ingredients.map((ing, idx) => ({
+          create: communityRecipe.ingredients.map((ing: { name: string; quantity?: number | null; unit?: string | null; note?: string | null; foodItemId?: string | null }, idx: number) => ({
             name: ing.name,
-            quantity: ing.quantity,
-            unit: ing.unit,
-            note: ing.note,
+            quantity: ing.quantity ?? null,
+            unit: ing.unit ?? null,
+            note: ing.note ?? null,
             order: idx,
-            foodItemId: ing.foodItemId,
+            foodItemId: ing.foodItemId ?? null,
           })),
         },
         steps: {
-          create: communityRecipe.steps.map((step, idx) => ({
+          create: communityRecipe.steps.map((step: { text: string }, idx: number) => ({
             text: step.text,
             order: idx,
           })),

@@ -75,7 +75,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform to match component interface
-    const items = shoppingList.items.map((item) => ({
+    const items = shoppingList.items.map((item: {
+      id: string;
+      name: string;
+      quantity: number | null;
+      unit: string | null;
+      category: string | null;
+      checked: boolean;
+      note: string | null;
+      source: string | null;
+      recipeId: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    }) => ({
       id: item.id,
       name: item.name,
       quantity: item.quantity || undefined,

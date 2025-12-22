@@ -102,7 +102,7 @@ export async function uploadFile(
   // Convert File to Buffer if needed
   const fileBuffer =
     file instanceof File ? await file.arrayBuffer() : file;
-  const buffer = Buffer.from(fileBuffer);
+  const buffer = Buffer.from(fileBuffer as ArrayBufferLike);
 
   // Determine MIME type
   const mimeType =
