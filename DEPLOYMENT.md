@@ -102,6 +102,57 @@ docker-compose -f docker-compose.prod.yml logs -f app
 
 Access the application at `http://localhost:3000` (or your configured port).
 
+## HTTPS Configuration
+
+Safari on iPhones requires HTTPS for barcode scanning. You have two options:
+
+### Option 1: Auto-generated Self-signed Certificates (Quick Setup)
+
+1. **Enable HTTPS in your `.env` file:**
+   ```env
+   ENABLE_HTTPS=true
+   NEXTAUTH_URL=https://localhost:3000
+   ```
+
+2. **Restart containers:**
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+
+The app will automatically generate self-signed certificates. Browsers will show a security warning, but Safari barcode scanning will work.
+
+### Option 2: Custom Certificates
+
+1. **Create a `certs` directory and add your certificates:**
+   ```bash
+   mkdir -p certs
+   # Copy your cert.pem and key.pem files here
+   ```
+
+2. **Enable HTTPS in `.env`:**
+   ```env
+   ENABLE_HTTPS=true
+   SSL_CERT_PATH=/app/certs/cert.pem
+   SSL_KEY_PATH=/app/certs/key.pem
+   NEXTAUTH_URL=https://yourdomain.com
+   ```
+
+3. **Certificates are automatically mounted** via the volume in `docker-compose.prod.yml`
+
+### Option 3: nginx Reverse Proxy (Recommended for Production)
+
+For production deployments, use nginx (or Traefik/Caddy) to handle SSL termination:
+
+1. **Keep HTTPS disabled in the app:**
+   ```env
+   ENABLE_HTTPS=false
+   NEXTAUTH_URL=https://yourdomain.com
+   ```
+
+2. **Configure nginx with SSL** (see [DOCKER.md](./DOCKER.md) for full example)
+
+This approach allows you to use Let's Encrypt certificates and is the recommended setup for production.
+
 ## Updating to Latest Version
 
 To update to the latest version:
@@ -196,12 +247,15 @@ Then update `DATABASE_URL` accordingly and restart.
 
 ## Production Deployment Tips
 
-1. **Use a reverse proxy** (nginx, Traefik, Caddy) for HTTPS
-2. **Set strong passwords** for database and NextAuth secret
-3. **Configure SMTP** for email authentication
-4. **Use environment-specific tags** (e.g., `v1.0.0` instead of `latest`)
-5. **Set up regular backups** of your database
-6. **Monitor logs** for errors and performance issues
+1. **Use a reverse proxy** (nginx, Traefik, Caddy) for HTTPS with Let's Encrypt certificates
+   - Keep `ENABLE_HTTPS=false` in the app and let the proxy handle SSL
+2. **For self-hosted instances**, enable `ENABLE_HTTPS=true` for auto-generated self-signed certs
+   - Safari will show a warning but barcode scanning will work
+3. **Set strong passwords** for database and NextAuth secret
+4. **Configure SMTP** for email authentication
+5. **Use environment-specific tags** (e.g., `v1.0.0` instead of `latest`)
+6. **Set up regular backups** of your database
+7. **Monitor logs** for errors and performance issues
 
 ## Support
 

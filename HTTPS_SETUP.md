@@ -100,8 +100,90 @@ If port 3000 is busy, you can change it in `server.js`:
 const port = 3001; // or any available port
 ```
 
+## Option 3: Docker/Production HTTPS Setup
+
+For Docker deployments, HTTPS can be enabled with automatic self-signed certificate generation:
+
+### Quick Setup (Auto-generated Certificates)
+
+1. **Enable HTTPS in your `.env` file:**
+   ```env
+   ENABLE_HTTPS=true
+   NEXTAUTH_URL=https://localhost:3000
+   ```
+
+2. **Start your containers:**
+   ```bash
+   docker-compose up -d
+   ```
+
+That's it! The app will automatically generate self-signed certificates on first startup. Safari will show a security warning, but you can proceed and barcode scanning will work.
+
+### Using Custom Certificates
+
+If you want to provide your own certificates:
+
+1. **Generate certificates** (optional - you can use the provided script):
+   ```bash
+   # Using the provided script
+   ./scripts/generate-self-signed-cert.sh
+   
+   # Or manually with OpenSSL
+   mkdir -p certs
+   openssl req -x509 -newkey rsa:2048 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes
+   ```
+
+2. **Mount certificates in docker-compose.yml** (already configured):
+   ```yaml
+   volumes:
+     - ./certs:/app/certs:rw
+   ```
+
+3. **Set environment variables** (optional - defaults work):
+   ```env
+   ENABLE_HTTPS=true
+   SSL_CERT_PATH=/app/certs/cert.pem
+   SSL_KEY_PATH=/app/certs/key.pem
+   ```
+
+### Using nginx Proxy (HTTP Backend)
+
+If you're using nginx or another reverse proxy for SSL termination:
+
+1. **Keep HTTPS disabled in the app:**
+   ```env
+   ENABLE_HTTPS=false
+   NEXTAUTH_URL=https://yourdomain.com
+   ```
+
+2. **Configure nginx to handle SSL** and proxy to the HTTP backend:
+   ```nginx
+   server {
+       listen 443 ssl;
+       server_name yourdomain.com;
+       
+       ssl_certificate /path/to/cert.pem;
+       ssl_certificate_key /path/to/key.pem;
+       
+       location / {
+           proxy_pass http://localhost:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+   ```
+
 ## Which Option Should I Use?
 
 - **Tunnel (Option 1)**: Best for quick testing, works immediately, no setup
 - **Local HTTPS (Option 2)**: Best for ongoing development, faster (no external service), requires one-time setup
+- **Docker Auto-generated (Option 3)**: Best for Docker deployments, works out-of-the-box, self-signed certs
+- **Docker Custom Certificates (Option 3)**: Best for production Docker deployments with your own certificates
+- **nginx Proxy (Option 3)**: Best for production with proper SSL certificates (Let's Encrypt, etc.)
 
