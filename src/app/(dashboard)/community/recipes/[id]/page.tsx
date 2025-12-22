@@ -32,10 +32,9 @@ export default function CommunityRecipeDetailPage() {
     }
   }, [id, fetchRecipe]);
 
-  const handleSaveRecipe = useCallback(async () => {
-    if (!recipe) return;
+  const handleSaveRecipe = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/community/recipes/${recipe.id}/save`, {
+      const response = await fetch(`/api/community/recipes/${id}/save`, {
         method: "POST",
       });
       if (!response.ok) throw new Error("Failed to save recipe");
@@ -44,12 +43,11 @@ export default function CommunityRecipeDetailPage() {
       console.error("Error saving recipe:", error);
       alert("Failed to save recipe. Please try again.");
     }
-  }, [recipe]);
+  }, []);
 
-  const handleLike = useCallback(async () => {
-    if (!recipe) return;
+  const handleLike = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/community/recipes/${recipe.id}/like`, {
+      const response = await fetch(`/api/community/recipes/${id}/like`, {
         method: "POST",
       });
       if (!response.ok) throw new Error("Failed to toggle like");
@@ -57,7 +55,7 @@ export default function CommunityRecipeDetailPage() {
     } catch (error) {
       console.error("Error toggling like:", error);
     }
-  }, [recipe, fetchRecipe]);
+  }, [fetchRecipe]);
 
   if (loading) {
     return (
@@ -79,7 +77,7 @@ export default function CommunityRecipeDetailPage() {
     <div className="container mx-auto px-4 py-8">
       <CommunityRecipeDetailView
         recipe={recipe}
-        onSave={handleSaveRecipe}
+        onSaveToLibrary={handleSaveRecipe}
         onLike={handleLike}
         onBack={() => router.back()}
       />
