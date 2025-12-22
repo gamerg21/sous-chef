@@ -7,10 +7,12 @@ const handler = NextAuth(authOptions);
 // Wrap handler with error handling to return JSON errors instead of HTML
 async function wrappedHandler(
   req: NextRequest,
-  context: { params: { nextauth: string[] } }
+  context: { params: Promise<{ nextauth: string[] }> }
 ) {
   try {
-    return await handler(req, context);
+    // Await params as Next.js 16+ makes params async
+    const params = await context.params;
+    return await handler(req, { ...context, params });
   } catch (error) {
     console.error("[NextAuth] Route handler error:", error);
     // Return JSON error response instead of letting Next.js return HTML error page
