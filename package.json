@@ -12,6 +12,7 @@
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
     "prebuild": "npm run type-check",
+    "postinstall": "prisma generate || echo \"Warning: Prisma generate failed. This may be due to symlink permissions on Windows. Run 'npx prisma generate' manually or enable Developer Mode.\"",
     "set-password": "tsx scripts/set-user-password.ts",
     "prepare": "husky"
   },

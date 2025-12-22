@@ -188,6 +188,8 @@ pnpm prisma migrate dev
 pnpm prisma generate
 ```
 
+**Note for Windows users:** If you encounter a symlink permission error when running `prisma generate`, see [docs/WINDOWS_SETUP.md](./docs/WINDOWS_SETUP.md) for solutions.
+
 ### 5. Start the development server
 
 ```bash

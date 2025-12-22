@@ -151,16 +151,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
                 playsInline
                 muted
               />
-              {scanning && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="border-2 border-emerald-500 rounded-lg w-64 h-64 sm:w-80 sm:h-80">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-emerald-500"></div>
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-emerald-500"></div>
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-emerald-500"></div>
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-emerald-500"></div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
