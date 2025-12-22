@@ -7,7 +7,13 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+
+# Use npm ci for reproducible builds, fall back to npm install if lock file is missing or out of sync
+RUN if [ -f package-lock.json ]; then \
+      npm ci || npm install; \
+    else \
+      npm install; \
+    fi
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
