@@ -32,9 +32,12 @@ jobs:
           if [ -z "$DOCKER_USERNAME" ]; then
             DOCKER_USERNAME="gamerg21"
           fi
+          # Remove any leading/trailing slashes that might cause issues
+          DOCKER_USERNAME=$(echo "$DOCKER_USERNAME" | sed 's|^/||' | sed 's|/$||')
+          REGISTRY="${{ env.REGISTRY }}"
           echo "username=$DOCKER_USERNAME" >> $GITHUB_OUTPUT
           echo "image_name=$DOCKER_USERNAME/sous-chef" >> $GITHUB_OUTPUT
-          echo "cache_ref=${{ env.REGISTRY }}/$DOCKER_USERNAME/sous-chef:buildcache" >> $GITHUB_OUTPUT
+          echo "cache_ref=$REGISTRY/$DOCKER_USERNAME/sous-chef:buildcache" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
