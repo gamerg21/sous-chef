@@ -21,6 +21,7 @@ export default function InventoryPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [prefillData, setPrefillData] = useState<Partial<InventoryItem> | null>(null);
+  const [dateFormat, setDateFormat] = useState("YYYY-MM-DD");
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -37,9 +38,21 @@ export default function InventoryPage() {
     }
   }, []);
 
+  const fetchPreferences = useCallback(async () => {
+    try {
+      const response = await fetch("/api/user/preferences");
+      if (!response.ok) return;
+      const data = await response.json();
+      setDateFormat(data.preferences?.dateFormat || "YYYY-MM-DD");
+    } catch (error) {
+      console.error("Error fetching preferences:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchInventory();
-  }, [fetchInventory]);
+    fetchPreferences();
+  }, [fetchInventory, fetchPreferences]);
 
   const handleAddItem = useCallback(() => {
     setEditingItemId(null);
@@ -166,6 +179,7 @@ export default function InventoryPage() {
       <KitchenInventoryDashboardView
         locations={locations}
         items={items}
+        dateFormat={dateFormat}
         selectedLocationId={selectedLocationId}
         filter={filter}
         searchQuery={searchQuery}
@@ -259,9 +273,15 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
         className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 p-6 w-full max-w-md mx-4 shadow-xl"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold mb-4 text-stone-900 dark:text-stone-100">

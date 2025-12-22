@@ -1,6 +1,6 @@
 import { AlertTriangle, CalendarClock, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import type { InventoryItem, KitchenLocation } from './types'
-import { formatQuantity, itemExpiryStatus } from './utils'
+import { formatDate, formatQuantity, itemExpiryStatus } from './utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +16,14 @@ function cx(...classes: Array<string | false | null | undefined>) {
 export interface InventoryItemRowProps {
   item: InventoryItem
   location?: KitchenLocation
+  dateFormat?: string | null
   onEdit?: (id: string) => void
   onRemove?: (id: string) => void
 }
 
-export function InventoryItemRow({ item, location, onEdit, onRemove }: InventoryItemRowProps) {
+export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove }: InventoryItemRowProps) {
   const status = itemExpiryStatus(item)
+  const formattedExpiry = formatDate(item.expiresOn, dateFormat ?? 'YYYY-MM-DD')
   const statusPill =
     status === 'expired'
       ? { label: 'Expired', cls: 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200' }
@@ -90,9 +92,9 @@ export function InventoryItemRow({ item, location, onEdit, onRemove }: Inventory
           </div>
         </div>
 
-        {item.expiresOn && (
+        {formattedExpiry && (
           <div className="mt-3 text-xs text-stone-500 dark:text-stone-400">
-            Expires on <span className="font-mono">{item.expiresOn}</span>
+            Expires on <span className="font-mono">{formattedExpiry}</span>
           </div>
         )}
 
@@ -105,4 +107,3 @@ export function InventoryItemRow({ item, location, onEdit, onRemove }: Inventory
     </div>
   )
 }
-

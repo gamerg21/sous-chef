@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   WhatCanICookView,
   CookRecipeView,
@@ -15,13 +15,16 @@ type ViewMode = "list" | "cook";
 
 export default function CookingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [cameFromRecipePage, setCameFromRecipePage] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [pantrySnapshot, setPantrySnapshot] = useState<PantrySnapshotItem[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [shoppingListCount, setShoppingListCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [externalRecipe, setExternalRecipe] = useState<Recipe | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | "all">("all");
   const [cookability, setCookability] = useState<CookabilityFilter>("all");
@@ -56,8 +59,43 @@ export default function CookingPage() {
     fetchData();
   }, [fetchData]);
 
+  // Check for recipeId query parameter to automatically show cook view
+  useEffect(() => {
+    const recipeId = searchParams.get("recipeId");
+    if (recipeId) {
+      setSelectedRecipeId(recipeId);
+      setCameFromRecipePage(recipeId);
+      setViewMode("cook");
+      // Clean up URL by removing query parameter
+      router.replace("/cooking", { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // Fetch external recipe if it's not in the recipes list
+  useEffect(() => {
+    if (!selectedRecipeId || !cameFromRecipePage || loading) return;
+    
+    const recipeInList = recipes.find((r) => r.id === selectedRecipeId);
+    if (!recipeInList && !externalRecipe) {
+      const fetchRecipe = async () => {
+        try {
+          const response = await fetch(`/api/recipes/${selectedRecipeId}`);
+          if (response.ok) {
+            const recipe = await response.json();
+            setExternalRecipe(recipe);
+          }
+        } catch (error) {
+          console.error("Error fetching recipe:", error);
+        }
+      };
+      fetchRecipe();
+    }
+  }, [selectedRecipeId, cameFromRecipePage, loading, recipes, externalRecipe]);
+
   const handleCookRecipe = useCallback((recipeId: string) => {
     setSelectedRecipeId(recipeId);
+    setCameFromRecipePage(null); // Clear this when cooking from the cooking page itself
+    setExternalRecipe(null); // Clear external recipe when cooking from the list
     setViewMode("cook");
   }, []);
 
@@ -97,6 +135,8 @@ export default function CookingPage() {
       await fetchData();
       setViewMode("list");
       setSelectedRecipeId(null);
+      setCameFromRecipePage(null);
+      setExternalRecipe(null);
       alert("Recipe cooked! Inventory updated and missing items added to shopping list.");
     } catch (error) {
       console.error("Error cooking recipe:", error);
@@ -105,9 +145,16 @@ export default function CookingPage() {
   }, [selectedRecipeId, fetchData]);
 
   const handleBack = useCallback(() => {
-    setViewMode("list");
+    // If we came from recipes page, go back to that recipe
+    if (cameFromRecipePage) {
+      router.push(`/recipes/${cameFromRecipePage}`);
+      setCameFromRecipePage(null);
+    } else {
+      setViewMode("list");
+    }
     setSelectedRecipeId(null);
-  }, []);
+    setExternalRecipe(null);
+  }, [cameFromRecipePage, router]);
 
   const handleOpenShoppingList = useCallback(() => {
     router.push("/shopping-list");
@@ -122,7 +169,7 @@ export default function CookingPage() {
   }
 
   const selectedRecipe = selectedRecipeId
-    ? recipes.find((r) => r.id === selectedRecipeId)
+    ? recipes.find((r) => r.id === selectedRecipeId) || externalRecipe
     : null;
 
   if (viewMode === "cook" && selectedRecipe) {

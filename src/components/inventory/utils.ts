@@ -13,6 +13,22 @@ export function parseISODate(value?: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+export function formatDate(value?: string, format = 'YYYY-MM-DD'): string | null {
+  if (!value) return null
+  const [year, month, day] = value.split('-')
+  if (!year || !month || !day) return value
+
+  switch (format) {
+    case 'MM/DD/YYYY':
+      return `${month}/${day}/${year}`
+    case 'MM-DD-YYYY':
+      return `${month}-${day}-${year}`
+    case 'YYYY-MM-DD':
+    default:
+      return value
+  }
+}
+
 export function daysUntil(date: Date, now = new Date()): number {
   const ms = date.getTime() - now.getTime()
   return Math.ceil(ms / (1000 * 60 * 60 * 24))
@@ -26,4 +42,3 @@ export function itemExpiryStatus(item: InventoryItem, now = new Date()): 'none' 
   if (days <= 3) return 'soon'
   return 'ok'
 }
-

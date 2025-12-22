@@ -5,4 +5,5 @@ export * from './WhatCanICookView'
 export * from './ShoppingListItemRow'
 export * from './ShoppingListView'
 export * from './CookRecipeView'
-
+export * from './EditShoppingListItemModal'
+export * from './AddShoppingListItemModal'

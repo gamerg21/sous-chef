@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { Barcode, Plus, Search, ShoppingCart } from 'lucide-react'
 import type { ShoppingListItem } from './types'
 import { ShoppingListItemRow } from './ShoppingListItemRow'
@@ -14,6 +14,7 @@ export interface ShoppingListViewProps {
   onEditItem?: (id: string) => void
   onRemoveItem?: (id: string) => void
   onClearChecked?: () => void
+  deletingItems?: Set<string>
 }
 
 const categories: Array<NonNullable<ShoppingListItem['category']>> = [
@@ -26,6 +27,77 @@ const categories: Array<NonNullable<ShoppingListItem['category']>> = [
   'Other',
 ]
 
+// Component to handle smooth reordering animations using FLIP technique
+function AnimatedListItem({
+  item,
+  index,
+  onToggle,
+  onEdit,
+  onRemove,
+  isDeleting,
+}: {
+  item: ShoppingListItem
+  index: number
+  onToggle?: (id: string) => void
+  onEdit?: (id: string) => void
+  onRemove?: (id: string) => void
+  isDeleting?: boolean
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const prevIndex = useRef(index)
+  const prevPosition = useRef<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    if (ref.current) {
+      const element = ref.current
+      
+      // Capture current position before any changes
+      const currentRect = element.getBoundingClientRect()
+      const currentPos = { x: currentRect.left, y: currentRect.top }
+
+      if (prevIndex.current !== index && prevPosition.current) {
+        // Calculate the delta from previous position to current position
+        const deltaX = prevPosition.current.x - currentPos.x
+        const deltaY = prevPosition.current.y - currentPos.y
+
+        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+          // Invert: move element back to where it was
+          element.style.transform = `translate(${deltaX}px, ${deltaY}px)`
+          element.style.transition = 'none'
+
+          // Force reflow
+          void element.offsetHeight
+
+          // Play: animate to final position
+          requestAnimationFrame(() => {
+            element.style.transform = ''
+            element.style.transition = 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1)'
+          })
+        }
+      }
+
+      // Store current position for next render
+      prevPosition.current = currentPos
+      prevIndex.current = index
+    }
+  }, [index, item.checked]) // Re-run when index or checked state changes
+
+  return (
+    <div
+      ref={ref}
+      className="transition-[transform,opacity] duration-500 ease-in-out"
+    >
+      <ShoppingListItemRow
+        item={item}
+        onToggle={onToggle}
+        onEdit={onEdit}
+        onRemove={onRemove}
+        isDeleting={isDeleting}
+      />
+    </div>
+  )
+}
+
 export function ShoppingListView(props: ShoppingListViewProps) {
   const {
     items,
@@ -37,6 +109,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
     onEditItem,
     onRemoveItem,
     onClearChecked,
+    deletingItems = new Set(),
   } = props
 
   // Local state fallback to keep the design interactive in Design OS previews
@@ -54,6 +127,15 @@ export function ShoppingListView(props: ShoppingListViewProps) {
     for (const it of filtered) {
       const cat = it.category ?? 'Other'
       byCategory[cat].push(it)
+    }
+
+    // Sort items within each category: unchecked first, then checked
+    for (const c of categories) {
+      byCategory[c].sort((a, b) => {
+        // Unchecked items (false) come before checked items (true)
+        if (a.checked === b.checked) return 0
+        return a.checked ? 1 : -1
+      })
     }
 
     const total = items.length
@@ -190,14 +272,16 @@ export function ShoppingListView(props: ShoppingListViewProps) {
                       <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">{c}</h2>
                       <span className="text-sm text-stone-500 dark:text-stone-400">{list.length}</span>
                     </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {list.map((it) => (
-                        <ShoppingListItemRow
+                    <div className="flex flex-col gap-3" data-category={c}>
+                      {list.map((it, index) => (
+                        <AnimatedListItem
                           key={it.id}
                           item={it}
+                          index={index}
                           onToggle={onToggleItem}
                           onEdit={onEditItem}
                           onRemove={onRemoveItem}
+                          isDeleting={deletingItems.has(it.id)}
                         />
                       ))}
                     </div>
@@ -211,4 +295,3 @@ export function ShoppingListView(props: ShoppingListViewProps) {
     </div>
   )
 }
-

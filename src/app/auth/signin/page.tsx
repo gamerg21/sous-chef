@@ -1,18 +1,28 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { normalizeEmail, isValidEmail } from "@/lib/auth-utils";
 
 type AuthMode = "magic-link" | "password";
 
 export default function SignIn() {
-  const [mode, setMode] = useState<AuthMode>("magic-link");
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [mode, setMode] = useState<AuthMode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  // Redirect if already signed in
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      router.push("/inventory");
+    }
+  }, [status, session, router]);
 
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +126,24 @@ export default function SignIn() {
     }
   };
 
+  // Show loading state while checking session
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
+        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render the form if already authenticated (redirect will happen)
+  if (status === "authenticated") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
+        <div className="text-stone-600 dark:text-stone-400">Redirecting...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
@@ -124,85 +152,9 @@ export default function SignIn() {
             Sign in to Sous Chef 🍳
           </h1>
           <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            Choose your preferred sign-in method
+            Sign in with your email and password
           </p>
         </div>
-
-        {/* Auth Mode Toggle */}
-        <div className="flex rounded-lg border border-stone-200 dark:border-stone-700 p-1 bg-stone-50 dark:bg-stone-800">
-          <button
-            type="button"
-            onClick={() => {
-              setMode("magic-link");
-              setMessage("");
-            }}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              mode === "magic-link"
-                ? "bg-emerald-600 text-white"
-                : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
-            }`}
-          >
-            Magic Link
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("password");
-              setMessage("");
-            }}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              mode === "password"
-                ? "bg-emerald-600 text-white"
-                : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
-            }`}
-          >
-            Password
-          </button>
-        </div>
-
-        {/* Magic Link Form */}
-        {mode === "magic-link" && (
-          <form className="mt-8 space-y-6" onSubmit={handleMagicLinkSubmit}>
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-                placeholder="Email address"
-              />
-            </div>
-
-            {message && (
-              <div
-                className={`rounded-md p-3 text-sm ${
-                  message.includes("Error")
-                    ? "bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800"
-                    : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                }`}
-              >
-                {message}
-              </div>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-              >
-                {isLoading ? "Sending..." : "Send magic link"}
-              </button>
-            </div>
-          </form>
-        )}
 
         {/* Password Form */}
         {mode === "password" && (
@@ -239,6 +191,14 @@ export default function SignIn() {
                   className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
                   placeholder="Password"
                 />
+                <div className="mt-2 text-right">
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
             </div>
 
