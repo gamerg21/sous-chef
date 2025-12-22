@@ -1,3 +1,27 @@
+# ============================================================================
+# Docker Compose Configuration for Production Deployment (Pre-built Images)
+# ============================================================================
+# This file is for END USERS who want to deploy Sous Chef using pre-built
+# Docker images from Docker Hub. It pulls the image instead of building it.
+#
+# Use this if you:
+#   - Just want to run Sous Chef without building from source
+#   - Want faster deployments and updates
+#   - Are deploying to production or self-hosting
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# The image is configured as: gamerg21/sous-chef:latest
+# To use a different image, update the 'image' field in the 'app' service below.
+#
+# For developers who want to build from source code:
+#   See docker-compose.yml instead (builds locally using Dockerfile)
+#
+# Documentation:
+#   See DEPLOYMENT.md for detailed deployment instructions
+# ============================================================================
+
 services:
   # PostgreSQL Database
   postgres:

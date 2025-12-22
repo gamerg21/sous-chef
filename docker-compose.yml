@@ -1,3 +1,24 @@
+# ============================================================================
+# Docker Compose Configuration for Building from Source
+# ============================================================================
+# This file is for DEVELOPERS who want to build the Docker image from source
+# code. It builds the application locally using the Dockerfile.
+#
+# Use this if you:
+#   - Are developing or modifying the Sous Chef codebase
+#   - Want to test changes before pushing to production
+#   - Need to build with custom modifications
+#
+# Usage:
+#   docker-compose up -d
+#
+# For end users who just want to run Sous Chef without building:
+#   See docker-compose.prod.yml instead (uses pre-built images from Docker Hub)
+#
+# Documentation:
+#   See DOCKER.md for detailed instructions on building from source
+# ============================================================================
+
 services:
   # PostgreSQL Database
   postgres:
