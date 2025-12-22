@@ -6,11 +6,13 @@ import { CommunityHubView } from "@/components/community";
 import type {
   CommunityRecipeListing,
 } from "@/components/community/types";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function CommunityPage() {
   const router = useRouter();
   const [featuredRecipes, setFeaturedRecipes] = useState<CommunityRecipeListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchData = useCallback(async () => {
     try {
@@ -52,10 +54,10 @@ export default function CommunityPage() {
         method: "POST",
       });
       if (!response.ok) throw new Error("Failed to save recipe");
-      alert("Recipe saved to your library!");
+      setAlertModal({ isOpen: true, message: "Recipe saved to your library!", variant: 'success' });
     } catch (error) {
       console.error("Error saving recipe:", error);
-      alert("Failed to save recipe. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to save recipe. Please try again.", variant: 'error' });
     }
   }, []);
 
@@ -85,6 +87,12 @@ export default function CommunityPage() {
         onOpenRecipe={handleOpenRecipe}
         onSaveRecipe={handleSaveRecipe}
         onPublishRecipe={handlePublishRecipe}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
       />
     </div>
   );

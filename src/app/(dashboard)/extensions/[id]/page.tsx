@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ExtensionDetailView } from "@/components/community";
 import type { ExtensionListing } from "@/components/community/types";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function ExtensionDetailPage() {
   const router = useRouter();
@@ -11,6 +13,8 @@ export default function ExtensionDetailPage() {
   const id = params.id as string;
   const [extension, setExtension] = useState<ExtensionListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
 
   const fetchExtension = useCallback(async () => {
     try {
@@ -40,26 +44,32 @@ export default function ExtensionDetailPage() {
       });
       if (!response.ok) throw new Error("Failed to install extension");
       await fetchExtension();
-      alert("Extension installed!");
+      setAlertModal({ isOpen: true, message: "Extension installed!", variant: 'success' });
     } catch (error) {
       console.error("Error installing extension:", error);
-      alert("Failed to install extension. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to install extension. Please try again.", variant: 'error' });
     }
   }, [extension, fetchExtension]);
 
-  const handleUninstall = useCallback(async () => {
+  const handleUninstall = useCallback(() => {
     if (!extension) return;
-    if (!confirm("Are you sure you want to uninstall this extension?")) return;
+    setShowUninstallConfirm(true);
+  }, [extension]);
+
+  const handleConfirmUninstall = useCallback(async () => {
+    if (!extension) return;
     try {
       const response = await fetch(`/api/extensions/${extension.id}/uninstall`, {
         method: "POST",
       });
       if (!response.ok) throw new Error("Failed to uninstall extension");
       await fetchExtension();
-      alert("Extension uninstalled!");
+      setAlertModal({ isOpen: true, message: "Extension uninstalled!", variant: 'success' });
+      setShowUninstallConfirm(false);
     } catch (error) {
       console.error("Error uninstalling extension:", error);
-      alert("Failed to uninstall extension. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to uninstall extension. Please try again.", variant: 'error' });
+      setShowUninstallConfirm(false);
     }
   }, [extension, fetchExtension]);
 
@@ -88,6 +98,22 @@ export default function ExtensionDetailPage() {
         onInstall={handleInstall}
         onUninstall={handleUninstall}
         onBack={() => router.back()}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+      <ConfirmModal
+        isOpen={showUninstallConfirm}
+        onClose={() => setShowUninstallConfirm(false)}
+        onConfirm={handleConfirmUninstall}
+        title="Uninstall extension"
+        message="Are you sure you want to uninstall this extension?"
+        confirmText="Uninstall"
+        cancelText="Cancel"
+        confirmVariant="danger"
       />
     </div>
   );

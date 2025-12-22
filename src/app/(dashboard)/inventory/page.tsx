@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { KitchenInventoryDashboardView } from "@/components/inventory";
 import { BarcodeScanner } from "@/components/inventory/BarcodeScanner";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { AlertModal } from "@/components/ui/alert-modal";
 import type {
   InventoryItem,
   KitchenLocation,
@@ -22,6 +24,10 @@ export default function InventoryPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [prefillData, setPrefillData] = useState<Partial<InventoryItem> | null>(null);
   const [dateFormat, setDateFormat] = useState("YYYY-MM-DD");
+  const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; message: string; onConfirm: () => void }>({ isOpen: false, message: '', onConfirm: () => {} });
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -64,20 +70,47 @@ export default function InventoryPage() {
     setShowAddModal(true);
   }, []);
 
-  const handleRemoveItem = useCallback(async (id: string) => {
-    if (!confirm("Are you sure you want to remove this item?")) return;
+  const handleRemoveItem = useCallback((id: string) => {
+    setItemToDelete(id);
+  }, []);
 
-    try {
-      const response = await fetch(`/api/inventory/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete item");
-      await fetchInventory();
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      alert("Failed to delete item. Please try again.");
-    }
-  }, [fetchInventory]);
+  const handleConfirmDelete = useCallback(async () => {
+    const id = itemToDelete;
+    if (!id) return;
+
+    // Start deletion animation
+    setDeletingItems((prev) => new Set(prev).add(id));
+
+    // Wait for animation to complete before removing from DOM
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/inventory/${id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) throw new Error("Failed to delete item");
+        
+        // Remove from state after successful deletion
+        setItems((prevItems) => prevItems.filter((i) => i.id !== id));
+        setDeletingItems((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        // Revert animation on error
+        setDeletingItems((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        setAlertModal({ isOpen: true, message: "Failed to delete item. Please try again.", variant: 'error' });
+      }
+    }, 300); // Match animation duration
+
+    setItemToDelete(null);
+  }, [itemToDelete]);
 
   const handleScanBarcode = useCallback(() => {
     setShowScanner(true);
@@ -90,17 +123,18 @@ export default function InventoryPage() {
       
       if (response.status === 404) {
         // Barcode not found - allow user to create mapping
-        const shouldCreate = confirm(
-          `Barcode "${barcode}" not found. Would you like to add it manually?`
-        );
-        if (shouldCreate) {
-          setPrefillData({
-            name: "",
-            barcode: barcode,
-          });
-          setEditingItemId(null);
-          setShowAddModal(true);
-        }
+        setConfirmModal({
+          isOpen: true,
+          message: `Barcode "${barcode}" not found. Would you like to add it manually?`,
+          onConfirm: () => {
+            setPrefillData({
+              name: "",
+              barcode: barcode,
+            });
+            setEditingItemId(null);
+            setShowAddModal(true);
+          }
+        });
         return;
       }
 
@@ -119,7 +153,7 @@ export default function InventoryPage() {
       setShowAddModal(true);
     } catch (error) {
       console.error("Error looking up barcode:", error);
-      alert("Failed to lookup barcode. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to lookup barcode. Please try again.", variant: 'error' });
     }
   }, []);
 
@@ -162,7 +196,7 @@ export default function InventoryPage() {
       await fetchInventory();
     } catch (error) {
       console.error("Error saving item:", error);
-      alert(error instanceof Error ? error.message : "Failed to save item. Please try again.");
+      setAlertModal({ isOpen: true, message: error instanceof Error ? error.message : "Failed to save item. Please try again.", variant: 'error' });
     }
   }, [editingItemId, fetchInventory]);
 
@@ -191,6 +225,7 @@ export default function InventoryPage() {
         onEditItem={handleEditItem}
         onRemoveItem={handleRemoveItem}
         onViewExpiringSoon={handleViewExpiringSoon}
+        deletingItems={deletingItems}
       />
       {showScanner && (
         <BarcodeScanner
@@ -212,6 +247,34 @@ export default function InventoryPage() {
           }}
         />
       )}
+      <ConfirmModal
+        isOpen={itemToDelete !== null}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Remove item"
+        message="Are you sure you want to remove this item from your inventory?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} })}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} });
+        }}
+        title="Confirm"
+        message={confirmModal.message}
+        confirmText="Yes"
+        cancelText="No"
+      />
     </>
   );
 }
@@ -251,7 +314,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      alert("Name is required");
+      setAlertModal({ isOpen: true, message: "Name is required", variant: 'error' });
       return;
     }
 

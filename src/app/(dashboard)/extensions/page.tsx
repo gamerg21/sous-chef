@@ -7,6 +7,7 @@ import type {
   ExtensionListing,
   InstalledExtension,
 } from "@/components/community/types";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function ExtensionsPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function ExtensionsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | "all">("all");
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchData = useCallback(async () => {
     try {
@@ -66,10 +68,10 @@ export default function ExtensionsPage() {
       });
       if (!response.ok) throw new Error("Failed to install extension");
       await fetchData();
-      alert("Extension installed!");
+      setAlertModal({ isOpen: true, message: "Extension installed!", variant: 'success' });
     } catch (error) {
       console.error("Error installing extension:", error);
-      alert("Failed to install extension. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to install extension. Please try again.", variant: 'error' });
     }
   }, [fetchData]);
 
@@ -85,7 +87,7 @@ export default function ExtensionsPage() {
       await fetchData();
     } catch (error) {
       console.error("Error toggling extension:", error);
-      alert("Failed to toggle extension. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to toggle extension. Please try again.", variant: 'error' });
     }
   }, [installedExtensions, fetchData]);
 
@@ -230,6 +232,12 @@ export default function ExtensionsPage() {
           </button>
         </div>
       </div>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
     </div>
   );
 }

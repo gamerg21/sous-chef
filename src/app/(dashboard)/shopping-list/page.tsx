@@ -8,6 +8,7 @@ import {
   AddShoppingListItemModal,
 } from "@/components/cooking";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function ShoppingListPage() {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
@@ -17,6 +18,7 @@ export default function ShoppingListPage() {
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isClearCheckedModalOpen, setIsClearCheckedModalOpen] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   const fetchShoppingList = useCallback(async () => {
     try {
@@ -76,7 +78,7 @@ export default function ShoppingListPage() {
           i.id === id ? { ...i, checked: item.checked } : i
         )
       );
-      alert("Failed to update item. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to update item. Please try again.", variant: 'error' });
     }
   }, [items]);
 
@@ -109,7 +111,7 @@ export default function ShoppingListPage() {
           next.delete(id);
           return next;
         });
-        alert("Failed to delete item. Please try again.");
+        setAlertModal({ isOpen: true, message: "Failed to delete item. Please try again.", variant: 'error' });
       }
     }, 300); // Match animation duration
   }, []);
@@ -139,7 +141,7 @@ export default function ShoppingListPage() {
         );
       } catch (error) {
         console.error("Error updating item:", error);
-        alert("Failed to update item. Please try again.");
+        setAlertModal({ isOpen: true, message: "Failed to update item. Please try again.", variant: 'error' });
       }
     },
     []
@@ -181,12 +183,12 @@ export default function ShoppingListPage() {
       setItems((prevItems) => [...prevItems, newItem]);
     } catch (error) {
       console.error("Error adding item:", error);
-      alert("Failed to add item. Please try again.");
+      setAlertModal({ isOpen: true, message: "Failed to add item. Please try again.", variant: 'error' });
     }
   }, []);
 
   const handleScanBarcode = useCallback(() => {
-    alert("Barcode scanning coming soon!");
+    setAlertModal({ isOpen: true, message: "Barcode scanning coming soon!", variant: 'info' });
   }, []);
 
   const handleClearChecked = useCallback(() => {
@@ -230,7 +232,7 @@ export default function ShoppingListPage() {
           checkedIds.forEach((id) => next.delete(id));
           return next;
         });
-        alert("Failed to clear checked items. Please try again.");
+        setAlertModal({ isOpen: true, message: "Failed to clear checked items. Please try again.", variant: 'error' });
       }
     }, 300); // Match animation duration
   }, [items]);
@@ -277,6 +279,12 @@ export default function ShoppingListPage() {
         confirmText="Remove"
         cancelText="Cancel"
         confirmVariant="danger"
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
       />
     </>
   );

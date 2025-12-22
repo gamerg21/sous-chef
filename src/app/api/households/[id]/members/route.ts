@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -17,7 +17,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const householdId = params.id;
+  const { id } = await params;
+  const householdId = id;
 
   // Verify user has access to this household
   const membership = await prisma.householdMember.findFirst({
@@ -67,7 +68,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -75,7 +76,8 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const householdId = params.id;
+  const { id } = await params;
+  const householdId = id;
 
   // Verify user has permission (owner or admin)
   const membership = await prisma.householdMember.findFirst({

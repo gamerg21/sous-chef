@@ -19,9 +19,10 @@ export interface InventoryItemRowProps {
   dateFormat?: string | null
   onEdit?: (id: string) => void
   onRemove?: (id: string) => void
+  isDeleting?: boolean
 }
 
-export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove }: InventoryItemRowProps) {
+export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove, isDeleting = false }: InventoryItemRowProps) {
   const status = itemExpiryStatus(item)
   const formattedExpiry = formatDate(item.expiresOn, dateFormat ?? 'YYYY-MM-DD')
   const statusPill =
@@ -37,7 +38,11 @@ export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove 
     <div
       className={cx(
         'rounded-lg border p-4 flex gap-4 items-start',
-        'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950'
+        'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950',
+        'transition-[opacity,transform] duration-300 ease-in-out',
+        isDeleting
+          ? 'opacity-0 scale-95 -translate-x-4 pointer-events-none'
+          : 'opacity-100 scale-100 translate-x-0'
       )}
     >
       <div className="min-w-0 flex-1">
