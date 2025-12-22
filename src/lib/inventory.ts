@@ -29,12 +29,12 @@ export async function ensureKitchenLocations(householdId: string) {
   });
 
   // Check by exact name match (case-insensitive)
-  const existingNames = new Set(existingLocations.map((loc) => loc.name.toLowerCase().trim()));
-  const toCreate = DEFAULT_LOCATIONS.filter((loc) => !existingNames.has(loc.name.toLowerCase()));
+  const existingNames = new Set(existingLocations.map((loc: { name: string }) => loc.name.toLowerCase().trim()));
+  const toCreate = DEFAULT_LOCATIONS.filter((loc: { name: string }) => !existingNames.has(loc.name.toLowerCase()));
 
   if (toCreate.length > 0) {
     await prisma.kitchenLocation.createMany({
-      data: toCreate.map((loc) => ({
+      data: toCreate.map((loc: { name: string }) => ({
         householdId,
         name: loc.name,
       })),
@@ -63,7 +63,7 @@ export async function getUniqueKitchenLocations(householdId: string): Promise<Ar
 
   // Deduplicate by transformed ID (only keep first occurrence of each type)
   const locationMap = new Map<KitchenLocationId, { id: KitchenLocationId; name: string }>();
-  locations.forEach((loc) => {
+  locations.forEach((loc: { id: string; name: string }) => {
     const transformed = transformLocation(loc);
     if (!locationMap.has(transformed.id)) {
       locationMap.set(transformed.id, transformed);

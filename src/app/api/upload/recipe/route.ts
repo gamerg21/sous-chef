@@ -10,8 +10,9 @@ import { uploadFile, STORAGE_BUCKETS } from "@/lib/storage";
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Verify user has access to this household
     const hasAccess = user.households.some(
-      (m) => m.household.id === householdId
+      (m: { household: { id: string } }) => m.household.id === householdId
     );
 
     if (!hasAccess) {

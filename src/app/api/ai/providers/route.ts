@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Build providers list with status
     const providers = AVAILABLE_PROVIDERS.map((provider) => {
-      const setting = settings.find((s) => s.providerId === provider.id);
+      const setting = settings.find((s: { providerId: string }) => s.providerId === provider.id);
       return {
         id: provider.id,
         name: provider.name,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const activeProvider = settings.find((s) => s.isActive);
+    const activeProvider = settings.find((s: { isActive: boolean }) => s.isActive);
 
     return NextResponse.json({
       keyMode: "bring-your-own" as const,

@@ -26,8 +26,11 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build Next.js application
+# Run type check before building (fails fast if there are type errors)
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run type-check
+
+# Build Next.js application
 RUN npm run build
 
 # Stage 3: Runner
@@ -52,6 +55,7 @@ COPY --from=builder /app/public ./public
 # These are needed even though standalone might include them, to ensure migrations work
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.js ./prisma.config.js
 COPY --from=builder /app/package.json ./package.json
 
 # Install Prisma CLI globally for migrations (lightweight)

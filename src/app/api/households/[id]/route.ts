@@ -12,8 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +24,7 @@ export async function GET(
   // Verify user has access to this household
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
     },
     include: {
@@ -62,7 +63,12 @@ export async function GET(
       name: membership.household.name,
       role: membership.role,
       createdAt: membership.household.createdAt,
-      members: membership.household.members.map((m) => ({
+      members: membership.household.members.map((m: {
+        id: string;
+        user: { id: string; name: string | null; email: string; image: string | null };
+        role: string;
+        createdAt: Date;
+      }) => ({
         id: m.id,
         userId: m.user.id,
         name: m.user.name,
@@ -88,8 +94,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -99,7 +106,7 @@ export async function PATCH(
   // Verify user has access and permission
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
     },
   });
@@ -163,8 +170,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -174,7 +182,7 @@ export async function DELETE(
   // Verify user is owner
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
       role: "owner",
     },

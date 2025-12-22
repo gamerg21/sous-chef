@@ -299,6 +299,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
     barcode: item?.barcode || prefillData?.barcode || "",
   });
   const [saving, setSaving] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
   // Update form data when prefillData changes (e.g., after scanning)
   useEffect(() => {
@@ -491,6 +492,12 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
           </div>
         </form>
       </div>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
     </div>
   );
 }

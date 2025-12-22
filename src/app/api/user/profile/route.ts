@@ -17,14 +17,15 @@ const updateProfileSchema = z.object({
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: {
         id: true,
         name: true,
@@ -55,8 +56,9 @@ export async function GET() {
  */
 export async function PATCH(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -66,7 +68,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", errors: validation.error.errors },
+        { error: "Validation failed", errors: validation.error.issues },
         { status: 400 }
       );
     }
@@ -87,7 +89,7 @@ export async function PATCH(request: NextRequest) {
       
       // Get current user to check if email is changing
       const currentUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: userId },
         select: { email: true },
       });
 
@@ -96,7 +98,7 @@ export async function PATCH(request: NextRequest) {
         where: { email: normalizedEmail },
       });
 
-      if (existingUser && existingUser.id !== session.user.id) {
+      if (existingUser && existingUser.id !== userId) {
         return NextResponse.json(
           { error: "Email is already taken" },
           { status: 400 }
@@ -115,7 +117,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const updated = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: updateData,
       select: {
         id: true,

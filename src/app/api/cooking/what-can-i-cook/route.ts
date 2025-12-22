@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform inventory to pantry snapshot format
-    const pantrySnapshot = inventoryItems.map((item) => ({
+    const pantrySnapshot = inventoryItems.map((item: { id: string; foodItem: { name: string }; quantity: number; unit: string }) => ({
       id: item.id,
       name: item.foodItem.name,
       quantity: item.quantity,
@@ -50,8 +50,16 @@ export async function GET(request: NextRequest) {
     }));
 
     // Transform recipes and compute cookability
-    const transformed = recipes.map((recipe) => {
-      const ingredients = recipe.ingredients.map((ing) => ({
+    const transformed = recipes.map((recipe: {
+      id: string;
+      title: string;
+      description: string | null;
+      tags: string[];
+      servings: number | null;
+      totalTimeMinutes: number | null;
+      ingredients: Array<{ id: string; name: string; quantity: number | null; unit: string | null; note: string | null; foodItem: { name: string } | null }>;
+    }) => {
+      const ingredients = recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null; foodItem: { name: string } | null }) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
@@ -91,8 +99,8 @@ export async function GET(request: NextRequest) {
 
     // Get all unique tags from recipes
     const allTags = new Set<string>();
-    recipes.forEach((recipe) => {
-      recipe.tags.forEach((tag) => allTags.add(tag));
+    recipes.forEach((recipe: { tags: string[] }) => {
+      recipe.tags.forEach((tag: string) => allTags.add(tag));
     });
 
     return NextResponse.json({

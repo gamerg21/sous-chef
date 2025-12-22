@@ -2,6 +2,14 @@
 
 This guide explains how to deploy Sous Chef using Docker and Docker Compose for self-hosting.
 
+## For End Users
+
+If you're an end user who just wants to run Sous Chef, see [DEPLOYMENT.md](./DEPLOYMENT.md) for instructions on using pre-built Docker images. You don't need to build from source!
+
+## For Developers
+
+This guide covers building from source. For production deployments, we recommend using the pre-built images (see [DEPLOYMENT.md](./DEPLOYMENT.md)).
+
 ## Prerequisites
 
 - Docker Engine 20.10+ 
@@ -170,6 +178,8 @@ docker-compose exec -T postgres psql -U postgres souschef < backup_20240101_1200
 
 ### Update Application
 
+#### Building from Source (Development)
+
 ```bash
 # Pull latest changes
 git pull
@@ -179,6 +189,84 @@ docker-compose up -d --build
 
 # Run migrations if needed
 docker-compose exec app npx prisma migrate deploy
+```
+
+#### Using Pre-built Images (Production)
+
+If you're using `docker-compose.prod.yml` with published images:
+
+```bash
+# Pull latest image
+docker-compose -f docker-compose.prod.yml pull
+
+# Restart with new image (migrations run automatically)
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## Building and Publishing Docker Images
+
+### Automated Builds with GitHub Actions
+
+The repository includes a GitHub Actions workflow (`.github/workflows/docker-build.yml`) that automatically builds and publishes Docker images when you create a version tag.
+
+#### Setup
+
+1. **Create a Docker Hub account** (or use GitHub Container Registry)
+   - Go to https://hub.docker.com and create an account
+   - Or use GitHub Container Registry (ghcr.io) - no separate account needed
+
+2. **Add GitHub Secrets:**
+   - Go to your GitHub repo → Settings → Secrets and variables → Actions
+   - Add `DOCKER_USERNAME` (your Docker Hub username)
+   - Add `DOCKER_PASSWORD` (your Docker Hub access token, not your password)
+     - Create access token: https://hub.docker.com/settings/security
+
+3. **Update the workflow file** (`.github/workflows/docker-build.yml`):
+   - Replace `yourusername` in the `IMAGE_NAME` environment variable
+   - If using GitHub Container Registry, uncomment the GitHub Container Registry login step and comment out Docker Hub login
+
+4. **Create a version tag** to trigger the build:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+The workflow will automatically:
+- Build the Docker image
+- Tag it with the version (e.g., `v1.0.0`, `v1.0`, `v1`, `latest`)
+- Push it to the container registry
+
+#### Manual Build and Push
+
+You can also build and push manually:
+
+```bash
+# Build the image
+docker build -t yourusername/sous-chef:latest .
+
+# Login to Docker Hub
+docker login
+
+# Push the image
+docker push yourusername/sous-chef:latest
+
+# Tag and push a specific version
+docker tag yourusername/sous-chef:latest yourusername/sous-chef:v1.0.0
+docker push yourusername/sous-chef:v1.0.0
+```
+
+### Versioning Strategy
+
+- `latest` - Always points to the most recent release
+- `v1.0.0` - Specific version tags (semantic versioning)
+- `v1.0` - Major.minor version (for minor updates)
+- `v1` - Major version (for major updates)
+
+Users can pin to specific versions in `docker-compose.prod.yml`:
+
+```yaml
+app:
+  image: yourusername/sous-chef:v1.0.0  # Use specific version
 ```
 
 ### Stop Services

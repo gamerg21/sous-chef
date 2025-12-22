@@ -54,7 +54,21 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform to match component interface
-    const transformed = extensions.map((ext) => ({
+    const transformed = extensions.map((ext: {
+      id: string;
+      name: string;
+      description: string;
+      category: string;
+      tags: string[];
+      authorName: string;
+      authorUrl: string | null;
+      pricing: string;
+      rating: number | null;
+      installs: number;
+      permissions: string[];
+      updatedAt: Date;
+      installedExtensions: Array<{ enabled: boolean; needsConfiguration: boolean }>;
+    }) => ({
       id: ext.id,
       name: ext.name,
       description: ext.description,

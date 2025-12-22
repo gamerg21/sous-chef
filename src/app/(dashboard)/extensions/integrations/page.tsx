@@ -149,7 +149,6 @@ export default function IntegrationsPage() {
         onSelectActiveProvider={handleSelectActiveProvider}
         onSaveApiKey={handleSaveApiKey}
         onTestAiConnection={handleTestAiConnection}
-        onDisconnectIntegration={handleDisconnectIntegration}
       />
       <AlertModal
         isOpen={alertModal.isOpen}

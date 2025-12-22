@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Handle validation errors
     if (error instanceof z.ZodError) {
-      const firstError = error.errors[0];
+      const firstError = error.issues[0];
       return NextResponse.json(
         { error: firstError?.message || "Validation error" },
         { status: 400 }
@@ -88,8 +88,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle Prisma unique constraint violations
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as { code?: string };
+      if (prismaError.code === "P2002") {
         // Unique constraint violation
         return NextResponse.json(
           { error: "An account with this email already exists" },

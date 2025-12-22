@@ -9,8 +9,9 @@ import { getSignedUrl, STORAGE_BUCKETS } from "@/lib/storage";
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate bucket name
-    const validBuckets = Object.values(STORAGE_BUCKETS);
+    const validBuckets = Object.values(STORAGE_BUCKETS) as readonly string[];
     if (!validBuckets.includes(bucket)) {
       return NextResponse.json(
         { error: "Invalid bucket name" },
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // Verify the file path belongs to the current user
     // This prevents users from accessing other users' files
-    if (!path.includes(`user-${session.user.id}`)) {
+    if (!path.includes(`user-${userId}`)) {
       return NextResponse.json(
         { error: "Access denied" },
         { status: 403 }
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const signedUrl = await getSignedUrl(bucket, path, expiresIn);
+    const signedUrl = await getSignedUrl(bucket as typeof STORAGE_BUCKETS[keyof typeof STORAGE_BUCKETS], path, expiresIn);
 
     return NextResponse.json({
       url: signedUrl,

@@ -12,8 +12,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,7 +23,7 @@ export async function PATCH(
   // Verify user has permission (owner or admin)
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
     },
   });
@@ -119,8 +120,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -129,7 +131,7 @@ export async function DELETE(
   // Verify user has permission (owner or admin)
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
     },
   });
@@ -152,7 +154,7 @@ export async function DELETE(
 
   // Users can remove themselves, or owners/admins can remove others
   const canRemove =
-    targetMember.userId === session.user.id ||
+    targetMember.userId === userId ||
     membership.role === "owner" ||
     (membership.role === "admin" && targetMember.role !== "owner");
 

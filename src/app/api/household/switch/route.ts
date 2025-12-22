@@ -10,8 +10,9 @@ import { cookies } from "next/headers";
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Verify user has access to this household
     const membership = await prisma.householdMember.findFirst({
       where: {
-        userId: session.user.id,
+        userId,
         householdId,
       },
       include: {

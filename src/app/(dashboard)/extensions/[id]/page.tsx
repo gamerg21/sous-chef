@@ -3,15 +3,24 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ExtensionDetailView } from "@/components/community";
-import type { ExtensionListing } from "@/components/community/types";
+import type { ExtensionListing, InstalledExtension } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+
+type ExtensionWithInstalled = ExtensionListing & {
+  isInstalled?: boolean;
+  installedExtension?: {
+    enabled: boolean;
+    needsConfiguration?: boolean;
+    configuration?: any;
+  };
+};
 
 export default function ExtensionDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [extension, setExtension] = useState<ExtensionListing | null>(null);
+  const [extension, setExtension] = useState<ExtensionWithInstalled | null>(null);
   const [loading, setLoading] = useState(true);
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
   const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
@@ -21,7 +30,7 @@ export default function ExtensionDetailPage() {
       setLoading(true);
       const response = await fetch(`/api/extensions/${id}`);
       if (!response.ok) throw new Error("Failed to fetch extension");
-      const data = await response.json();
+      const data = await response.json() as ExtensionWithInstalled;
       setExtension(data);
     } catch (error) {
       console.error("Error fetching extension:", error);
@@ -36,10 +45,9 @@ export default function ExtensionDetailPage() {
     }
   }, [id, fetchExtension]);
 
-  const handleInstall = useCallback(async () => {
-    if (!extension) return;
+  const handleInstallAsync = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/extensions/${extension.id}/install`, {
+      const response = await fetch(`/api/extensions/${id}/install`, {
         method: "POST",
       });
       if (!response.ok) throw new Error("Failed to install extension");
@@ -49,7 +57,11 @@ export default function ExtensionDetailPage() {
       console.error("Error installing extension:", error);
       setAlertModal({ isOpen: true, message: "Failed to install extension. Please try again.", variant: 'error' });
     }
-  }, [extension, fetchExtension]);
+  }, [fetchExtension]);
+
+  const handleInstall = useCallback((id: string) => {
+    handleInstallAsync(id).catch(console.error);
+  }, [handleInstallAsync]);
 
   const handleUninstall = useCallback(() => {
     if (!extension) return;
@@ -89,14 +101,21 @@ export default function ExtensionDetailPage() {
     );
   }
 
+  // Construct InstalledExtension object with extensionId if installed
+  const installed: InstalledExtension | null = extension.installedExtension
+    ? {
+        extensionId: extension.id,
+        enabled: extension.installedExtension.enabled,
+        needsConfiguration: extension.installedExtension.needsConfiguration,
+      }
+    : null;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <ExtensionDetailView
         extension={extension}
-        isInstalled={extension.isInstalled || false}
-        installedExtension={extension.installedExtension}
+        installed={installed}
         onInstall={handleInstall}
-        onUninstall={handleUninstall}
         onBack={() => router.back()}
       />
       <AlertModal

@@ -10,13 +10,14 @@ import { createDefaultHousehold } from "@/lib/household";
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const households = await prisma.householdMember.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     include: {
       household: {
         include: {
@@ -34,7 +35,10 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    households: households.map((m) => ({
+    households: households.map((m: {
+      household: { id: string; name: string; createdAt: Date; _count: { members: number } };
+      role: string;
+    }) => ({
       id: m.household.id,
       name: m.household.name,
       role: m.role,
@@ -50,8 +54,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     const household = await createDefaultHousehold(
-      session.user.id,
+      userId,
       null,
       null
     );

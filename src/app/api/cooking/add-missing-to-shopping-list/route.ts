@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const pantrySnapshot = inventoryItems.map((item) => ({
+    const pantrySnapshot = inventoryItems.map((item: { id: string; foodItem: { name: string }; quantity: number; unit: string }) => ({
       id: item.id,
       name: item.foodItem.name,
       quantity: item.quantity,
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // Transform ingredients
-    const ingredients = recipe.ingredients.map((ing) => ({
+    const ingredients = recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null; foodItem: { name: string } | null }) => ({
       id: ing.id,
       name: ing.name,
       quantity: ing.quantity || undefined,
@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a map of inventory by normalized name
-    const inventoryMap = new Map<string, typeof inventoryItems[0]>();
-    inventoryItems.forEach((item) => {
+    const inventoryMap = new Map<string, { id: string; foodItem: { id: string; name: string; createdAt: Date; updatedAt: Date; canonicalName: string | null }; quantity: number; unit: string }>();
+    inventoryItems.forEach((item: { id: string; foodItem: { id: string; name: string; createdAt: Date; updatedAt: Date; canonicalName: string | null }; quantity: number; unit: string }) => {
       const key = normalizeLabel(item.foodItem.name);
       if (!inventoryMap.has(key)) {
         inventoryMap.set(key, item);

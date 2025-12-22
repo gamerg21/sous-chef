@@ -12,8 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +24,7 @@ export async function GET(
   // Verify user has access to this household
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
     },
   });
@@ -50,7 +51,12 @@ export async function GET(
   });
 
   return NextResponse.json({
-    members: members.map((m) => ({
+    members: members.map((m: {
+      id: string;
+      user: { id: string; name: string | null; email: string; image: string | null };
+      role: string;
+      createdAt: Date;
+    }) => ({
       id: m.id,
       userId: m.user.id,
       name: m.user.name,
@@ -71,8 +77,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -82,7 +89,7 @@ export async function POST(
   // Verify user has permission (owner or admin)
   const membership = await prisma.householdMember.findFirst({
     where: {
-      userId: session.user.id,
+      userId,
       householdId,
     },
   });

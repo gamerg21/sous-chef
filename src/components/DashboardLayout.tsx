@@ -44,7 +44,7 @@ export default async function DashboardLayout({
         name: user.name || user.email || "User",
         avatarUrl: user.image || undefined,
       }}
-      households={households.map((h) => ({ id: h.id, name: h.name }))}
+      households={households.map((h: { id: string; name: string }) => ({ id: h.id, name: h.name }))}
       currentHouseholdId={currentHousehold.id}
     >
       {children}

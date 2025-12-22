@@ -14,13 +14,14 @@ import {
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const preferences = await getOrCreateUserPreferences(session.user.id);
+    const preferences = await getOrCreateUserPreferences(userId);
 
     return NextResponse.json({
       preferences: {
@@ -49,8 +50,9 @@ export async function GET() {
  */
 export async function PATCH(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -92,11 +94,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Ensure preferences exist
-    await getOrCreateUserPreferences(session.user.id);
+    await getOrCreateUserPreferences(userId);
 
     // Update preferences
     const updated = await prisma.userPreferences.update({
-      where: { userId: session.user.id },
+      where: { userId },
       data: updateData,
     });
 

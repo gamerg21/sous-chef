@@ -9,8 +9,9 @@ import { deleteFile, STORAGE_BUCKETS } from "@/lib/storage";
  */
 export async function DELETE(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -36,7 +37,7 @@ export async function DELETE(request: NextRequest) {
 
     // Verify the file path belongs to the current user
     // This prevents users from deleting other users' files
-    if (!path.includes(`user-${session.user.id}`)) {
+    if (!path.includes(`user-${userId}`)) {
       return NextResponse.json(
         { error: "Access denied" },
         { status: 403 }

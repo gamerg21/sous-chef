@@ -69,7 +69,23 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform to match component interface
-    const transformed = recipes.map((recipe) => ({
+    const transformed = recipes.map((recipe: {
+      id: string;
+      title: string;
+      description: string | null;
+      photoUrl: string | null;
+      tags: string[];
+      visibility: string;
+      servings: number | null;
+      totalTimeMinutes: number | null;
+      sourceUrl: string | null;
+      notes: string | null;
+      ingredients: Array<{ id: string; name: string; quantity: number | null; unit: string | null; note: string | null }>;
+      steps: Array<{ id: string; text: string }>;
+      updatedAt: Date;
+      lastCookedAt: Date | null;
+      favorited: boolean;
+    }) => ({
       id: recipe.id,
       title: recipe.title,
       description: recipe.description || undefined,
@@ -80,7 +96,7 @@ export async function GET(request: NextRequest) {
       totalTimeMinutes: recipe.totalTimeMinutes || undefined,
       sourceUrl: recipe.sourceUrl || undefined,
       notes: recipe.notes || undefined,
-      ingredients: recipe.ingredients.map((ing, idx) => ({
+      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }, idx: number) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
@@ -93,7 +109,7 @@ export async function GET(request: NextRequest) {
             }
           : undefined,
       })),
-      steps: recipe.steps.map((step) => ({
+      steps: recipe.steps.map((step: { id: string; text: string }) => ({
         id: step.id,
         text: step.text,
       })),
@@ -186,7 +202,7 @@ export async function POST(request: NextRequest) {
       totalTimeMinutes: recipe.totalTimeMinutes || undefined,
       sourceUrl: recipe.sourceUrl || undefined,
       notes: recipe.notes || undefined,
-      ingredients: recipe.ingredients.map((ing) => ({
+      ingredients: recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null }) => ({
         id: ing.id,
         name: ing.name,
         quantity: ing.quantity || undefined,
@@ -201,7 +217,7 @@ export async function POST(request: NextRequest) {
             }
           : undefined,
       })),
-      steps: recipe.steps.map((step) => ({
+      steps: recipe.steps.map((step: { id: string; text: string }) => ({
         id: step.id,
         text: step.text,
       })),

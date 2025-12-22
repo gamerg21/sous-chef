@@ -12,7 +12,7 @@ const connectIntegrationSchema = z.object({
   accessToken: z.string().optional(),
   refreshToken: z.string().optional(),
   scopes: z.array(z.string()).optional(),
-  config: z.record(z.any()).optional(),
+  config: z.record(z.string(), z.any()).optional(),
 });
 
 // POST /api/integrations/[id]/connect - Connect an integration
