@@ -39,7 +39,7 @@ const createRecipeSchema = z.object({
 });
 
 // GET /api/recipes - List recipes
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;

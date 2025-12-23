@@ -49,3 +49,4 @@ export function recipeMatchSummary(recipe: Recipe, pantry: PantrySnapshotItem[] 
   return { inStock, missing, unmapped, total: recipe.ingredients.length }
 }
 
+

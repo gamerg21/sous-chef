@@ -6,12 +6,17 @@
     "dev": "next dev",
     "dev:https": "node server.js",
     "dev:tunnel": "./scripts/dev-https.sh",
+    "docker:up": "docker compose --env-file .env.docker -p souschef_docker up -d --build",
+    "docker:down": "docker compose -p souschef_docker down -v --remove-orphans",
+    "docker:ps": "docker compose -p souschef_docker ps",
+    "docker:logs": "docker compose -p souschef_docker logs -f --tail=200",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
     "prebuild": "npm run type-check",
+    "postinstall": "prisma generate || echo \"Warning: Prisma generate failed. This may be due to symlink permissions on Windows. Run 'npx prisma generate' manually or enable Developer Mode.\"",
     "set-password": "tsx scripts/set-user-password.ts",
     "prepare": "husky"
   },
@@ -49,5 +54,15 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "supabase",
+      "unrs-resolver"
+    ]
   }
 }

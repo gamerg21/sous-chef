@@ -74,6 +74,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Get like/save counts for current user
+    // Note: userLikes and userSaves are computed but not currently used in the response
+    // They are kept for future use when we add liked/saved status to the response
     const recipeIds = recipes.map((r: { id: string }) => r.id);
     const userLikes = await prisma.communityRecipeLike.findMany({
       where: {
@@ -87,10 +89,8 @@ export async function GET(request: NextRequest) {
         userId,
       },
     });
-
-    // likedRecipeIds and savedRecipeIds are computed but not currently used in the response
-    // const likedRecipeIds = new Set(userLikes.map((l: { recipeId: string }) => l.recipeId));
-    // const savedRecipeIds = new Set(userSaves.map((s: { recipeId: string }) => s.recipeId));
+    void userLikes; // Mark as intentionally unused
+    void userSaves; // Mark as intentionally unused
 
     // Transform to match component interface
     const transformed = recipes.map((recipe: {
@@ -156,4 +156,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 

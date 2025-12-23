@@ -26,7 +26,7 @@ const createShoppingListItemSchema = z.object({
 });
 
 // GET /api/shopping-list - Get shopping list
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
@@ -194,4 +194,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 

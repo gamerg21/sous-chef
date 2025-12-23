@@ -16,10 +16,7 @@ export async function getCurrentUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
 
-  // Ensure preferences exist (lazy creation)
-  const { getOrCreateUserPreferences } = await import("./preferences");
-  await getOrCreateUserPreferences(session.user.id);
-
+  // First verify the user exists in the database
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
@@ -31,6 +28,35 @@ export async function getCurrentUser() {
       preferences: true,
     },
   });
+
+  // If user doesn't exist, return null (session might be stale)
+  if (!user) {
+    return null;
+  }
+
+  // Ensure preferences exist (lazy creation) - only if user exists and preferences don't
+  if (!user.preferences) {
+    const { getOrCreateUserPreferences } = await import("./preferences");
+    try {
+      await getOrCreateUserPreferences(session.user.id);
+      // Re-fetch user to include newly created preferences
+      return await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: {
+          households: {
+            include: {
+              household: true,
+            },
+          },
+          preferences: true,
+        },
+      });
+    } catch (error) {
+      // If preferences creation fails, log but return user without preferences
+      console.error("Error creating user preferences:", error);
+      return user;
+    }
+  }
 
   return user;
 }

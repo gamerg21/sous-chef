@@ -165,6 +165,9 @@ After running `supabase status`, you'll see connection details including the dat
 Create a `.env` file in the root directory with the following variables:
 
 ```bash
+# CLI dev env (Supabase CLI + pnpm dev)
+cp env.cli.example .env
+
 # Get the database URL from: pnpm supabase status
 # It will look like: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
@@ -177,6 +180,23 @@ NEXTAUTH_SECRET="your-secret-key-here"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
+### Docker Compose dev/test (build from source)
+
+If you want to test the Docker build/Compose setup **without interfering** with CLI local dev, use a separate env file and different ports:
+
+```bash
+cp env.docker.example .env.docker
+
+# Runs the app on http://localhost:3001 and Postgres on localhost:5433 by default
+pnpm docker:up
+```
+
+Stop and delete volumes (⚠️ deletes Docker DB data):
+
+```bash
+pnpm docker:down
+```
+
 ### 4. Run database migrations
 
 ```bash
@@ -187,6 +207,8 @@ pnpm prisma migrate dev
 # If you need to generate the Prisma client separately (e.g., after schema changes)
 pnpm prisma generate
 ```
+
+**Note for Windows users:** If you encounter a symlink permission error when running `prisma generate`, see [docs/WINDOWS_SETUP.md](./docs/WINDOWS_SETUP.md) for solutions.
 
 ### 5. Start the development server
 

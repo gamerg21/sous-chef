@@ -1,5 +1,7 @@
-// Prisma config for runtime (doesn't require dotenv)
-// DATABASE_URL is provided via environment variable in Docker
+// Prisma config for runtime
+// Load environment variables from .env file if available
+require("dotenv/config");
+
 module.exports = {
   schema: "prisma/schema.prisma",
   migrations: {

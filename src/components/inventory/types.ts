@@ -22,3 +22,4 @@ export interface InventoryItem {
 
 export type InventoryFilter = 'all' | 'expiring-soon' | 'low-stock'
 
+

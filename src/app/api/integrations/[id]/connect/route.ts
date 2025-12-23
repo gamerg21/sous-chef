@@ -32,7 +32,7 @@ export async function POST(
       return NextResponse.json({ error: "No household found" }, { status: 404 });
     }
 
-    const { id } = await params;
+    await params; // id from params is not used, integration is identified by householdId_provider
     const body = await request.json();
     const validated = connectIntegrationSchema.parse(body);
 
@@ -105,4 +105,5 @@ export async function POST(
     );
   }
 }
+
 

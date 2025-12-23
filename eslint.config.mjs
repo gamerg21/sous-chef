@@ -28,9 +28,9 @@ const eslintConfig = defineConfig([
       "prefer-const": "warn",
     },
   },
-  // Exclude server.js from TypeScript rules
+  // Exclude server.js and prisma.config.js from TypeScript rules
   {
-    files: ["server.js"],
+    files: ["server.js", "prisma.config.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },

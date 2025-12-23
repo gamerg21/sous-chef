@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCurrentHouseholdId } from "@/lib/user";
@@ -27,7 +27,7 @@ const AVAILABLE_PROVIDERS = [
 ];
 
 // GET /api/ai/providers - List AI providers and settings
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
@@ -76,4 +76,5 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
+
 

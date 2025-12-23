@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -33,7 +33,7 @@ export default function AdminUsersClient() {
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -61,11 +61,11 @@ export default function AdminUsersClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, searchQuery]);
 
   useEffect(() => {
     fetchUsers();
-  }, [page, searchQuery]);
+  }, [page, searchQuery, fetchUsers]);
 
   const handleAddUser = () => {
     setEditingUser(null);

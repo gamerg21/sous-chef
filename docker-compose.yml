@@ -23,7 +23,6 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: sous-chef-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -46,10 +45,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sous-chef-app
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       # Database - DATABASE_URL from .env will be loaded via env_file
       # If not in .env, this fallback will be used (but .env should have it)
@@ -79,9 +75,12 @@ services:
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
-      # Optional: Mount custom certificates directory
-      # If not mounted and ENABLE_HTTPS=true, self-signed certs will be auto-generated
-      - ./certs:/app/certs:rw
+      # Certificates storage:
+      # - By default we use a named volume so the container can write self-signed certs
+      #   without host-permission issues.
+      # - If you want to use custom certs from the host, replace this with:
+      #     - ./certs:/app/certs:rw
+      - app_certs:/app/certs
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,6 +103,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  app_certs:
     driver: local
 
 networks:

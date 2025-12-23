@@ -40,3 +40,4 @@ export function LocationTabs({ locations, value, onChange }: LocationTabsProps) 
   )
 }
 
+
