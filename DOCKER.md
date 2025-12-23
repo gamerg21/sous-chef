@@ -68,6 +68,15 @@ SMTP_FROM=noreply@souschef.local
 - Generate a secure `NEXTAUTH_SECRET` using: `openssl rand -base64 32`
 - Update `NEXTAUTH_URL` to your actual domain if deploying publicly
 
+### Running Docker Compose without interfering with CLI local dev
+
+If you're also doing local development via Supabase CLI + `pnpm dev`, use a separate docker env file (different ports) so both can run off the same codebase:
+
+```bash
+cp env.docker.example .env.docker
+docker compose --env-file .env.docker -p souschef_docker up -d --build
+```
+
 ### 3. Build and Start Services
 
 ```bash
