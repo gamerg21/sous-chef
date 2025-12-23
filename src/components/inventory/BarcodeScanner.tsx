@@ -13,7 +13,6 @@ export interface BarcodeScannerProps {
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
 
   useEffect(() => {
@@ -26,7 +25,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       // Defer state updates to avoid synchronous setState in effect
       setTimeout(() => {
         setError(null);
-        setScanning(false);
       }, 0);
       return;
     }
@@ -35,14 +33,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     const initScanner = async () => {
       try {
         setError(null);
-        setScanning(true);
 
         // Check if we're in a secure context (required for camera access)
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           setError(
             "Camera access requires a secure connection (HTTPS). Please ensure you're accessing the app over HTTPS."
           );
-          setScanning(false);
           return;
         }
 
@@ -76,7 +72,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
                 // Stop scanning after successful scan
                 codeReader.reset();
                 codeReaderRef.current = null;
-                setScanning(false);
                 onScan(barcode);
                 onClose();
               }
@@ -95,7 +90,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             ? err.message
             : "Failed to initialize camera. Please check permissions and try again."
         );
-        setScanning(false);
       }
     };
 

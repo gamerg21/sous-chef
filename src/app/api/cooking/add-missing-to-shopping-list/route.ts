@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { getCurrentHouseholdId } from "@/lib/user";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { computeRecipeCookability } from "@/lib/cooking";
 
 const addMissingSchema = z.object({
   recipeId: z.string().min(1, "Recipe ID is required"),
@@ -52,12 +51,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // pantrySnapshot is computed but not currently used (kept for future use with computeRecipeCookability)
     const pantrySnapshot = inventoryItems.map((item: { id: string; foodItem: { name: string }; quantity: number; unit: string }) => ({
       id: item.id,
       name: item.foodItem.name,
       quantity: item.quantity,
       unit: item.unit,
     }));
+    void pantrySnapshot; // Mark as intentionally unused
 
     // Transform ingredients
     const ingredients = recipe.ingredients.map((ing: { id: string; name: string; quantity: number | null; unit: string | null; note: string | null; foodItem: { name: string } | null }) => ({

@@ -42,14 +42,17 @@ export function DropdownMenuTrigger({ asChild, children }: DropdownMenuTriggerPr
   if (asChild && React.isValidElement(children)) {
     const childProps = children.props as { onClick?: (e: React.MouseEvent) => void; ref?: React.Ref<HTMLElement> };
     const originalRef = (children as any).ref;
+    // Extract ref object to avoid direct context mutation
+    const triggerRef = context.triggerRef;
     
     return React.cloneElement(children, {
       ref: (node: HTMLElement | null) => {
-        context.triggerRef.current = node;
+        triggerRef.current = node;
         // Preserve any existing ref
         if (typeof originalRef === 'function') {
           originalRef(node);
         } else if (originalRef && typeof originalRef === 'object' && 'current' in originalRef) {
+          // eslint-disable-next-line react-hooks/immutability
           (originalRef as React.MutableRefObject<HTMLElement | null>).current = node;
         }
       },

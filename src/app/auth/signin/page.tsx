@@ -24,7 +24,7 @@ export default function SignIn() {
     }
   }, [status, session, router]);
 
-  // handleMagicLinkSubmit is defined but not currently used
+  // handleMagicLinkSubmit is defined but not currently used (kept for future magic link feature)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +68,7 @@ export default function SignIn() {
     } finally {
       setIsLoading(false);
     }
-  }; // eslint-disable-line @typescript-eslint/no-unused-vars
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

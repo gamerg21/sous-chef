@@ -83,13 +83,16 @@ export default function RecipeDetailPage() {
     }
   }, [fetchRecipe]);
 
-  const handleUploadPhoto = useCallback(async (_id: string, _file: File) => {
+  const handleUploadPhoto = useCallback(async (id: string, file: File) => {
     // TODO: Implement photo upload
+    void id; // Parameter required by interface but not yet used
+    void file; // Parameter required by interface but not yet used
     setAlertModal({ isOpen: true, message: "Photo upload coming soon!", variant: 'info' });
   }, []);
 
-  const handleRemovePhoto = useCallback(async (_id: string) => {
+  const handleRemovePhoto = useCallback(async (id: string) => {
     // TODO: Implement photo removal
+    void id; // Parameter required by interface but not yet used
     setAlertModal({ isOpen: true, message: "Photo removal coming soon!", variant: 'info' });
   }, []);
 

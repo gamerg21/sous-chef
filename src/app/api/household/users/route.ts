@@ -22,7 +22,7 @@ const createUserSchema = z.object({
 // });
 
 // GET /api/household/users - List all users in the current household
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;

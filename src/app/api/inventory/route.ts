@@ -24,7 +24,7 @@ const createInventoryItemSchema = z.object({
 }));
 
 // GET /api/inventory - List inventory items
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
