@@ -23,8 +23,19 @@ export interface UserPreferencesInput {
 
 /**
  * Create default user preferences
+ * Throws an error if the user doesn't exist in the database
  */
 export async function createDefaultPreferences(userId: string) {
+  // First verify the user exists to provide a better error message
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new Error(`Cannot create preferences: user with id ${userId} does not exist`);
+  }
+
   return await prisma.userPreferences.create({
     data: {
       userId,

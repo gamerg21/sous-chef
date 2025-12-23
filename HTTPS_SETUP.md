@@ -187,3 +187,4 @@ If you're using nginx or another reverse proxy for SSL termination:
 - **Docker Custom Certificates (Option 3)**: Best for production Docker deployments with your own certificates
 - **nginx Proxy (Option 3)**: Best for production with proper SSL certificates (Let's Encrypt, etc.)
 
+

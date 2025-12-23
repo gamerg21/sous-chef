@@ -14,3 +14,4 @@ find .next -name "*.log" -type f 2>/dev/null | head -5 || echo "No log files fou
 echo ""
 echo "=== Tip: Keep the Next.js dev server terminal visible to see [AUTH] logs in real-time ==="
 
+

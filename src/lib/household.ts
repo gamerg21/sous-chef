@@ -65,3 +65,4 @@ export async function ensureUserHasHousehold(userId: string) {
   return household.id;
 }
 
+

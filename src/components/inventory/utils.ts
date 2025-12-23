@@ -42,3 +42,4 @@ export function itemExpiryStatus(item: InventoryItem, now = new Date()): 'none' 
   if (days <= 3) return 'soon'
   return 'ok'
 }
+
