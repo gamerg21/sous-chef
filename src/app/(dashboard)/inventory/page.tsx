@@ -86,9 +86,27 @@ export default function InventoryPage() {
       try {
         const response = await fetch(`/api/inventory/${id}`, {
           method: "DELETE",
+          // Be explicit: some deployments/proxies can otherwise drop auth cookies.
+          credentials: "include",
         });
 
-        if (!response.ok) throw new Error("Failed to delete item");
+        if (!response.ok) {
+          let message = "Failed to delete item";
+          try {
+            const data = await response.json();
+            if (data?.error && typeof data.error === "string") {
+              message = data.error;
+            }
+          } catch {
+            // ignore JSON parse errors
+          }
+
+          if (response.status === 401) {
+            message = "Your session has expired. Please sign in again.";
+          }
+
+          throw new Error(message);
+        }
         
         // Remove from state after successful deletion
         setItems((prevItems) => prevItems.filter((i) => i.id !== id));
@@ -105,7 +123,11 @@ export default function InventoryPage() {
           next.delete(id);
           return next;
         });
-        setAlertModal({ isOpen: true, message: "Failed to delete item. Please try again.", variant: 'error' });
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to delete item. Please try again.";
+        setAlertModal({ isOpen: true, message, variant: 'error' });
       }
     }, 300); // Match animation duration
 
