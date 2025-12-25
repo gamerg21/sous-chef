@@ -61,6 +61,15 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           console.log("Device enumeration not supported, using default camera");
         }
 
+        if (
+          selectedDeviceId &&
+          availableDevices.length > 0 &&
+          !availableDevices.some((device) => device.deviceId === selectedDeviceId)
+        ) {
+          setSelectedDeviceId(availableDevices[0].deviceId);
+          return;
+        }
+
         if (!selectedDeviceId && availableDevices.length > 0) {
           setSelectedDeviceId(availableDevices[0].deviceId);
           return;
