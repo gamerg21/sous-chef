@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
-import { X, Camera, AlertCircle } from "lucide-react";
+import { X, Camera, AlertCircle, RefreshCcw } from "lucide-react";
 
 export interface BarcodeScannerProps {
   isOpen: boolean;
@@ -14,6 +14,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -42,29 +44,45 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           return;
         }
 
-        const codeReader = new BrowserMultiFormatReader();
+        const codeReader = codeReaderRef.current ?? new BrowserMultiFormatReader();
         codeReaderRef.current = codeReader;
 
         // Try to get available video input devices
         // On iOS Safari, this may fail, so we'll fall back to using undefined (default camera)
-        let selectedDeviceId: string | undefined = undefined;
-        
+        let availableDevices: MediaDeviceInfo[] = [];
+
         try {
-          const videoInputDevices = await codeReader.listVideoInputDevices();
-          if (videoInputDevices.length > 0) {
-            selectedDeviceId = videoInputDevices[0].deviceId;
-          }
+          availableDevices = await codeReader.listVideoInputDevices();
+          setVideoDevices(availableDevices);
         } catch {
           // Device enumeration not supported (common on iOS Safari)
           // We'll use undefined to let the browser choose the default camera
+          setVideoDevices([]);
           console.log("Device enumeration not supported, using default camera");
         }
 
+        if (
+          selectedDeviceId &&
+          availableDevices.length > 0 &&
+          !availableDevices.some((device) => device.deviceId === selectedDeviceId)
+        ) {
+          setSelectedDeviceId(availableDevices[0].deviceId);
+          return;
+        }
+
+        if (!selectedDeviceId && availableDevices.length > 0) {
+          setSelectedDeviceId(availableDevices[0].deviceId);
+          return;
+        }
+
         if (videoRef.current) {
+          codeReader.reset();
+          const activeDeviceId = selectedDeviceId ?? availableDevices[0]?.deviceId ?? null;
+
           // Start decoding from video stream
           // Using undefined as deviceId will use the default/back camera
           codeReader.decodeFromVideoDevice(
-            selectedDeviceId ?? null,
+            activeDeviceId,
             videoRef.current,
             (result, err) => {
               if (result) {
@@ -102,7 +120,16 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         codeReaderRef.current = null;
       }
     };
-  }, [isOpen, onClose, onScan]);
+  }, [isOpen, onClose, onScan, selectedDeviceId]);
+
+  const handleSwitchCamera = () => {
+    if (videoDevices.length < 2) return;
+    const currentIndex = videoDevices.findIndex(
+      (device) => device.deviceId === selectedDeviceId
+    );
+    const nextIndex = (currentIndex + 1) % videoDevices.length;
+    setSelectedDeviceId(videoDevices[nextIndex].deviceId);
+  };
 
   if (!isOpen) return null;
 
@@ -114,13 +141,26 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
             Scan Barcode
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-md hover:bg-stone-100 dark:hover:bg-stone-900 text-stone-600 dark:text-stone-400 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {videoDevices.length > 1 && (
+              <button
+                type="button"
+                onClick={handleSwitchCamera}
+                className="inline-flex items-center gap-2 rounded-md border border-stone-200 dark:border-stone-800 px-3 py-1.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-900 transition-colors"
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Switch camera
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-md hover:bg-stone-100 dark:hover:bg-stone-900 text-stone-600 dark:text-stone-400 transition-colors"
+              aria-label="Close scanner"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scanner area */}
@@ -165,4 +205,3 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     </div>
   );
 }
-
