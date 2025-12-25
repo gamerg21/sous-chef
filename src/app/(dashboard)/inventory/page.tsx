@@ -358,22 +358,25 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
     }
   };
 
+  const inputClassName =
+    "w-full max-w-full min-w-0 px-3 py-2 h-10 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 box-border appearance-none"
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 px-4 py-4 sm:py-6"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 p-6 w-full max-w-md mx-4 shadow-xl"
+        className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 p-4 sm:p-6 w-full max-w-md shadow-xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] overflow-y-auto"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold mb-4 text-stone-900 dark:text-stone-100">
           {item ? "Edit Item" : "Add Item"}
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
               Name *
@@ -382,12 +385,12 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={inputClassName}
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
                 Location *
@@ -397,7 +400,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
                 onChange={(e) =>
                   setFormData({ ...formData, locationId: e.target.value as KitchenLocationId })
                 }
-                className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+                className={inputClassName}
                 required
               >
                 {locations.map((loc) => (
@@ -417,7 +420,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
                 onChange={(e) =>
                   setFormData({ ...formData, unit: e.target.value as typeof formData.unit })
                 }
-                className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+                className={inputClassName}
                 required
               >
                 <option value="count">count</option>
@@ -441,7 +444,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
               min="0.01"
               value={formData.quantity}
               onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={inputClassName}
               required
             />
           </div>
@@ -454,7 +457,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
               type="date"
               value={formData.expiresOn}
               onChange={(e) => setFormData({ ...formData, expiresOn: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={inputClassName}
             />
           </div>
 
@@ -467,7 +470,7 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               placeholder="e.g., Dairy, Produce"
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={inputClassName}
             />
           </div>
 
@@ -478,8 +481,8 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              rows={2}
+              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 min-h-[72px]"
             />
           </div>
 
@@ -492,11 +495,11 @@ function InventoryItemModal({ item, prefillData, locations, onSave, onClose }: I
               value={formData.barcode}
               onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
               placeholder="UPC/EAN"
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={inputClassName}
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-3 sm:pt-4">
             <button
               type="button"
               onClick={onClose}
