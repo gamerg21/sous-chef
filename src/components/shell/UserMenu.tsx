@@ -8,6 +8,7 @@ export type ShellUser = { name: string; avatarUrl?: string }
 export interface UserMenuProps {
   user?: ShellUser
   onNavigate?: (href: string) => void
+  onPrefetch?: (href: string) => void
   onLogout?: () => void
   neutral: {
     panelBorder: string
@@ -28,7 +29,7 @@ function initials(name: string) {
   return letters.toUpperCase()
 }
 
-export default function UserMenu({ user, onNavigate, onLogout, neutral, accent }: UserMenuProps) {
+export default function UserMenu({ user, onNavigate, onPrefetch, onLogout, neutral, accent }: UserMenuProps) {
   const [open, setOpen] = useState(false)
   const displayName = user?.name || 'User'
 
@@ -79,6 +80,9 @@ export default function UserMenu({ user, onNavigate, onLogout, neutral, accent }
           <button
             type="button"
             role="menuitem"
+            onMouseEnter={() => onPrefetch?.('/account')}
+            onFocus={() => onPrefetch?.('/account')}
+            onTouchStart={() => onPrefetch?.('/account')}
             onClick={() => {
               setOpen(false)
               onNavigate?.('/account')
@@ -106,4 +110,3 @@ export default function UserMenu({ user, onNavigate, onLogout, neutral, accent }
     </div>
   )
 }
-

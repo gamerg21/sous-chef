@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cx } from '../cooking/utils'
 
@@ -13,6 +13,9 @@ export interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+  // Track where mousedown started to prevent dismiss when dragging from inside modal to backdrop
+  const mouseDownTarget = useRef<EventTarget | null>(null)
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -36,10 +39,17 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onMouseDown={(e) => {
+        mouseDownTarget.current = e.target
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
+        // Only close if both mousedown AND click happened on the backdrop itself.
+        // This prevents dismiss when the user drags from an input field to the backdrop
+        // (e.g. selecting text in a field and releasing outside the modal).
+        if (e.target === e.currentTarget && mouseDownTarget.current === e.currentTarget) {
           onClose()
         }
+        mouseDownTarget.current = null
       }}
     >
       {/* Backdrop */}
@@ -52,6 +62,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           className
         )}
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800">

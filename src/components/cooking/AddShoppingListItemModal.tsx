@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ShoppingListItem } from './types'
 import { Modal } from '../ui/modal'
 import { cx } from './utils'
+import { UnitPicker } from '../ui/unit-picker'
 
 const categories: Array<NonNullable<ShoppingListItem['category']>> = [
   'Produce',
@@ -18,18 +19,42 @@ const categories: Array<NonNullable<ShoppingListItem['category']>> = [
 export interface AddShoppingListItemModalProps {
   isOpen: boolean
   onClose: () => void
+  prefill?: { name?: string; quantity?: number; unit?: string; category?: ShoppingListItem['category'] } | null
   onSave: (itemData: { name: string; quantity?: number; unit?: string; category?: ShoppingListItem['category'] }) => void
 }
 
 export function AddShoppingListItemModal({
   isOpen,
   onClose,
+  prefill,
   onSave,
 }: AddShoppingListItemModalProps) {
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('')
   const [category, setCategory] = useState<ShoppingListItem['category'] | ''>('')
+
+  useEffect(() => {
+    if (!isOpen) return
+    const timer = setTimeout(() => {
+      if (!prefill) {
+        setName('')
+        setQuantity('')
+        setUnit('')
+        setCategory('')
+        return
+      }
+      setName(prefill.name || '')
+      setQuantity(
+        typeof prefill.quantity === 'number' && Number.isFinite(prefill.quantity)
+          ? String(prefill.quantity)
+          : ''
+      )
+      setUnit(prefill.unit || '')
+      setCategory(prefill.category || '')
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [isOpen, prefill])
 
   const handleSave = () => {
     if (!name.trim()) return
@@ -103,13 +128,11 @@ export function AddShoppingListItemModal({
           <label htmlFor="item-unit" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
             Unit (optional)
           </label>
-          <input
-            id="item-unit"
-            type="text"
+          <UnitPicker
             value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            placeholder="e.g., cup, lb, kg, count"
+            onChange={setUnit}
+            ingredientName={name}
+            placeholder="Pick a unit"
           />
         </div>
 
@@ -160,5 +183,3 @@ export function AddShoppingListItemModal({
     </Modal>
   )
 }
-
-

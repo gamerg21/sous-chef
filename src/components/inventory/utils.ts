@@ -4,7 +4,7 @@ export function formatQuantity(quantity: number, unit: QuantityUnit): string {
   if (unit === 'count') return `${quantity}`
   // Avoid trailing .0 for common decimal inputs
   const q = Number.isInteger(quantity) ? `${quantity}` : `${quantity}`
-  return `${q}${unit}`
+  return `${q} ${unit}`
 }
 
 export function parseISODate(value?: string): Date | null {
@@ -42,4 +42,3 @@ export function itemExpiryStatus(item: InventoryItem, now = new Date()): 'none' 
   if (days <= 3) return 'soon'
   return 'ok'
 }
-

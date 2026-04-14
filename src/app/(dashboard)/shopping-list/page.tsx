@@ -1,155 +1,128 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 import {
   ShoppingListView,
   type ShoppingListItem,
   EditShoppingListItemModal,
   AddShoppingListItemModal,
 } from "@/components/cooking";
+import { BarcodeScanner } from "@/components/inventory/BarcodeScanner";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { AlertModal } from "@/components/ui/alert-modal";
+interface BarcodeLookupResponse {
+  found: boolean;
+  product_name?: string;
+  brand?: string;
+  facts?: Record<string, unknown>;
+}
 
 export default function ShoppingListPage() {
-  const [items, setItems] = useState<ShoppingListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const shoppingListData = useQuery(api.shoppingList.get, {});
+  const addItem = useMutation(api.shoppingList.addItem);
+  const updateItem = useMutation(api.shoppingList.updateItem);
+  const deleteItem = useMutation(api.shoppingList.deleteItem);
+
+  const items = useMemo(
+    () => shoppingListData?.items || [],
+    [shoppingListData?.items]
+  );
+
   const [searchQuery, setSearchQuery] = useState("");
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [prefillItem, setPrefillItem] = useState<{
+    name?: string;
+    quantity?: number;
+    unit?: string;
+    category?: ShoppingListItem["category"];
+  } | null>(null);
   const [isClearCheckedModalOpen, setIsClearCheckedModalOpen] = useState(false);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
 
-  const fetchShoppingList = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/shopping-list", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch shopping list");
-      const data = await response.json();
-      setItems(data.items || []);
-    } catch (error) {
-      console.error("Error fetching shopping list:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const handleToggleItem = useCallback(
+    async (id: string) => {
+      const existing = items.find((item) => item.id === id);
+      if (!existing) return;
 
-  useEffect(() => {
-    fetchShoppingList();
-  }, [fetchShoppingList]);
+      const nextChecked = !Boolean(existing.checked);
 
-  const handleToggleItem = useCallback(async (id: string) => {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-
-    const newChecked = !item.checked;
-
-    // Optimistic update
-    setItems((prevItems) =>
-      prevItems.map((i) =>
-        i.id === id ? { ...i, checked: newChecked } : i
-      )
-    );
-
-    try {
-      const response = await fetch(`/api/shopping-list/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ checked: newChecked }),
-      });
-
-      if (!response.ok) throw new Error("Failed to update item");
-      
-      // Update from response to ensure consistency
-      const updated = await response.json();
-      setItems((prevItems) =>
-        prevItems.map((i) =>
-          i.id === id ? { ...i, checked: updated.checked } : i
-        )
-      );
-    } catch (error) {
-      console.error("Error toggling item:", error);
-      // Revert optimistic update on error
-      setItems((prevItems) =>
-        prevItems.map((i) =>
-          i.id === id ? { ...i, checked: item.checked } : i
-        )
-      );
-      setAlertModal({ isOpen: true, message: "Failed to update item. Please try again.", variant: 'error' });
-    }
-  }, [items]);
-
-  const handleRemoveItem = useCallback(async (id: string) => {
-    // Start deletion animation
-    setDeletingItems((prev) => new Set(prev).add(id));
-
-    // Wait for animation to complete before removing from DOM
-    setTimeout(async () => {
       try {
-        const response = await fetch(`/api/shopping-list/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-
-        if (!response.ok) throw new Error("Failed to delete item");
-        
-        // Remove from state after successful deletion
-        setItems((prevItems) => prevItems.filter((i) => i.id !== id));
-        setDeletingItems((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
+        await updateItem({ id, checked: nextChecked });
       } catch (error) {
-        console.error("Error deleting item:", error);
-        // Revert animation on error
-        setDeletingItems((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
+        console.error("Error toggling item:", error);
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to update item. Please try again.",
+          variant: "error",
         });
-        setAlertModal({ isOpen: true, message: "Failed to delete item. Please try again.", variant: 'error' });
       }
-    }, 300); // Match animation duration
-  }, []);
+    },
+    [items, updateItem]
+  );
+
+  const handleRemoveItem = useCallback(
+    async (id: string) => {
+      setDeletingItems((previous) => new Set(previous).add(id));
+
+      setTimeout(async () => {
+        try {
+          await deleteItem({ id });
+          setDeletingItems((previous) => {
+            const next = new Set(previous);
+            next.delete(id);
+            return next;
+          });
+        } catch (error) {
+          console.error("Error deleting item:", error);
+          setDeletingItems((previous) => {
+            const next = new Set(previous);
+            next.delete(id);
+            return next;
+          });
+          setAlertModal({
+            isOpen: true,
+            message: "Failed to delete item. Please try again.",
+            variant: "error",
+          });
+        }
+      }, 300);
+    },
+    [deleteItem]
+  );
 
   const handleAddItem = useCallback(() => {
+    setPrefillItem(null);
     setIsAddModalOpen(true);
   }, []);
 
   const handleUpdateItemWithData = useCallback(
     async (id: string, itemData: Partial<ShoppingListItem>) => {
       try {
-        const response = await fetch(`/api/shopping-list/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(itemData),
-        });
-
-        if (!response.ok) throw new Error("Failed to update item");
-        
-        // Update from response
-        const updated = await response.json();
-        setItems((prevItems) =>
-          prevItems.map((i) =>
-            i.id === id ? { ...i, ...updated } : i
-          )
-        );
+        await updateItem({ id, ...itemData });
       } catch (error) {
         console.error("Error updating item:", error);
-        setAlertModal({ isOpen: true, message: "Failed to update item. Please try again.", variant: 'error' });
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to update item. Please try again.",
+          variant: "error",
+        });
       }
     },
-    []
+    [updateItem]
   );
 
   const handleEditItem = useCallback(
     (id: string) => {
-      const item = items.find((i) => i.id === id);
+      const item = items.find((candidate) => candidate.id === id);
       if (!item) return;
       setEditingItem(item);
     },
@@ -164,80 +137,124 @@ export default function ShoppingListPage() {
     [handleUpdateItemWithData]
   );
 
-  const handleAddItemWithData = useCallback(async (itemData: { name: string; quantity?: number; unit?: string; category?: ShoppingListItem["category"] }) => {
-    try {
-      const response = await fetch("/api/shopping-list", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
+  const handleAddItemWithData = useCallback(
+    async (itemData: {
+      name: string;
+      quantity?: number;
+      unit?: string;
+      category?: ShoppingListItem["category"];
+    }) => {
+      try {
+        await addItem({
           ...itemData,
           source: "manual",
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to add item");
-      
-      // Add new item from response
-      const newItem = await response.json();
-      setItems((prevItems) => [...prevItems, newItem]);
-    } catch (error) {
-      console.error("Error adding item:", error);
-      setAlertModal({ isOpen: true, message: "Failed to add item. Please try again.", variant: 'error' });
-    }
-  }, []);
+        });
+      } catch (error) {
+        console.error("Error adding item:", error);
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to add item. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [addItem]
+  );
 
   const handleScanBarcode = useCallback(() => {
-    setAlertModal({ isOpen: true, message: "Barcode scanning coming soon!", variant: 'info' });
+    setShowScanner(true);
   }, []);
 
+  const handleBarcodeScanned = useCallback(
+    async (barcode: string) => {
+      try {
+        const lookupResponse = await fetch(
+          `/api/barcode/lookup?code=${encodeURIComponent(barcode)}`
+        );
+
+        if (lookupResponse.status === 404) {
+          setPrefillItem({ name: barcode });
+          setIsAddModalOpen(true);
+          setAlertModal({
+            isOpen: true,
+            message: `Barcode ${barcode} was not found. Add item details manually.`,
+            variant: "info",
+          });
+          return;
+        }
+
+        if (!lookupResponse.ok) {
+          throw new Error("Failed to lookup barcode");
+        }
+
+        const lookupData = (await lookupResponse.json()) as BarcodeLookupResponse;
+        await addItem({
+          name: lookupData.prefill.name,
+          category: lookupData.prefill.category,
+          source: "manual",
+        });
+
+        setAlertModal({
+          isOpen: true,
+          message: `Added ${lookupData.prefill.name} from barcode scan.`,
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Error handling shopping barcode scan:", error);
+        setAlertModal({
+          isOpen: true,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to process barcode scan. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [addItem]
+  );
+
   const handleClearChecked = useCallback(() => {
-    const checkedItems = items.filter((i) => i.checked);
+    const checkedItems = items.filter((item) => item.checked);
     if (checkedItems.length === 0) return;
     setIsClearCheckedModalOpen(true);
   }, [items]);
 
   const handleConfirmClearChecked = useCallback(async () => {
-    const checkedItems = items.filter((i) => i.checked);
+    const checkedItems = items.filter((item) => item.checked);
     if (checkedItems.length === 0) return;
 
-    // Start deletion animations for all checked items
     const checkedIds = new Set(checkedItems.map((item) => item.id));
-    setDeletingItems((prev) => new Set([...prev, ...checkedIds]));
+    setDeletingItems((previous) => new Set([...previous, ...checkedIds]));
 
-    // Wait for animation to complete before removing from DOM
     setTimeout(async () => {
       try {
         await Promise.all(
-          checkedItems.map((item) =>
-            fetch(`/api/shopping-list/${item.id}`, {
-              method: "DELETE",
-              credentials: "include",
-            })
-          )
+          checkedItems.map((item) => deleteItem({ id: item.id }))
         );
-        
-        // Remove from state after successful deletion
-        setItems((prevItems) => prevItems.filter((i) => !checkedIds.has(i.id)));
-        setDeletingItems((prev) => {
-          const next = new Set(prev);
+
+        setDeletingItems((previous) => {
+          const next = new Set(previous);
           checkedIds.forEach((id) => next.delete(id));
           return next;
         });
       } catch (error) {
         console.error("Error clearing checked items:", error);
-        // Revert animation on error
-        setDeletingItems((prev) => {
-          const next = new Set(prev);
+        setDeletingItems((previous) => {
+          const next = new Set(previous);
           checkedIds.forEach((id) => next.delete(id));
           return next;
         });
-        setAlertModal({ isOpen: true, message: "Failed to clear checked items. Please try again.", variant: 'error' });
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to clear checked items. Please try again.",
+          variant: "error",
+        });
       }
-    }, 300); // Match animation duration
-  }, [items]);
+    }, 300);
+  }, [items, deleteItem]);
 
-  if (loading) {
+  if (shoppingListData === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-stone-600 dark:text-stone-400">Loading...</div>
@@ -267,22 +284,35 @@ export default function ShoppingListPage() {
       />
       <AddShoppingListItemModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setPrefillItem(null);
+        }}
         onSave={handleAddItemWithData}
+        prefill={prefillItem}
       />
+      {showScanner && (
+        <BarcodeScanner
+          isOpen={showScanner}
+          onClose={() => setShowScanner(false)}
+          onScan={handleBarcodeScanned}
+        />
+      )}
       <ConfirmModal
         isOpen={isClearCheckedModalOpen}
         onClose={() => setIsClearCheckedModalOpen(false)}
         onConfirm={handleConfirmClearChecked}
         title="Clear checked items"
-        message={`Remove ${items.filter((i) => i.checked).length} checked item(s)?`}
+        message={`Remove ${items.filter((item) => item.checked).length} checked item(s)?`}
         confirmText="Remove"
         cancelText="Cancel"
         confirmVariant="danger"
       />
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() =>
+          setAlertModal({ isOpen: false, message: "", variant: "error" })
+        }
         message={alertModal.message}
         variant={alertModal.variant}
       />

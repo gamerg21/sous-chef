@@ -1,17 +1,9 @@
-export { default } from "next-auth/middleware";
+// Convex handles auth on the server side - no middleware needed for route protection.
+// Client-side auth checks are handled by useConvexAuth() in DashboardLayout.
+export default function middleware() {
+  // no-op
+}
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (authentication routes)
-     * - auth/ (authentication pages)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!api/auth|auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: [],
 };
-

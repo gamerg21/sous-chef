@@ -17,6 +17,32 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 
 ---
 
+## ✅ Current Implementation Status (March 2, 2026)
+
+### Implemented
+* Household-scoped auth, inventory CRUD, recipes CRUD, cooking flow, shopping list CRUD
+* Barcode lookup and barcode-to-food mapping support
+* Shopping list barcode flow (scan -> lookup -> add/fallback) wired end-to-end
+* Recipe parity features: JSON import/export and recipe photo upload/remove wiring
+* Unit-system foundation (units, aliases, usage tracking) with combobox + "More units" modal
+* Nutrition macros per serving in recipe model, editor, and detail views
+* Community recipe publish/browse/save/like flows
+* Extensions and integrations management scaffolding
+* BYOK AI provider settings (configure/select/test endpoint scaffold) with encrypted key/token storage at rest
+* Security hardening for password-reset token handling and household owner-role assignment guardrails
+
+### Partial / In Progress
+* Magic link auth provider is configured, but sign-in UI currently uses password flow
+* AI features are still provider-config only (no fully shipped assistant workflow yet)
+* Realtime sync strategy (SSE vs Supabase realtime) not yet implemented
+
+### Planned
+* Offline-tolerant experience
+* AI meal planning/substitutions/nutrition insights
+* Manual non-barcode label scanning
+
+---
+
 ## 🧠 What Sous Chef Does
 
 ### Inventory Management
@@ -26,21 +52,21 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 * **Expiration dates per item instance**
 * Photo attachments
 * Barcode scanning (UPC/EAN)
-* Manual label scanning for non-barcode foods
+* Manual label scanning for non-barcode foods (planned)
 
 ### Recipes
 
 * Private by default, **shareable with the community**
 * Ingredient-to-inventory mapping
 * Nutrition macros per serving
-* Photos and notes
+* Photos and notes (recipe detail upload/remove implemented)
 * Recipe import/export (JSON)
 
 ### Cooking & Planning
 
 * “Cook recipe” flow automatically deducts inventory
 * Missing ingredients go to shopping list
-* Shopping list supports barcode scanning + manual adds
+* Shopping list supports manual adds and barcode scanning
 
 ### Community Recipes
 
@@ -53,7 +79,8 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 
 ### AI (Optional)
 
-* Meal planning, substitutions, nutrition insights
+* BYOK provider configuration is available
+* Meal planning, substitutions, and nutrition insights are planned/in progress
 * **Self-hosted**: user-supplied API keys only
 
 ---
@@ -72,7 +99,7 @@ Sous Chef is intentionally designed to avoid vendor lock-in.
 * **Supabase-compatible stack**
   * PostgreSQL
   * Storage (photos, labels)
-  * Realtime
+  * Realtime (planned)
 * Local development via Docker
 
 ### Why Supabase First?
@@ -105,7 +132,10 @@ All inventory and recipes are scoped to a household.
 
 * NextAuth.js with Prisma adapter
 * Email/password authentication
-* Magic link support (via email provider)
+* Magic link provider configured (sign-in UI flow in progress)
+* Password-reset token response hardening
+* Household role guardrails (only owners can assign owner role)
+* Encrypted secret storage for integration/provider credentials (AES-256-GCM via `APP_ENCRYPTION_KEY`)
 * PostgreSQL database (Supabase-compatible)
 * Household-based access control
 * Self-hosters fully control auth + storage
@@ -176,8 +206,15 @@ DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 # You can generate one with: openssl rand -base64 32
 NEXTAUTH_SECRET="your-secret-key-here"
 
+# App encryption key (used to encrypt provider API keys/tokens at rest)
+# Generate one with: openssl rand -base64 32
+APP_ENCRYPTION_KEY="your-32-byte-base64-key"
+
 # NextAuth URL (for local development)
 NEXTAUTH_URL="http://localhost:3000"
+
+# Canonical application URL used for password reset links
+APP_BASE_URL="http://localhost:3000"
 ```
 
 ### Docker Compose dev/test (build from source)

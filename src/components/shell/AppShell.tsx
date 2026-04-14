@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import MainNav, { type NavigationItem } from './MainNav'
@@ -219,6 +219,13 @@ function AppShellInternal({
 
   const shellUser: ShellUser | undefined = user
 
+  const prefetchRoute = useCallback(
+    (href: string) => {
+      router.prefetch(href)
+    },
+    [router]
+  )
+
   const handleNavigate = (href: string) => {
     router.push(href)
   }
@@ -319,6 +326,7 @@ function AppShellInternal({
             <div className="mt-2 flex-1 overflow-y-auto px-1">
               <MainNav
                 navigationItems={navItems}
+                onPrefetch={prefetchRoute}
                 onNavigate={(href) => {
                   handleNavigate(href)
                   setMobileNavOpen(false)
@@ -330,7 +338,14 @@ function AppShellInternal({
             </div>
 
             <div className={cx('pt-3 mt-3 border-t', neutral.panelBorder)}>
-              <UserMenu user={shellUser} onNavigate={handleNavigate} onLogout={onLogout} neutral={neutral} accent={accent} />
+              <UserMenu
+                user={shellUser}
+                onPrefetch={prefetchRoute}
+                onNavigate={handleNavigate}
+                onLogout={onLogout}
+                neutral={neutral}
+                accent={accent}
+              />
             </div>
           </aside>
         </div>
@@ -371,6 +386,7 @@ function AppShellInternal({
             <div className="flex-1 overflow-y-auto px-3 py-3">
               <MainNav
                 navigationItems={navItems}
+                onPrefetch={prefetchRoute}
                 onNavigate={handleNavigate}
                 accent={accent}
                 neutral={neutral}
@@ -379,7 +395,14 @@ function AppShellInternal({
             </div>
 
             <div className={cx('p-3 border-t', neutral.panelBorder)}>
-              <UserMenu user={shellUser} onNavigate={handleNavigate} onLogout={onLogout} neutral={neutral} accent={accent} />
+              <UserMenu
+                user={shellUser}
+                onPrefetch={prefetchRoute}
+                onNavigate={handleNavigate}
+                onLogout={onLogout}
+                neutral={neutral}
+                accent={accent}
+              />
             </div>
           </div>
         </aside>
@@ -416,4 +439,3 @@ export default function AppShell(props: AppShellProps) {
 }
 
 export { AppShellInternal }
-

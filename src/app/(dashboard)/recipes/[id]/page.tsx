@@ -1,102 +1,129 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
 import { useRouter, useParams } from "next/navigation";
 import { RecipeDetailView } from "@/components/recipes";
-import type { Recipe, PantrySnapshotItem } from "@/components/recipes";
+import type { Recipe } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function RecipeDetailPage() {
   const router = useRouter();
   const params = useParams();
   const recipeId = params.id as string;
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [pantrySnapshot, setPantrySnapshot] = useState<PantrySnapshotItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
-  const fetchRecipe = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/recipes/${recipeId}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          router.push("/recipes");
-          return;
-        }
-        throw new Error("Failed to fetch recipe");
-      }
-      const data = await response.json();
-      setRecipe(data);
-    } catch (error) {
-      console.error("Error fetching recipe:", error);
-      router.push("/recipes");
-    } finally {
-      setLoading(false);
-    }
-  }, [recipeId, router]);
+  const recipe = useQuery(api.recipes.getById, recipeId ? { id: recipeId } : "skip");
+  const inventoryData = useQuery(api.inventory.list, {});
+  const toggleFavorite = useMutation(api.recipes.toggleFavorite);
+  const updateRecipe = useMutation(api.recipes.update);
 
-  const fetchInventory = useCallback(async () => {
-    try {
-      const response = await fetch("/api/inventory");
-      if (!response.ok) return;
-      const data = await response.json();
-      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: { id: string; name: string; quantity: number | null; unit: string | null }) => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-      }));
-      setPantrySnapshot(snapshot);
-    } catch (error) {
-      console.error("Error fetching inventory:", error);
-    }
-  }, []);
+  const pantrySnapshot = useMemo(
+    () => inventoryData?.items || [],
+    [inventoryData?.items]
+  );
 
-  useEffect(() => {
-    fetchRecipe();
-    fetchInventory();
-  }, [fetchRecipe, fetchInventory]);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
 
   const handleBack = useCallback(() => {
     router.push("/recipes");
   }, [router]);
 
-  const handleCook = useCallback((id: string) => {
-    router.push(`/cooking?recipeId=${id}`);
-  }, [router]);
+  const handleCook = useCallback(
+    (id: string) => {
+      router.push(`/cooking?recipeId=${id}`);
+    },
+    [router]
+  );
 
-  const handleEdit = useCallback((id: string) => {
-    router.push(`/recipes/${id}/edit`);
-  }, [router]);
+  const handleEdit = useCallback(
+    (id: string) => {
+      router.push(`/recipes/${id}/edit`);
+    },
+    [router]
+  );
 
-  const handleToggleFavorite = useCallback(async (id: string) => {
-    try {
-      const response = await fetch(`/api/recipes/${id}/favorite`, {
-        method: "PATCH",
-      });
-      if (!response.ok) throw new Error("Failed to toggle favorite");
-      await fetchRecipe();
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-      setAlertModal({ isOpen: true, message: "Failed to toggle favorite. Please try again.", variant: 'error' });
-    }
-  }, [fetchRecipe]);
+  const handleToggleFavorite = useCallback(
+    async (id: string) => {
+      try {
+        await toggleFavorite({ id });
+      } catch (error) {
+        console.error("Error toggling favorite:", error);
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to toggle favorite. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [toggleFavorite]
+  );
 
-  const handleUploadPhoto = useCallback(async (id: string, file: File) => {
-    // TODO: Implement photo upload
-    void id; // Parameter required by interface but not yet used
-    void file; // Parameter required by interface but not yet used
-    setAlertModal({ isOpen: true, message: "Photo upload coming soon!", variant: 'info' });
-  }, []);
+  const handleUploadPhoto = useCallback(
+    async (id: string, file: File) => {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
 
-  const handleRemovePhoto = useCallback(async (id: string) => {
-    // TODO: Implement photo removal
-    void id; // Parameter required by interface but not yet used
-    setAlertModal({ isOpen: true, message: "Photo removal coming soon!", variant: 'info' });
-  }, []);
+        const uploadResponse = await fetch("/api/upload/recipe", {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData.error || "Failed to upload photo");
+        }
 
-  if (loading) {
+        await updateRecipe({ id, photoUrl: uploadData.file.url });
+        setAlertModal({
+          isOpen: true,
+          message: "Recipe photo updated.",
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Error uploading recipe photo:", error);
+        setAlertModal({
+          isOpen: true,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to upload photo. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [updateRecipe]
+  );
+
+  const handleRemovePhoto = useCallback(
+    async (id: string) => {
+      try {
+        await updateRecipe({ id, photoUrl: null });
+        setAlertModal({
+          isOpen: true,
+          message: "Recipe photo removed.",
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Error removing recipe photo:", error);
+        setAlertModal({
+          isOpen: true,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to remove photo. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [updateRecipe]
+  );
+
+  if (recipe === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-stone-600 dark:text-stone-400">Loading...</div>
@@ -111,7 +138,7 @@ export default function RecipeDetailPage() {
   return (
     <>
       <RecipeDetailView
-        recipe={recipe}
+        recipe={recipe as Recipe}
         pantrySnapshot={pantrySnapshot}
         onBack={handleBack}
         onCook={handleCook}
@@ -122,11 +149,12 @@ export default function RecipeDetailPage() {
       />
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() =>
+          setAlertModal({ isOpen: false, message: "", variant: "error" })
+        }
         message={alertModal.message}
         variant={alertModal.variant}
       />
     </>
   );
 }
-

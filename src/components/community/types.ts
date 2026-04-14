@@ -1,17 +1,6 @@
 export type CommunityRecipeId = string
 
-export type IngredientUnit =
-  | 'count'
-  | 'tsp'
-  | 'tbsp'
-  | 'cup'
-  | 'ml'
-  | 'l'
-  | 'g'
-  | 'kg'
-  | 'oz'
-  | 'lb'
-  | 'pinch'
+export type IngredientUnit = string
 
 export interface CommunityAuthor {
   id: string
@@ -40,6 +29,10 @@ export interface CommunityRecipe {
   tags?: string[]
   servings?: number
   totalTimeMinutes?: number
+  caloriesKcal?: number
+  proteinGrams?: number
+  carbsGrams?: number
+  fatGrams?: number
   sourceUrl?: string
   ingredients: CommunityRecipeIngredient[]
   steps: CommunityRecipeStep[]

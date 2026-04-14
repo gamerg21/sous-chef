@@ -1,8 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Barcode, Plus, Search, Sparkles, TriangleAlert } from 'lucide-react'
-import type { InventoryFilter, InventoryItem, KitchenLocation, KitchenLocationId } from './types'
+import {
+  INVENTORY_ALL_CATEGORIES_VALUE,
+  INVENTORY_UNCATEGORIZED_LABEL,
+  type InventoryFilter,
+  type InventoryItem,
+  type KitchenLocation,
+  type KitchenLocationId,
+} from './types'
 import { InventoryItemRow } from './InventoryItemRow'
 import { LocationTabs } from './LocationTabs'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { itemExpiryStatus } from './utils'
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -16,9 +24,11 @@ export interface KitchenInventoryDashboardViewProps {
   selectedLocationId?: KitchenLocationId | 'all'
   filter?: InventoryFilter
   searchQuery?: string
+  selectedCategory?: string
   onSelectLocation?: (locationId: KitchenLocationId | 'all') => void
   onChangeFilter?: (filter: InventoryFilter) => void
   onSearchChange?: (query: string) => void
+  onSelectCategory?: (category: string) => void
   onScanBarcode?: () => void
   onAddItem?: () => void
   onEditItem?: (id: string) => void
@@ -35,9 +45,11 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     selectedLocationId = 'all',
     filter = 'all',
     searchQuery = '',
+    selectedCategory = INVENTORY_ALL_CATEGORIES_VALUE,
     onSelectLocation,
     onChangeFilter,
     onSearchChange,
+    onSelectCategory,
     onScanBarcode,
     onAddItem,
     onEditItem,
@@ -50,10 +62,12 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
   const [localLocation, setLocalLocation] = useState<KitchenLocationId | 'all'>(selectedLocationId)
   const [localFilter, setLocalFilter] = useState<InventoryFilter>(filter)
   const [localQuery, setLocalQuery] = useState<string>(searchQuery)
+  const [localCategory, setLocalCategory] = useState<string>(selectedCategory)
 
   const effectiveLocation = onSelectLocation ? selectedLocationId : localLocation
   const effectiveFilter = onChangeFilter ? filter : localFilter
   const effectiveQuery = onSearchChange ? searchQuery : localQuery
+  const effectiveCategory = onSelectCategory ? selectedCategory : localCategory
 
   const locationMap = useMemo(() => {
     const map: Record<string, KitchenLocation> = {}
@@ -61,12 +75,51 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     return map
   }, [locations])
 
+  const categoryOptions = useMemo(() => {
+    const sourceItems = effectiveLocation === 'all'
+      ? items
+      : items.filter((item) => item.locationId === effectiveLocation)
+    const counts = new Map<string, number>()
+    for (const item of sourceItems) {
+      const key = item.category?.trim() || INVENTORY_UNCATEGORIZED_LABEL
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+
+    return Array.from(counts.entries())
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => a.value.localeCompare(b.value))
+  }, [items, effectiveLocation])
+
+  const categoryFilterOptions = useMemo(() => {
+    return [
+      { value: INVENTORY_ALL_CATEGORIES_VALUE, label: 'All categories' },
+      ...categoryOptions.map((option) => ({
+        value: option.value,
+        label: `${option.value} (${option.count})`,
+        searchText: option.value,
+      })),
+    ]
+  }, [categoryOptions])
+
+  useEffect(() => {
+    if (effectiveCategory === INVENTORY_ALL_CATEGORIES_VALUE) return
+    const categoryStillExists = categoryOptions.some((option) => option.value === effectiveCategory)
+    if (categoryStillExists) return
+
+    if (onSelectCategory) onSelectCategory(INVENTORY_ALL_CATEGORIES_VALUE)
+    else setLocalCategory(INVENTORY_ALL_CATEGORIES_VALUE)
+  }, [categoryOptions, effectiveCategory, onSelectCategory])
+
   const derived = useMemo(() => {
     const query = effectiveQuery.trim().toLowerCase()
     let list = items
 
     if (effectiveLocation !== 'all') {
       list = list.filter((i) => i.locationId === effectiveLocation)
+    }
+
+    if (effectiveCategory !== INVENTORY_ALL_CATEGORIES_VALUE) {
+      list = list.filter((i) => (i.category?.trim() || INVENTORY_UNCATEGORIZED_LABEL) === effectiveCategory)
     }
 
     if (query) {
@@ -100,7 +153,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
       lowStockCount,
       totalCount: items.length,
     }
-  }, [items, effectiveLocation, effectiveFilter, effectiveQuery])
+  }, [items, effectiveLocation, effectiveFilter, effectiveCategory, effectiveQuery])
 
   const emptyState = derived.list.length === 0
   const showSearchEmpty = Boolean(effectiveQuery.trim()) && emptyState
@@ -189,7 +242,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
               />
             </div>
 
-            {/* Row 2: Search + filters */}
+            {/* Row 2: Search + category + filters */}
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <div className="relative flex-1">
                 <Search
@@ -207,32 +260,48 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
                 />
               </div>
 
-              <div className="inline-flex w-fit rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-1">
-                {([
-                  { id: 'all', label: 'All' },
-                  { id: 'expiring-soon', label: 'Expiring' },
-                  { id: 'low-stock', label: 'Low stock' },
-                ] as const).map((t) => {
-                  const active = t.id === effectiveFilter
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        if (onChangeFilter) onChangeFilter(t.id)
-                        else setLocalFilter(t.id)
-                      }}
-                      className={cx(
-                        'px-3 py-1.5 text-sm rounded-md transition-colors',
-                        active
-                          ? 'bg-stone-900 text-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                          : 'text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                      )}
-                    >
-                      {t.label}
-                    </button>
-                  )
-                })}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                <SearchableSelect
+                  value={effectiveCategory}
+                  onChange={(selectedValue) => {
+                    if (onSelectCategory) onSelectCategory(selectedValue)
+                    else setLocalCategory(selectedValue)
+                  }}
+                  options={categoryFilterOptions}
+                  placeholder="All categories"
+                  searchPlaceholder="Search categories..."
+                  emptyMessage="No matching categories"
+                  ariaLabel="Filter inventory by category"
+                  className="min-w-[190px] sm:w-[230px]"
+                />
+
+                <div className="inline-flex w-fit rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-1">
+                  {([
+                    { id: 'all', label: 'All' },
+                    { id: 'expiring-soon', label: 'Expiring' },
+                    { id: 'low-stock', label: 'Low stock' },
+                  ] as const).map((t) => {
+                    const active = t.id === effectiveFilter
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          if (onChangeFilter) onChangeFilter(t.id)
+                          else setLocalFilter(t.id)
+                        }}
+                        className={cx(
+                          'px-3 py-1.5 text-sm rounded-md transition-colors',
+                          active
+                            ? 'bg-stone-900 text-stone-100 dark:bg-stone-100 dark:text-stone-900'
+                            : 'text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
+                        )}
+                      >
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>

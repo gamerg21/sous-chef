@@ -1,62 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../../../convex/_generated/api";
 import { useRouter, useParams } from "next/navigation";
 import { RecipeEditorView } from "@/components/recipes";
-import type { Recipe, PantrySnapshotItem } from "@/components/recipes";
+import type { Recipe } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function EditRecipePage() {
   const router = useRouter();
   const params = useParams();
   const recipeId = params.id as string;
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [pantrySnapshot, setPantrySnapshot] = useState<PantrySnapshotItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
 
-  const fetchRecipe = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/recipes/${recipeId}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          router.push("/recipes");
-          return;
-        }
-        throw new Error("Failed to fetch recipe");
-      }
-      const data = await response.json();
-      setRecipe(data);
-    } catch (error) {
-      console.error("Error fetching recipe:", error);
-      router.push("/recipes");
-    } finally {
-      setLoading(false);
-    }
-  }, [recipeId, router]);
+  const recipe = useQuery(api.recipes.getById, recipeId ? { id: recipeId } : "skip");
+  const inventoryData = useQuery(api.inventory.list, {});
+  const updateRecipe = useMutation(api.recipes.update);
 
-  const fetchInventory = useCallback(async () => {
-    try {
-      const response = await fetch("/api/inventory");
-      if (!response.ok) return;
-      const data = await response.json();
-      const snapshot: PantrySnapshotItem[] = (data.items || []).map((item: { id: string; name: string; quantity: number | null; unit: string | null }) => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-      }));
-      setPantrySnapshot(snapshot);
-    } catch (error) {
-      console.error("Error fetching inventory:", error);
-    }
-  }, []);
+  const pantrySnapshot = useMemo(
+    () => inventoryData?.items || [],
+    [inventoryData?.items]
+  );
 
-  useEffect(() => {
-    fetchRecipe();
-    fetchInventory();
-  }, [fetchRecipe, fetchInventory]);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
 
   const handleBack = useCallback(() => {
     router.push(`/recipes/${recipeId}`);
@@ -66,33 +36,27 @@ export default function EditRecipePage() {
     router.push(`/recipes/${recipeId}`);
   }, [router, recipeId]);
 
-  const handleSave = useCallback(async (updatedRecipe: Recipe) => {
-    try {
-      const response = await fetch(`/api/recipes/${recipeId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedRecipe),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        if (error.details && Array.isArray(error.details)) {
-          const errorMessages = error.details
-            .map((d: { path: string[]; message: string }) => `${d.path.join(".")}: ${d.message}`)
-            .join("\n");
-          throw new Error(`Validation error:\n${errorMessages}`);
-        }
-        throw new Error(error.error || "Failed to update recipe");
+  const handleSave = useCallback(
+    async (updatedRecipe: Recipe) => {
+      try {
+        await updateRecipe({ id: recipeId, ...updatedRecipe });
+        router.push(`/recipes/${recipeId}`);
+      } catch (error) {
+        console.error("Error updating recipe:", error);
+        setAlertModal({
+          isOpen: true,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update recipe. Please try again.",
+          variant: "error",
+        });
       }
+    },
+    [recipeId, router, updateRecipe]
+  );
 
-      router.push(`/recipes/${recipeId}`);
-    } catch (error) {
-      console.error("Error updating recipe:", error);
-      setAlertModal({ isOpen: true, message: error instanceof Error ? error.message : "Failed to update recipe. Please try again.", variant: 'error' });
-    }
-  }, [router, recipeId]);
-
-  if (loading) {
+  if (recipe === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-stone-600 dark:text-stone-400">Loading...</div>
@@ -115,11 +79,12 @@ export default function EditRecipePage() {
       />
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() =>
+          setAlertModal({ isOpen: false, message: "", variant: "error" })
+        }
         message={alertModal.message}
         variant={alertModal.variant}
       />
     </>
   );
 }
-

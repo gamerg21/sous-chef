@@ -54,7 +54,29 @@ export interface Barcode {
   type: 'UPC' | 'EAN'
 }
 
-export type QuantityUnit = 'count' | 'g' | 'kg' | 'oz' | 'lb' | 'ml' | 'l'
+export type QuantityUnit = string
+
+export interface NutritionPer100g {
+  energyKcal?: number
+  fatG?: number
+  carbsG?: number
+  sugarsG?: number
+  proteinG?: number
+  saltG?: number
+  fiberG?: number
+}
+
+export interface FoodFacts {
+  brand?: string
+  categoriesTags?: string[]
+  ingredientsText?: string
+  allergensTags?: string[]
+  nutriscoreGrade?: string
+  novaGroup?: number
+  ecoscoreGrade?: string
+  imageFrontUrl?: string
+  nutritionPer100g?: NutritionPer100g
+}
 
 export interface InventoryItem {
   id: string
@@ -73,6 +95,8 @@ export interface InventoryItem {
   photoUrl?: string
   /** Optional barcode (UPC/EAN) */
   barcode?: string
+  /** Optional enriched facts from barcode providers */
+  foodFacts?: FoodFacts
 }
 
 export interface MediaAsset {
@@ -86,18 +110,7 @@ export interface MediaAsset {
 
 export type RecipeVisibility = 'private' | 'household' | 'public' | 'unlisted'
 
-export type IngredientUnit =
-  | 'count'
-  | 'tsp'
-  | 'tbsp'
-  | 'cup'
-  | 'ml'
-  | 'l'
-  | 'g'
-  | 'kg'
-  | 'oz'
-  | 'lb'
-  | 'pinch'
+export type IngredientUnit = string
 
 export interface RecipeIngredient {
   id: string
@@ -126,6 +139,10 @@ export interface Recipe {
   visibility?: RecipeVisibility
   servings?: number
   totalTimeMinutes?: number
+  caloriesKcal?: number
+  proteinGrams?: number
+  carbsGrams?: number
+  fatGrams?: number
   sourceUrl?: string
   notes?: string
   /** ISO date string */
@@ -169,4 +186,3 @@ export interface UserPreferences {
   timezone?: string
   dateFormat?: string
 }
-

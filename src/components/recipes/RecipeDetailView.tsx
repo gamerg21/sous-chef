@@ -19,6 +19,11 @@ export interface RecipeDetailViewProps {
 export function RecipeDetailView(props: RecipeDetailViewProps) {
   const { recipe, pantrySnapshot = [], onBack, onCook, onEdit, onToggleFavorite, onUploadPhoto, onRemovePhoto } = props
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const hasNutrition =
+    typeof recipe.caloriesKcal === 'number' ||
+    typeof recipe.proteinGrams === 'number' ||
+    typeof recipe.carbsGrams === 'number' ||
+    typeof recipe.fatGrams === 'number'
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
@@ -174,6 +179,38 @@ export function RecipeDetailView(props: RecipeDetailViewProps) {
           {/* Main grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-1 space-y-3">
+              {hasNutrition && (
+                <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-4">
+                  <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">Nutrition (per serving)</h2>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-md bg-stone-100 dark:bg-stone-900/60 px-3 py-2">
+                      <div className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400">Calories</div>
+                      <div className="mt-1 font-medium text-stone-800 dark:text-stone-100">
+                        {typeof recipe.caloriesKcal === 'number' ? `${recipe.caloriesKcal} kcal` : '—'}
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-stone-100 dark:bg-stone-900/60 px-3 py-2">
+                      <div className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400">Protein</div>
+                      <div className="mt-1 font-medium text-stone-800 dark:text-stone-100">
+                        {typeof recipe.proteinGrams === 'number' ? `${recipe.proteinGrams} g` : '—'}
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-stone-100 dark:bg-stone-900/60 px-3 py-2">
+                      <div className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400">Carbs</div>
+                      <div className="mt-1 font-medium text-stone-800 dark:text-stone-100">
+                        {typeof recipe.carbsGrams === 'number' ? `${recipe.carbsGrams} g` : '—'}
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-stone-100 dark:bg-stone-900/60 px-3 py-2">
+                      <div className="text-[11px] uppercase tracking-wide text-stone-500 dark:text-stone-400">Fat</div>
+                      <div className="mt-1 font-medium text-stone-800 dark:text-stone-100">
+                        {typeof recipe.fatGrams === 'number' ? `${recipe.fatGrams} g` : '—'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-4">
                 <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">Ingredients</h2>
                 <div className="mt-3 space-y-2">
@@ -255,5 +292,4 @@ export function RecipeDetailView(props: RecipeDetailViewProps) {
     </div>
   )
 }
-
 

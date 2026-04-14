@@ -1,78 +1,57 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
-interface AppUser {
+interface AdminUser {
   id: string;
-  name: string | null;
   email: string;
-  image: string | null;
+  name: string;
   isAppAdmin: boolean;
-  createdAt: string;
-  updatedAt: string;
   households: Array<{
     householdId: string;
     householdName: string;
-    role: "owner" | "admin" | "member";
+    role: string;
   }>;
 }
 
 export default function AdminUsersClient() {
-  const [users, setUsers] = useState<AppUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
-  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(
+    null
+  );
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: "50",
-      });
-      if (searchQuery) {
-        params.append("search", searchQuery);
-      }
-      const response = await fetch(`/api/admin/users?${params}`);
-      if (!response.ok) {
-        if (response.status === 403) {
-          setError("You don't have permission to access this page. Only app administrators can view all users.");
-          return;
-        }
-        throw new Error("Failed to fetch users");
-      }
-      const data = await response.json();
-      setUsers(data.users || []);
-      setTotalPages(data.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setError("Failed to load users. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, searchQuery]);
+  const usersData = useQuery(api.admin.listUsers, {
+    page,
+    search: searchQuery || undefined,
+    limit: 50,
+  });
+  const updateUser = useMutation(api.admin.updateUser);
+  const deleteUser = useMutation(api.admin.deleteUser);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, searchQuery, fetchUsers]);
+  const users = usersData?.users || [];
+  const totalPages = usersData?.pagination?.totalPages || 1;
 
   const handleAddUser = () => {
     setEditingUser(null);
     setShowAddModal(true);
   };
 
-  const handleEditUser = (user: AppUser) => {
+  const handleEditUser = (user: AdminUser) => {
     setEditingUser(user);
     setShowAddModal(true);
   };
@@ -85,20 +64,16 @@ export default function AdminUsersClient() {
     if (!userToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete user");
-      }
-
-      await fetchUsers();
+      await deleteUser({ id: userToDelete.id });
       setUserToDelete(null);
     } catch (err) {
       console.error("Error deleting user:", err);
-      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to delete user. Please try again.", variant: 'error' });
+      setAlertModal({
+        isOpen: true,
+        message:
+          err instanceof Error ? err.message : "Failed to delete user. Please try again.",
+        variant: "error",
+      });
       setUserToDelete(null);
     }
   };
@@ -111,70 +86,46 @@ export default function AdminUsersClient() {
   }) => {
     try {
       if (editingUser) {
-        // Update existing user
-        const response = await fetch(`/api/admin/users/${editingUser.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: userData.email,
-            name: userData.name,
-            isAppAdmin: userData.isAppAdmin,
-            password: userData.password || undefined,
-          }),
+        await updateUser({
+          id: editingUser.id,
+          email: userData.email,
+          name: userData.name,
+          isAppAdmin: userData.isAppAdmin,
+          password: userData.password || undefined,
         });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to update user");
-        }
       } else {
-        // Add new user
-        const response = await fetch("/api/admin/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(userData),
+        await updateUser({
+          id: "",
+          email: userData.email,
+          name: userData.name,
+          isAppAdmin: userData.isAppAdmin,
+          password: userData.password,
         });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to create user");
-        }
       }
 
       setShowAddModal(false);
       setEditingUser(null);
-      await fetchUsers();
     } catch (err) {
       console.error("Error saving user:", err);
-      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to save user. Please try again.", variant: 'error' });
+      setAlertModal({
+        isOpen: true,
+        message:
+          err instanceof Error ? err.message : "Failed to save user. Please try again.",
+        variant: "error",
+      });
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchUsers();
+    setSearchQuery(searchInput.trim());
   };
 
-  if (loading && users.length === 0) {
+  if (usersData === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
-    );
-  }
-
-  if (error && !users.length) {
-    return (
-      <div className="p-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-semibold mb-4 text-stone-900 dark:text-stone-100">
-            App Administration
-          </h1>
-          <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-lg p-4 text-rose-800 dark:text-rose-300">
-            {error}
-          </div>
-        </div>
       </div>
     );
   }
@@ -207,8 +158,8 @@ export default function AdminUsersClient() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search by name or email..."
                   className="w-full pl-10 pr-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
                 />
@@ -360,7 +311,7 @@ export default function AdminUsersClient() {
       )}
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() => setAlertModal({ isOpen: false, message: "", variant: "error" })}
         message={alertModal.message}
         variant={alertModal.variant}
       />
@@ -369,7 +320,11 @@ export default function AdminUsersClient() {
         onClose={() => setUserToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Delete user"
-        message={userToDelete ? `Are you sure you want to delete ${userToDelete.name}? This action cannot be undone.` : ''}
+        message={
+          userToDelete
+            ? `Are you sure you want to delete ${userToDelete.name}? This action cannot be undone.`
+            : ""
+        }
         confirmText="Delete"
         cancelText="Cancel"
         confirmVariant="danger"
@@ -379,7 +334,7 @@ export default function AdminUsersClient() {
 }
 
 interface AppUserModalProps {
-  user: AppUser | null;
+  user: AdminUser | null;
   onSave: (data: {
     email: string;
     name: string;
@@ -397,17 +352,25 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
     password: "",
   });
   const [saving, setSaving] = useState(false);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email.trim() || !formData.name.trim()) {
-      setAlertModal({ isOpen: true, message: "Email and name are required", variant: 'error' });
+      setAlertModal({ isOpen: true, message: "Email and name are required", variant: "error" });
       return;
     }
 
     if (!user && !formData.password) {
-      setAlertModal({ isOpen: true, message: "Password is required for new users", variant: 'error' });
+      setAlertModal({
+        isOpen: true,
+        message: "Password is required for new users",
+        variant: "error",
+      });
       return;
     }
 
@@ -417,7 +380,7 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
         email: formData.email,
         name: formData.name,
         isAppAdmin: formData.isAppAdmin,
-        password: user ? (formData.password || undefined) : formData.password,
+        password: user ? formData.password || undefined : formData.password,
       });
     } finally {
       setSaving(false);
@@ -517,11 +480,10 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
       </div>
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() => setAlertModal({ isOpen: false, message: "", variant: "error" })}
         message={alertModal.message}
         variant={alertModal.variant}
       />
     </div>
   );
 }
-

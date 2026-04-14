@@ -106,6 +106,26 @@ export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove,
         {item.notes && (
           <div className="mt-2 text-sm text-stone-600 dark:text-stone-300 line-clamp-2">{item.notes}</div>
         )}
+
+        {item.foodFacts && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
+            {item.foodFacts.nutriscoreGrade && (
+              <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60">
+                Nutri-Score {item.foodFacts.nutriscoreGrade.toUpperCase()}
+              </span>
+            )}
+            {item.foodFacts.novaGroup && (
+              <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60">
+                NOVA {item.foodFacts.novaGroup}
+              </span>
+            )}
+            {item.foodFacts.allergensTags && item.foodFacts.allergensTags.length > 0 && (
+              <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60">
+                Allergens: {item.foodFacts.allergensTags.length}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Intentionally no always-visible row actions; actions live in the "..." overflow menu above. */}

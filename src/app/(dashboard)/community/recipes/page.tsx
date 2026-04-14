@@ -1,63 +1,69 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CommunityRecipeFeedView } from "@/components/community";
 import type { CommunityRecipe } from "@/components/community/types";
+import { AlertModal } from "@/components/ui/alert-modal";
 
 export default function CommunityRecipesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [recipes, setRecipes] = useState<CommunityRecipe[]>([]);
-  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [tag, setTag] = useState(searchParams.get("tag") || "");
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
 
-  const fetchRecipes = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (query) params.set("search", query);
-      if (tag) params.set("tag", tag);
-      params.set("sort", "recent");
+  const recipesData = useQuery(api.community.listRecipes, {
+    search: query || undefined,
+    tag: tag || undefined,
+    sort: "recent",
+  });
+  const saveRecipe = useMutation(api.community.saveRecipe);
 
-      const response = await fetch(`/api/community/recipes?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to fetch recipes");
-      const data = await response.json();
-      setRecipes(data.recipes || []);
-    } catch (error) {
-      console.error("Error fetching recipes:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [query, tag]);
+  const recipes = useMemo<CommunityRecipe[]>(
+    () => recipesData?.recipes || [],
+    [recipesData?.recipes]
+  );
 
-  useEffect(() => {
-    fetchRecipes();
-  }, [fetchRecipes]);
+  const handleOpenRecipe = useCallback(
+    (id: string) => {
+      router.push(`/community/recipes/${id}`);
+    },
+    [router]
+  );
 
-  const handleOpenRecipe = useCallback((id: string) => {
-    router.push(`/community/recipes/${id}`);
-  }, [router]);
+  const handleSaveRecipe = useCallback(
+    async (id: string) => {
+      try {
+        await saveRecipe({ id });
+        setAlertModal({
+          isOpen: true,
+          message: "Recipe saved to your library!",
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Error saving recipe:", error);
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to save recipe. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [saveRecipe]
+  );
 
-  const handleSaveRecipe = useCallback(async (id: string) => {
-    try {
-      const response = await fetch(`/api/community/recipes/${id}/save`, {
-        method: "POST",
-      });
-      if (!response.ok) throw new Error("Failed to save recipe");
-      alert("Recipe saved to your library!");
-    } catch (error) {
-      console.error("Error saving recipe:", error);
-      alert("Failed to save recipe. Please try again.");
-    }
+  const handleTagChange = useCallback((nextTag: string | "all") => {
+    setTag(nextTag === "all" ? "" : nextTag);
   }, []);
 
-  const handleTagChange = useCallback((tag: string | 'all') => {
-    setTag(tag === 'all' ? '' : tag);
-  }, []);
-
-  if (loading) {
+  if (recipesData === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-stone-600 dark:text-stone-400">Loading...</p>
@@ -70,13 +76,20 @@ export default function CommunityRecipesPage() {
       <CommunityRecipeFeedView
         recipes={recipes}
         searchQuery={query}
-        activeTag={tag || 'all'}
+        activeTag={tag || "all"}
         onSearchChange={setQuery}
         onSetTag={handleTagChange}
         onOpenRecipe={handleOpenRecipe}
         onSaveToLibrary={handleSaveRecipe}
       />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() =>
+          setAlertModal({ isOpen: false, message: "", variant: "error" })
+        }
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
     </div>
   );
 }
-

@@ -14,6 +14,7 @@ export type NavigationItem = { label: string; href: string; isActive?: boolean }
 export interface MainNavProps {
   navigationItems: NavigationItem[]
   onNavigate?: (href: string) => void
+  onPrefetch?: (href: string) => void
   accent: {
     activeBg: string
     activeText: string
@@ -45,6 +46,7 @@ function iconForLabel(label: string): LucideIcon {
 export default function MainNav({
   navigationItems,
   onNavigate,
+  onPrefetch,
   accent,
   neutral,
   headingFont,
@@ -65,6 +67,9 @@ export default function MainNav({
               <button
                 type="button"
                 onClick={() => onNavigate?.(item.href)}
+                onMouseEnter={() => onPrefetch?.(item.href)}
+                onFocus={() => onPrefetch?.(item.href)}
+                onTouchStart={() => onPrefetch?.(item.href)}
                 className={cx(
                   'w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-left',
                   'transition-colors',
@@ -91,4 +96,3 @@ export default function MainNav({
     </nav>
   )
 }
-

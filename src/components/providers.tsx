@@ -1,9 +1,7 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { ConvexClientProvider } from "./ConvexClientProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return <ConvexClientProvider>{children}</ConvexClientProvider>;
 }
-
-

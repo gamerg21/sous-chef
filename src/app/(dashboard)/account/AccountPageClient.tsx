@@ -1,71 +1,59 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { User, Settings, Save, Loader2 } from "lucide-react";
 
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  image: string | null;
-  emailVerified: Date | null;
-}
-
-interface PreferencesData {
-  measurementSystem: "metric" | "imperial";
-  defaultWeightUnit: "g" | "kg" | "oz" | "lb";
-  defaultVolumeUnit: "ml" | "l" | "cup" | "tbsp" | "tsp";
-  timezone: string | null;
-  dateFormat: string | null;
-}
-
-interface AccountPageClientProps {
-  initialUser: UserData;
-  initialPreferences: PreferencesData;
-}
-
-export default function AccountPageClient({
-  initialUser,
-  initialPreferences,
-}: AccountPageClientProps) {
+export default function AccountPageClient() {
   const router = useRouter();
-  const [user, setUser] = useState(initialUser);
-  const [preferences, setPreferences] = useState(initialPreferences);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+
+  const profileData = useQuery(api.users.getProfile, {});
+  const preferencesData = useQuery(api.preferences.get, {});
+  const updateProfile = useMutation(api.users.updateProfile);
+  const updatePreferences = useMutation(api.preferences.update);
+
   const [profileError, setProfileError] = useState<string | null>(null);
   const [preferencesError, setPreferencesError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [preferencesSuccess, setPreferencesSuccess] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
+
+  if (!profileData || !preferencesData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
+      </div>
+    );
+  }
+
+  const profile = profileData.user;
+  const preferences = {
+    measurementSystem: preferencesData.preferences?.measurementSystem || "metric",
+    defaultWeightUnit: preferencesData.preferences?.defaultWeightUnit || "g",
+    defaultVolumeUnit: preferencesData.preferences?.defaultVolumeUnit || "ml",
+    timezone: preferencesData.preferences?.timezone || "",
+    dateFormat: preferencesData.preferences?.dateFormat || "YYYY-MM-DD",
+  };
+
+  const profileFormKey = `${profile.id}:${profile.name ?? ""}:${profile.email}:${profile.image ?? ""}:${profile.emailVerified ?? ""}`;
+  const preferencesFormKey = `${preferences.measurementSystem}:${preferences.defaultWeightUnit}:${preferences.defaultVolumeUnit}:${preferences.timezone}:${preferences.dateFormat}`;
 
   const handleProfileSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSavingProfile(true);
     setProfileError(null);
     setProfileSuccess(false);
+    setProfileSaving(true);
 
+    const formData = new FormData(e.currentTarget);
     try {
-      const formData = new FormData(e.currentTarget);
-      const response = await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.get("name"),
-          email: formData.get("email"),
-          image: formData.get("image") || null,
-        }),
+      await updateProfile({
+        name: String(formData.get("name") || ""),
+        email: String(formData.get("email") || ""),
+        image: String(formData.get("image") || "") || undefined,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update profile");
-      }
-
-      const data = await response.json();
-      setUser(data.user);
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
       router.refresh();
@@ -74,51 +62,33 @@ export default function AccountPageClient({
         error instanceof Error ? error.message : "Failed to update profile"
       );
     } finally {
-      setIsSavingProfile(false);
+      setProfileSaving(false);
     }
   };
 
-  const handlePreferencesSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handlePreferencesSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSavingPreferences(true);
     setPreferencesError(null);
     setPreferencesSuccess(false);
+    setPreferencesSaving(true);
 
+    const formData = new FormData(e.currentTarget);
     try {
-      const formData = new FormData(e.currentTarget);
-      const response = await fetch("/api/user/preferences", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          measurementSystem: formData.get("measurementSystem"),
-          defaultWeightUnit: formData.get("defaultWeightUnit"),
-          defaultVolumeUnit: formData.get("defaultVolumeUnit"),
-          timezone: formData.get("timezone") || null,
-          dateFormat: formData.get("dateFormat") || null,
-        }),
+      await updatePreferences({
+        measurementSystem: String(formData.get("measurementSystem") || "metric"),
+        defaultWeightUnit: String(formData.get("defaultWeightUnit") || "g"),
+        defaultVolumeUnit: String(formData.get("defaultVolumeUnit") || "ml"),
+        timezone: String(formData.get("timezone") || "") || null,
+        dateFormat: String(formData.get("dateFormat") || "") || null,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update preferences");
-      }
-
-      const data = await response.json();
-      setPreferences(data.preferences);
       setPreferencesSuccess(true);
       setTimeout(() => setPreferencesSuccess(false), 3000);
     } catch (error) {
       setPreferencesError(
-        error instanceof Error
-          ? error.message
-          : "Failed to update preferences"
+        error instanceof Error ? error.message : "Failed to update preferences"
       );
     } finally {
-      setIsSavingPreferences(false);
+      setPreferencesSaving(false);
     }
   };
 
@@ -126,7 +96,6 @@ export default function AccountPageClient({
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
       <div className="px-4 py-5 sm:px-6 sm:py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-2">
               <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">
@@ -138,7 +107,6 @@ export default function AccountPageClient({
             </div>
           </div>
 
-          {/* Profile Section */}
           <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
             <div className="flex items-center gap-2 mb-4">
               <User className="w-5 h-5 text-stone-500 dark:text-stone-400" />
@@ -147,7 +115,7 @@ export default function AccountPageClient({
               </h2>
             </div>
 
-            <form onSubmit={handleProfileSubmit} className="space-y-4">
+            <form key={profileFormKey} onSubmit={handleProfileSubmit} className="space-y-4">
               <div>
                 <label
                   htmlFor="name"
@@ -159,7 +127,7 @@ export default function AccountPageClient({
                   type="text"
                   id="name"
                   name="name"
-                  defaultValue={user.name}
+                  defaultValue={profile.name || ""}
                   required
                   className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
@@ -176,11 +144,11 @@ export default function AccountPageClient({
                   type="email"
                   id="email"
                   name="email"
-                  defaultValue={user.email}
+                  defaultValue={profile.email}
                   required
                   className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
-                {!user.emailVerified && (
+                {!profile.emailVerified && (
                   <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                     Email not verified. Check your inbox for a verification link.
                   </p>
@@ -198,7 +166,7 @@ export default function AccountPageClient({
                   type="url"
                   id="image"
                   name="image"
-                  defaultValue={user.image || ""}
+                  defaultValue={profile.image || ""}
                   placeholder="https://example.com/avatar.jpg"
                   className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
@@ -222,10 +190,10 @@ export default function AccountPageClient({
 
               <button
                 type="submit"
-                disabled={isSavingProfile}
+                disabled={profileSaving}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSavingProfile ? (
+                {profileSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Saving...
@@ -240,7 +208,6 @@ export default function AccountPageClient({
             </form>
           </div>
 
-          {/* Preferences Section */}
           <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
             <div className="flex items-center gap-2 mb-4">
               <Settings className="w-5 h-5 text-stone-500 dark:text-stone-400" />
@@ -249,7 +216,11 @@ export default function AccountPageClient({
               </h2>
             </div>
 
-            <form onSubmit={handlePreferencesSubmit} className="space-y-4">
+            <form
+              key={preferencesFormKey}
+              onSubmit={handlePreferencesSubmit}
+              className="space-y-4"
+            >
               <div>
                 <label
                   htmlFor="measurementSystem"
@@ -322,7 +293,7 @@ export default function AccountPageClient({
                   type="text"
                   id="timezone"
                   name="timezone"
-                  defaultValue={preferences.timezone || ""}
+                  defaultValue={preferences.timezone}
                   placeholder="America/New_York"
                   className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
@@ -341,7 +312,7 @@ export default function AccountPageClient({
                 <select
                   id="dateFormat"
                   name="dateFormat"
-                  defaultValue={preferences.dateFormat || "YYYY-MM-DD"}
+                  defaultValue={preferences.dateFormat}
                   className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 >
                   <option value="YYYY-MM-DD">YYYY-MM-DD (default)</option>
@@ -368,10 +339,10 @@ export default function AccountPageClient({
 
               <button
                 type="submit"
-                disabled={isSavingPreferences}
+                disabled={preferencesSaving}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSavingPreferences ? (
+                {preferencesSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Saving...
@@ -390,4 +361,3 @@ export default function AccountPageClient({
     </div>
   );
 }
-

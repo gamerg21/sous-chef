@@ -2,18 +2,7 @@ export type RecipeId = string
 
 export type RecipeVisibility = 'private' | 'household'
 
-export type IngredientUnit =
-  | 'count'
-  | 'tsp'
-  | 'tbsp'
-  | 'cup'
-  | 'ml'
-  | 'l'
-  | 'g'
-  | 'kg'
-  | 'oz'
-  | 'lb'
-  | 'pinch'
+export type IngredientUnit = string
 
 export interface RecipeIngredientMapping {
   inventoryItemLabel: string
@@ -44,6 +33,10 @@ export interface Recipe {
   visibility?: RecipeVisibility
   servings?: number
   totalTimeMinutes?: number
+  caloriesKcal?: number
+  proteinGrams?: number
+  carbsGrams?: number
+  fatGrams?: number
   sourceUrl?: string
   notes?: string
   ingredients: RecipeIngredient[]
@@ -65,5 +58,3 @@ export interface RecipesSampleData {
   pantrySnapshot?: PantrySnapshotItem[]
   suggestedTags?: string[]
 }
-
-

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Crown } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -8,48 +10,29 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface HouseholdUser {
   id: string;
-  name: string | null;
   email: string;
-  image: string | null;
+  name: string;
   role: "owner" | "admin" | "member";
-  joinedAt: string;
-  createdAt: string;
 }
 
 export default function HouseholdUsersClient() {
-  const [users, setUsers] = useState<HouseholdUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const usersData = useQuery(api.households.getMembers, {});
+  const addMember = useMutation(api.households.addMember);
+  const updateMember = useMutation(api.households.updateMember);
+  const removeMember = useMutation(api.households.removeMember);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<HouseholdUser | null>(null);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
-  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(
+    null
+  );
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch("/api/household/users");
-      if (!response.ok) {
-        if (response.status === 403) {
-          setError("You don't have permission to view household users. Only owners and admins can access this page.");
-          return;
-        }
-        throw new Error("Failed to fetch users");
-      }
-      const data = await response.json();
-      setUsers(data.users || []);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setError("Failed to load users. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const users = usersData?.users || [];
 
   const handleAddUser = () => {
     setEditingUser(null);
@@ -69,20 +52,18 @@ export default function HouseholdUsersClient() {
     if (!userToDelete) return;
 
     try {
-      const response = await fetch(`/api/household/users/${userToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to remove user");
-      }
-
-      await fetchUsers();
+      await removeMember({ id: userToDelete.id });
       setUserToDelete(null);
     } catch (err) {
       console.error("Error removing user:", err);
-      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to remove user. Please try again.", variant: 'error' });
+      setAlertModal({
+        isOpen: true,
+        message:
+          err instanceof Error
+            ? err.message
+            : "Failed to remove user. Please try again.",
+        variant: "error",
+      });
       setUserToDelete(null);
     }
   };
@@ -95,40 +76,25 @@ export default function HouseholdUsersClient() {
   }) => {
     try {
       if (editingUser) {
-        // Update existing user
-        const response = await fetch(`/api/household/users/${editingUser.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: userData.role,
-            name: userData.name,
-          }),
+        await updateMember({
+          id: editingUser.id,
+          role: userData.role,
+          name: userData.name,
         });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to update user");
-        }
       } else {
-        // Add new user
-        const response = await fetch("/api/household/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(userData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to add user");
-        }
+        await addMember(userData);
       }
 
       setShowAddModal(false);
       setEditingUser(null);
-      await fetchUsers();
     } catch (err) {
       console.error("Error saving user:", err);
-      setAlertModal({ isOpen: true, message: err instanceof Error ? err.message : "Failed to save user. Please try again.", variant: 'error' });
+      setAlertModal({
+        isOpen: true,
+        message:
+          err instanceof Error ? err.message : "Failed to save user. Please try again.",
+        variant: "error",
+      });
     }
   };
 
@@ -152,25 +118,10 @@ export default function HouseholdUsersClient() {
     return badges[role as keyof typeof badges] || badges.member;
   };
 
-  if (loading) {
+  if (usersData === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
-    );
-  }
-
-  if (error && !users.length) {
-    return (
-      <div className="p-8">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-semibold mb-4 text-stone-900 dark:text-stone-100">
-            Household Users
-          </h1>
-          <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-lg p-4 text-rose-800 dark:text-rose-300">
-            {error}
-          </div>
-        </div>
       </div>
     );
   }
@@ -292,7 +243,7 @@ export default function HouseholdUsersClient() {
       )}
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() => setAlertModal({ isOpen: false, message: "", variant: "error" })}
         message={alertModal.message}
         variant={alertModal.variant}
       />
@@ -301,7 +252,11 @@ export default function HouseholdUsersClient() {
         onClose={() => setUserToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Remove user"
-        message={userToDelete ? `Are you sure you want to remove ${userToDelete.name} from this household?` : ''}
+        message={
+          userToDelete
+            ? `Are you sure you want to remove ${userToDelete.name} from this household?`
+            : ""
+        }
         confirmText="Remove"
         cancelText="Cancel"
         confirmVariant="danger"
@@ -329,17 +284,25 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
     password: "",
   });
   const [saving, setSaving] = useState(false);
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; variant?: 'success' | 'error' | 'info' | 'warning' }>({ isOpen: false, message: '', variant: 'error' });
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email.trim() || !formData.name.trim()) {
-      setAlertModal({ isOpen: true, message: "Email and name are required", variant: 'error' });
+      setAlertModal({ isOpen: true, message: "Email and name are required", variant: "error" });
       return;
     }
 
     if (!user && !formData.password) {
-      setAlertModal({ isOpen: true, message: "Password is required for new users", variant: 'error' });
+      setAlertModal({
+        isOpen: true,
+        message: "Password is required for new users",
+        variant: "error",
+      });
       return;
     }
 
@@ -458,11 +421,10 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
       </div>
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ isOpen: false, message: '', variant: 'error' })}
+        onClose={() => setAlertModal({ isOpen: false, message: "", variant: "error" })}
         message={alertModal.message}
         variant={alertModal.variant}
       />
     </div>
   );
 }
-

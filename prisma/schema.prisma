@@ -29,8 +29,11 @@ model User {
   sessions       Session[]
   households     HouseholdMember[]
   preferences    UserPreferences?
+  unitUsage      UserUnitUsage[]
+  unitPreference UserIngredientUnitPreference[]
   communityLikes CommunityRecipeLike[]
   communitySaves CommunityRecipeSave[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Account {
@@ -71,6 +74,34 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthRateLimitEvent {
+  id          String   @id @default(cuid())
+  scope       String
+  subjectHash String
+  ipHash      String
+  windowStart DateTime
+  count       Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([scope, subjectHash, ipHash, windowStart])
+  @@index([scope])
+  @@index([windowStart])
+}
+
 // Household models
 model Household {
   id        String   @id @default(cuid())
@@ -92,6 +123,23 @@ enum HouseholdRole {
   owner
   admin
   member
+}
+
+enum UnitType {
+  count
+  volume
+  mass
+  length
+  time
+  temperature
+  package
+  qualitative
+}
+
+enum UnitSystem {
+  us
+  metric
+  neutral
 }
 
 model HouseholdMember {
@@ -125,11 +173,24 @@ model FoodItem {
 }
 
 model Barcode {
-  id         String   @id @default(cuid())
-  foodItemId String
-  code       String // UPC/EAN
-  type       String // 'UPC' | 'EAN'
-  createdAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  foodItemId      String
+  code            String // UPC/EAN
+  type            String // 'UPC' | 'EAN'
+  source          String   @default("LOCAL_MANUAL") // 'LOCAL_MANUAL' | 'OPEN_FOOD_FACTS'
+  manualLocked    Boolean  @default(false)
+  brand           String?
+  categoriesTags  String[] @default([])
+  ingredientsText String?  @db.Text
+  allergensTags   String[] @default([])
+  nutriscoreGrade String?
+  novaGroup       Int?
+  ecoscoreGrade   String?
+  imageFrontUrl   String?
+  nutritionPer100g Json?
+  attributionUrl  String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
 
   foodItem FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Cascade)
 
@@ -200,6 +261,10 @@ model Recipe {
   visibility       String    @default("private") // 'private' | 'household' | 'public' | 'unlisted'
   servings         Int?
   totalTimeMinutes Int?
+  caloriesKcal     Float?
+  proteinGrams     Float?
+  carbsGrams       Float?
+  fatGrams         Float?
   sourceUrl        String?
   notes            String?   @db.Text
   favorited        Boolean   @default(false)
@@ -294,6 +359,102 @@ model UserPreferences {
   updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Unit {
+  id           String     @id @default(cuid())
+  slug         String     @unique
+  name         String
+  abbr         String?
+  unitType     UnitType
+  system       UnitSystem @default(neutral)
+  baseUnitId   String?
+  toBaseFactor Float?
+  isCommon     Boolean    @default(false)
+  isEnabled    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  baseUnit                 Unit?                           @relation("UnitBase", fields: [baseUnitId], references: [id], onDelete: SetNull)
+  derivedUnits             Unit[]                          @relation("UnitBase")
+  aliases                  UnitAlias[]
+  defaultIngredientProfiles IngredientUnitProfile[]        @relation("IngredientDefaultUnit")
+  profileRecommendations   IngredientUnitProfileRecommendation[]
+  userUsage                UserUnitUsage[]
+  userIngredientPreferences UserIngredientUnitPreference[]
+
+  @@index([unitType, isCommon, isEnabled])
+  @@index([name])
+}
+
+model UnitAlias {
+  id        String   @id @default(cuid())
+  unitId    String
+  alias     String
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, alias])
+  @@index([alias])
+}
+
+model IngredientUnitProfile {
+  id            String   @id @default(cuid())
+  ingredientKey String   @unique
+  defaultUnitId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  defaultUnit      Unit?                                  @relation("IngredientDefaultUnit", fields: [defaultUnitId], references: [id], onDelete: SetNull)
+  recommendations  IngredientUnitProfileRecommendation[]
+}
+
+model IngredientUnitProfileRecommendation {
+  id        String @id @default(cuid())
+  profileId String
+  unitId    String
+  rank      Int    @default(0)
+
+  profile IngredientUnitProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  unit    Unit                  @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, unitId])
+  @@index([profileId, rank])
+}
+
+model UserUnitUsage {
+  id         String   @id @default(cuid())
+  userId     String
+  unitId     String
+  count      Int      @default(0)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, unitId])
+  @@index([userId, lastUsedAt])
+}
+
+model UserIngredientUnitPreference {
+  id            String   @id @default(cuid())
+  userId        String
+  ingredientKey String
+  unitId        String
+  count         Int      @default(0)
+  lastUsedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ingredientKey, unitId])
+  @@index([userId, ingredientKey, lastUsedAt])
 }
 
 // Community & Extensions models

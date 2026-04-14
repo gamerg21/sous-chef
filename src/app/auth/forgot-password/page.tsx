@@ -1,22 +1,25 @@
 "use client";
 
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
 import { useState } from "react";
 import Link from "next/link";
-import { normalizeEmail, isValidEmail } from "@/lib/auth-utils";
+import { api } from "../../../../convex/_generated/api";
+import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
 export default function ForgotPassword() {
+  const { signIn } = useAuthActions();
+  const repairPasswordAccountByEmail = useMutation(
+    api.users.repairPasswordAccountByEmail,
+  );
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [token, setToken] = useState<string | null>(null);
-  const [resetUrl, setResetUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage("");
-    setToken(null);
-    setResetUrl(null);
 
     // Validate email format
     if (!email.trim()) {
@@ -33,35 +36,38 @@ export default function ForgotPassword() {
 
     try {
       const normalizedEmail = normalizeEmail(email);
-      const response = await fetch("/api/auth/reset-password/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-        }),
-      });
+      await repairPasswordAccountByEmail({ email: normalizedEmail });
 
-      const data = await response.json();
+      const formData = new FormData();
+      formData.set("email", normalizedEmail);
+      formData.set("flow", "reset");
+      formData.set(
+        "redirectTo",
+        `/auth/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
+      );
 
-      if (!response.ok) {
-        setMessage(`Error: ${data.error || "Failed to send reset email"}`);
-        setIsLoading(false);
-        return;
-      }
-
-      // Always show success message (security best practice)
-      setMessage(data.message || "If an account with that email exists, a password reset link has been sent.");
-
-      // If SMTP not configured and token is returned, show it
-      if (data.token && data.resetUrl) {
-        setToken(data.token);
-        setResetUrl(data.resetUrl);
-      }
+      await signIn("password", formData);
+      setMessage(
+        "If an account with that email exists, a password reset link has been sent.",
+      );
     } catch (error) {
       console.error("Forgot password error:", error);
-      setMessage("Error: Something went wrong. Please try again.");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to request password reset";
+
+      if (
+        /not configured|SITE_URL|Internal Server Error|Provider/i.test(
+          errorMessage,
+        )
+      ) {
+        setMessage(
+          "Error: Password reset is not configured correctly. Check the auth environment and Convex logs.",
+        );
+      } else {
+        setMessage(
+          "If an account with that email exists, a password reset link has been sent.",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -109,24 +115,6 @@ export default function ForgotPassword() {
             </div>
           )}
 
-          {/* Show token and manual reset instructions if SMTP not configured */}
-          {token && resetUrl && (
-            <div className="rounded-md p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm font-medium mb-2">Email is not configured. Use this link to reset your password:</p>
-              <div className="mt-2">
-                <Link
-                  href={resetUrl}
-                  className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 underline break-all"
-                >
-                  {typeof window !== "undefined" ? `${window.location.origin}${resetUrl}` : resetUrl}
-                </Link>
-              </div>
-              <p className="text-xs mt-3 text-amber-700 dark:text-amber-300">
-                Or copy this token: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded text-xs font-mono break-all">{token}</code>
-              </p>
-            </div>
-          )}
-
           <div>
             <button
               type="submit"
@@ -147,9 +135,11 @@ export default function ForgotPassword() {
             Back to sign in
           </Link>
         </div>
+
+        <p className="text-center text-xs text-stone-500 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
+          Local setups without email delivery can use the reset link printed in the Convex logs.
+        </p>
       </div>
     </div>
   );
 }
-
-

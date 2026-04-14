@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe, RecipeIngredient, RecipeStep, RecipeVisibility, IngredientUnit } from './types'
 import { cx } from './utils'
+import { UnitPicker } from '../ui/unit-picker'
 
 export interface RecipeEditorDraft {
   title: string
@@ -12,6 +13,10 @@ export interface RecipeEditorDraft {
   visibility: RecipeVisibility
   servings: string
   totalTimeMinutes: string
+  caloriesKcal: string
+  proteinGrams: string
+  carbsGrams: string
+  fatGrams: string
   ingredients: Array<{
     id: string
     name: string
@@ -37,6 +42,40 @@ export interface RecipeEditorViewProps {
 
 type EditorTab = 'basics' | 'ingredients' | 'steps' | 'notes'
 
+function parseQuantityInput(value: string): number | undefined {
+  const raw = value.trim()
+  if (!raw) return undefined
+
+  const mixed = raw.match(/^(\d+)\s+(\d+)\/(\d+)$/)
+  if (mixed) {
+    const whole = Number(mixed[1])
+    const num = Number(mixed[2])
+    const den = Number(mixed[3])
+    if (den !== 0) return whole + num / den
+    return undefined
+  }
+
+  const fraction = raw.match(/^(\d+)\/(\d+)$/)
+  if (fraction) {
+    const num = Number(fraction[1])
+    const den = Number(fraction[2])
+    if (den !== 0) return num / den
+    return undefined
+  }
+
+  const numeric = Number(raw)
+  return Number.isFinite(numeric) ? numeric : undefined
+}
+
+function parseNonNegativeInput(value: string): number | undefined {
+  const raw = value.trim()
+  if (!raw) return undefined
+
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+  return parsed
+}
+
 function toDraft(recipe: Recipe | null | undefined): RecipeEditorDraft {
   const r = recipe
   return {
@@ -46,6 +85,10 @@ function toDraft(recipe: Recipe | null | undefined): RecipeEditorDraft {
     visibility: r?.visibility ?? 'private',
     servings: typeof r?.servings === 'number' ? `${r.servings}` : '',
     totalTimeMinutes: typeof r?.totalTimeMinutes === 'number' ? `${r.totalTimeMinutes}` : '',
+    caloriesKcal: typeof r?.caloriesKcal === 'number' ? `${r.caloriesKcal}` : '',
+    proteinGrams: typeof r?.proteinGrams === 'number' ? `${r.proteinGrams}` : '',
+    carbsGrams: typeof r?.carbsGrams === 'number' ? `${r.carbsGrams}` : '',
+    fatGrams: typeof r?.fatGrams === 'number' ? `${r.fatGrams}` : '',
     ingredients: (r?.ingredients ?? []).map((i) => ({
       id: i.id,
       name: i.name,
@@ -64,13 +107,17 @@ function fromDraft(base: Recipe | null | undefined, draft: RecipeEditorDraft): R
   const now = new Date().toISOString().slice(0, 10)
   const servings = Number(draft.servings)
   const totalTimeMinutes = Number(draft.totalTimeMinutes)
+  const caloriesKcal = parseNonNegativeInput(draft.caloriesKcal)
+  const proteinGrams = parseNonNegativeInput(draft.proteinGrams)
+  const carbsGrams = parseNonNegativeInput(draft.carbsGrams)
+  const fatGrams = parseNonNegativeInput(draft.fatGrams)
 
   const ingredients: RecipeIngredient[] = draft.ingredients
     .filter((i) => i.name.trim())
     .map((i) => ({
       id: i.id,
       name: i.name.trim(),
-      quantity: i.quantity.trim() ? Number(i.quantity) : undefined,
+      quantity: parseQuantityInput(i.quantity),
       unit: i.unit.trim() ? (i.unit.trim() as IngredientUnit) : undefined,
       note: i.note.trim() || undefined,
       mapping: i.mappingLabel.trim()
@@ -95,6 +142,10 @@ function fromDraft(base: Recipe | null | undefined, draft: RecipeEditorDraft): R
     visibility: draft.visibility,
     servings: Number.isFinite(servings) && servings > 0 ? servings : undefined,
     totalTimeMinutes: Number.isFinite(totalTimeMinutes) && totalTimeMinutes > 0 ? totalTimeMinutes : undefined,
+    caloriesKcal,
+    proteinGrams,
+    carbsGrams,
+    fatGrams,
     sourceUrl: draft.sourceUrl.trim() || undefined,
     notes: draft.notes.trim() || undefined,
     ingredients,
@@ -263,6 +314,52 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-medium text-stone-900 dark:text-stone-100">Nutrition (per serving)</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-stone-600 dark:text-stone-400">Calories (kcal)</label>
+                <input
+                  value={draft.caloriesKcal}
+                  onChange={(e) => setDraft({ ...draft, caloriesKcal: e.target.value })}
+                  inputMode="decimal"
+                  placeholder="220"
+                  className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-stone-600 dark:text-stone-400">Protein (g)</label>
+                <input
+                  value={draft.proteinGrams}
+                  onChange={(e) => setDraft({ ...draft, proteinGrams: e.target.value })}
+                  inputMode="decimal"
+                  placeholder="18"
+                  className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-stone-600 dark:text-stone-400">Carbs (g)</label>
+                <input
+                  value={draft.carbsGrams}
+                  onChange={(e) => setDraft({ ...draft, carbsGrams: e.target.value })}
+                  inputMode="decimal"
+                  placeholder="24"
+                  className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-stone-600 dark:text-stone-400">Fat (g)</label>
+                <input
+                  value={draft.fatGrams}
+                  onChange={(e) => setDraft({ ...draft, fatGrams: e.target.value })}
+                  inputMode="decimal"
+                  placeholder="10"
+                  className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium text-stone-900 dark:text-stone-100">Tags</label>
             <input
               value={draft.tags}
@@ -358,17 +455,20 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
                   inputMode="decimal"
                   className="sm:col-span-1 w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
-                <input
-                  value={ing.unit}
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      ingredients: d.ingredients.map((x) => (x.id === ing.id ? { ...x, unit: e.target.value } : x)),
-                    }))
-                  }
-                  placeholder="Unit"
-                  className="sm:col-span-2 w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                />
+                <div className="sm:col-span-2">
+                  <UnitPicker
+                    value={ing.unit}
+                    onChange={(unit) =>
+                      setDraft((d) => ({
+                        ...d,
+                        ingredients: d.ingredients.map((x) => (x.id === ing.id ? { ...x, unit } : x)),
+                      }))
+                    }
+                    ingredientName={ing.name}
+                    placeholder="Unit"
+                    className="w-full"
+                  />
+                </div>
                 <input
                   value={ing.note}
                   onChange={(e) =>
@@ -539,5 +639,3 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
     </div>
   )
 }
-
-
