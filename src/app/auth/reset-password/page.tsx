@@ -4,11 +4,23 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useMutation } from "convex/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
-export default function ResetPassword() {
+function ResetPasswordFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
+      <div className="w-full max-w-md space-y-8 rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+        <div className="text-center text-stone-600 dark:text-stone-400">
+          Loading...
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordContent() {
   const { signIn } = useAuthActions();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const repairPasswordAccountByEmail = useMutation(
@@ -251,5 +263,13 @@ export default function ResetPassword() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

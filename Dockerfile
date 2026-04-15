@@ -23,12 +23,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Run type check before building (fails fast if there are type errors)
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run type-check
 
 # Build Next.js application
 RUN npm run build
@@ -45,9 +40,6 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy necessary files from standalone build
-# Note: standalone build includes the minimal server, but we need to ensure
-# Prisma files are available for migrations
-# Copy the entire standalone directory to preserve all Next.js internal structure
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
@@ -61,23 +53,10 @@ COPY --from=builder /app/.next/server ./.next/server
 # Copy all node_modules from builder to ensure all dependencies are available
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy Prisma files (needed for migrations and client)
-# These are needed even though standalone might include them, to ensure migrations work
-COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.js ./prisma.config.js
 COPY --from=builder /app/package.json ./package.json
 
-# Ensure Next.js module is properly available
-# Standalone build should include next, but we ensure it's accessible
-# The standalone build's node_modules should already have next, but we verify it's there
-
 # Copy our custom server.js to override the one from standalone build
-# This enables our HTTPS/HTTP flexible server functionality
 COPY --from=builder /app/server.js ./server.js
-
-# Install Prisma CLI globally for migrations (lightweight)
-RUN npm install -g prisma@^7.2.0
 
 # Install OpenSSL for certificate generation (needed for auto-generated self-signed certs)
 RUN apk add --no-cache openssl
@@ -96,4 +75,3 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
-

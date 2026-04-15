@@ -30,12 +30,8 @@ jobs:
             npm install
           fi
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
       - name: Run type check
         run: npm run type-check
 
       - name: Run linter
         run: npm run lint -- --max-warnings=200
-
