@@ -22,6 +22,9 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Enable pnpm in this stage before running build commands.
+RUN corepack enable
+
 # Build Next.js application
 RUN pnpm run build
 
