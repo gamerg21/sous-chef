@@ -41,4 +41,6 @@ docker compose -f docker-compose.convex.yml logs -f app
 ## Optional Convex Vars
 
 - `CONVEX_DEPLOY_KEY`
+- `RESEND_API_KEY`
+- `SMTP_FROM`
 

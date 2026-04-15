@@ -34,6 +34,8 @@ Optional:
 ```env
 CONVEX_DEPLOY_KEY="prod:your-deploy-key"
 ENABLE_HTTPS=true
+RESEND_API_KEY="your-resend-api-key"
+SMTP_FROM="Sous Chef <no-reply@souschef.local>"
 ```
 
 ### 2. Start the app container

@@ -17,7 +17,7 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 
 ---
 
-## ✅ Current Implementation Status (March 2, 2026)
+## ✅ Current Implementation Status (April 2026)
 
 ### Implemented
 * Household-scoped auth, inventory CRUD, recipes CRUD, cooking flow, shopping list CRUD
@@ -32,7 +32,7 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 * Security hardening for password-reset token handling and household owner-role assignment guardrails
 
 ### Partial / In Progress
-* Magic link auth provider is configured, but sign-in UI currently uses password flow
+* Magic-link sign-in flow is not implemented yet
 * AI features are still provider-config only (no fully shipped assistant workflow yet)
 * Realtime sync strategy (SSE vs other realtime transports) not yet implemented
 
@@ -120,14 +120,14 @@ All inventory and recipes are scoped to a household.
 
 ## 🔐 Authentication & Security
 
-* NextAuth.js with Prisma adapter
+* Convex Auth (`@convex-dev/auth`)
 * Email/password authentication
-* Magic link provider configured (sign-in UI flow in progress)
+* Password reset via email delivery provider integration
 * Password-reset token response hardening
 * Household role guardrails (only owners can assign owner role)
 * Encrypted secret storage for integration/provider credentials (AES-256-GCM via `APP_ENCRYPTION_KEY`)
 * Household-based access control
-* Self-hosters fully control auth + storage
+* Self-hosters fully control auth + app runtime configuration
 
 ---
 
@@ -177,6 +177,13 @@ cp .env.example .env
 
 NEXT_PUBLIC_CONVEX_URL="https://your-deployment.convex.cloud"
 APP_BASE_URL="http://localhost:3000"
+```
+
+Optional (for email-based password reset delivery):
+
+```bash
+RESEND_API_KEY="your-resend-api-key"
+SMTP_FROM="Sous Chef <no-reply@souschef.local>"
 ```
 
 ### 4. Start the development server
@@ -273,7 +280,7 @@ Sous Chef is in early development.
 
 Contributions welcome once the core foundations are stable:
 
-* Database schema
+* Convex schema and backend functions
 * Inventory flows
 * Recipe model
 * Barcode ingestion

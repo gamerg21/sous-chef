@@ -34,6 +34,7 @@ Sous Chef is an open-source kitchen management application built with Next.js an
      cp .env.example .env
      ```
    - Fill in the required environment variables (`NEXT_PUBLIC_CONVEX_URL`, etc.).
+   - For full Convex setup details, see [docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md).
 
 4. **Start Convex backend dev loop:**
    ```bash
@@ -80,7 +81,7 @@ pnpm lint
 
 - **TypeScript Strict Mode:** All code must pass TypeScript strict mode compilation
 - **Follow Existing Patterns:** Review existing code to understand and maintain consistent patterns
-- **React Query:** Use React Query for all data fetching operations
+- **Convex-first Data Access:** Use generated Convex APIs (`api.*`) for backend calls
 - **Component Structure:** Keep components focused and modular
 - **Type Safety:** Avoid using `any` types; use proper TypeScript types
 - **Comments:** Add comments for complex logic, but keep them concise
