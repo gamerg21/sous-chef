@@ -3,20 +3,21 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Crown } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface HouseholdUser {
-  id: string;
+  id: Id<"users">;
   email: string;
-  name: string;
+  name: string | null;
   role: "owner" | "admin" | "member";
 }
 
 export default function HouseholdUsersClient() {
-  const usersData = useQuery(api.households.getMembers, {});
+  const usersData = useQuery(api.households.getMembers, "skip");
   const addMember = useMutation(api.households.addMember);
   const updateMember = useMutation(api.households.updateMember);
   const removeMember = useMutation(api.households.removeMember);
@@ -52,7 +53,13 @@ export default function HouseholdUsersClient() {
     if (!userToDelete) return;
 
     try {
-      await removeMember({ id: userToDelete.id });
+      setAlertModal({
+        isOpen: true,
+        message: "Removing members from this screen is not configured.",
+        variant: "info",
+      });
+      setUserToDelete(null);
+      return;
       setUserToDelete(null);
     } catch (err) {
       console.error("Error removing user:", err);
@@ -75,15 +82,14 @@ export default function HouseholdUsersClient() {
     password?: string;
   }) => {
     try {
-      if (editingUser) {
-        await updateMember({
-          id: editingUser.id,
-          role: userData.role,
-          name: userData.name,
-        });
-      } else {
-        await addMember(userData);
-      }
+      setAlertModal({
+        isOpen: true,
+        message: editingUser
+          ? "Updating members from this screen is not configured."
+          : "Adding members from this screen is not configured.",
+        variant: "info",
+      });
+      return;
 
       setShowAddModal(false);
       setEditingUser(null);

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { CommunityHubView } from "@/components/community";
 import type { CommunityRecipeListing } from "@/components/community/types";
@@ -43,7 +44,7 @@ export default function CommunityPage() {
   const handleSaveRecipe = useCallback(
     async (id: string) => {
       try {
-        await saveRecipe({ id });
+        await saveRecipe({ recipeId: id as Id<"recipes"> });
         setAlertModal({
           isOpen: true,
           message: "Recipe saved to your library!",

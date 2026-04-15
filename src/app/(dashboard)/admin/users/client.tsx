@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 interface AdminUser {
-  id: string;
+  id: Id<"users">;
   email: string;
-  name: string;
+  name: string | null;
   isAppAdmin: boolean;
   households: Array<{
     householdId: string;
@@ -64,7 +65,7 @@ export default function AdminUsersClient() {
     if (!userToDelete) return;
 
     try {
-      await deleteUser({ id: userToDelete.id });
+      await deleteUser({ userId: userToDelete.id as Id<"users"> });
       setUserToDelete(null);
     } catch (err) {
       console.error("Error deleting user:", err);
@@ -87,20 +88,17 @@ export default function AdminUsersClient() {
     try {
       if (editingUser) {
         await updateUser({
-          id: editingUser.id,
-          email: userData.email,
+          userId: editingUser.id,
           name: userData.name,
           isAppAdmin: userData.isAppAdmin,
-          password: userData.password || undefined,
         });
       } else {
-        await updateUser({
-          id: "",
-          email: userData.email,
-          name: userData.name,
-          isAppAdmin: userData.isAppAdmin,
-          password: userData.password,
+        setAlertModal({
+          isOpen: true,
+          message: "Creating users from this screen is not supported yet.",
+          variant: "info",
         });
+        return;
       }
 
       setShowAddModal(false);

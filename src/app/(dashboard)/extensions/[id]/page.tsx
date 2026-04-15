@@ -3,16 +3,17 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { ExtensionDetailView } from "@/components/community";
-import type { InstalledExtension } from "@/components/community/types";
+import type { ExtensionListing, InstalledExtension } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function ExtensionDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = params.id as Id<"extensionListings">;
 
   const extension = useQuery(api.extensions.getById, id ? { id } : "skip");
   const installExtension = useMutation(api.extensions.install);
@@ -30,7 +31,7 @@ export default function ExtensionDetailPage() {
   const handleInstall = useCallback(
     async (extensionId: string) => {
       try {
-        await installExtension({ id: extensionId });
+        await installExtension({ extensionId: extensionId as Id<"extensionListings"> });
         setAlertModal({ isOpen: true, message: "Extension installed!", variant: "success" });
       } catch (error) {
         console.error("Error installing extension:", error);
@@ -48,7 +49,7 @@ export default function ExtensionDetailPage() {
     if (!extensionData) return;
 
     try {
-      await uninstallExtension({ id: extensionData.id });
+      await uninstallExtension({ extensionId: extensionData.id });
       setAlertModal({ isOpen: true, message: "Extension uninstalled!", variant: "success" });
       setShowUninstallConfirm(false);
     } catch (error) {
@@ -89,7 +90,7 @@ export default function ExtensionDetailPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <ExtensionDetailView
-        extension={extensionData}
+        extension={extensionData as ExtensionListing}
         installed={installed}
         onInstall={handleInstall}
         onBack={() => router.back()}

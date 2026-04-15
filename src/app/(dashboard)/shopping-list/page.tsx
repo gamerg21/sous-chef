@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import {
   ShoppingListView,
   type ShoppingListItem,
@@ -14,9 +15,39 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { AlertModal } from "@/components/ui/alert-modal";
 interface BarcodeLookupResponse {
   found: boolean;
-  product_name?: string;
-  brand?: string;
+  prefill: {
+    name?: string;
+    category?: ShoppingListItem["category"];
+  };
   facts?: Record<string, unknown>;
+}
+
+const SHOPPING_CATEGORIES = [
+  "Produce",
+  "Dairy",
+  "Meat & Seafood",
+  "Pantry",
+  "Frozen",
+  "Bakery",
+  "Other",
+] as const;
+
+function toShoppingCategory(
+  value: string | undefined
+): ShoppingListItem["category"] | undefined {
+  if (!value) return undefined;
+  return SHOPPING_CATEGORIES.includes(value as (typeof SHOPPING_CATEGORIES)[number])
+    ? (value as ShoppingListItem["category"])
+    : undefined;
+}
+
+function toShoppingSource(
+  value: string | undefined
+): ShoppingListItem["source"] | undefined {
+  if (value === "manual" || value === "from-recipe" || value === "low-stock") {
+    return value;
+  }
+  return undefined;
 }
 
 export default function ShoppingListPage() {
@@ -25,8 +56,14 @@ export default function ShoppingListPage() {
   const updateItem = useMutation(api.shoppingList.updateItem);
   const deleteItem = useMutation(api.shoppingList.deleteItem);
 
-  const items = useMemo(
-    () => shoppingListData?.items || [],
+  const items = useMemo<ShoppingListItem[]>(
+    () =>
+      (shoppingListData?.items || []).map((item) => ({
+        ...item,
+        id: String(item.id),
+        category: toShoppingCategory(item.category),
+        source: toShoppingSource(item.source),
+      })),
     [shoppingListData?.items]
   );
 
@@ -56,7 +93,7 @@ export default function ShoppingListPage() {
       const nextChecked = !Boolean(existing.checked);
 
       try {
-        await updateItem({ id, checked: nextChecked });
+        await updateItem({ id: id as Id<"shoppingListItems">, checked: nextChecked });
       } catch (error) {
         console.error("Error toggling item:", error);
         setAlertModal({
@@ -75,7 +112,7 @@ export default function ShoppingListPage() {
 
       setTimeout(async () => {
         try {
-          await deleteItem({ id });
+          await deleteItem({ id: id as Id<"shoppingListItems"> });
           setDeletingItems((previous) => {
             const next = new Set(previous);
             next.delete(id);
@@ -107,7 +144,15 @@ export default function ShoppingListPage() {
   const handleUpdateItemWithData = useCallback(
     async (id: string, itemData: Partial<ShoppingListItem>) => {
       try {
-        await updateItem({ id, ...itemData });
+        await updateItem({
+          id: id as Id<"shoppingListItems">,
+          name: itemData.name,
+          quantity: itemData.quantity,
+          unit: itemData.unit,
+          category: itemData.category,
+          checked: itemData.checked,
+          note: itemData.note,
+        });
       } catch (error) {
         console.error("Error updating item:", error);
         setAlertModal({
@@ -188,6 +233,9 @@ export default function ShoppingListPage() {
         }
 
         const lookupData = (await lookupResponse.json()) as BarcodeLookupResponse;
+        if (!lookupData.prefill.name) {
+          throw new Error("Scanned barcode result did not include a product name.");
+        }
         await addItem({
           name: lookupData.prefill.name,
           category: lookupData.prefill.category,
@@ -230,7 +278,7 @@ export default function ShoppingListPage() {
     setTimeout(async () => {
       try {
         await Promise.all(
-          checkedItems.map((item) => deleteItem({ id: item.id }))
+          checkedItems.map((item) => deleteItem({ id: item.id as Id<"shoppingListItems"> }))
         );
 
         setDeletingItems((previous) => {

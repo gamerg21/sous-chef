@@ -6,14 +6,11 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml ./
 
-# Use npm ci for reproducible builds, fall back to npm install if lock file is missing or out of sync
-RUN if [ -f package-lock.json ]; then \
-      npm ci || npm install; \
-    else \
-      npm install; \
-    fi
+# Use pnpm with a frozen lockfile for reproducible installs
+RUN corepack enable
+RUN pnpm install --frozen-lockfile
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
@@ -26,7 +23,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build Next.js application
-RUN npm run build
+RUN pnpm run build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner

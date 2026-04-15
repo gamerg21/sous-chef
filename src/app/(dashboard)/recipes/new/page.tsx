@@ -36,7 +36,7 @@ export default function NewRecipePage() {
     async (recipe: Recipe) => {
       try {
         const saved = await createRecipe(recipe);
-        router.push(`/recipes/${saved.id}`);
+        router.push(`/recipes/${saved}`);
       } catch (error) {
         console.error("Error saving recipe:", error);
         setAlertModal({

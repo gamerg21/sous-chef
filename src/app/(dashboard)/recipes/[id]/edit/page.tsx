@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { RecipeEditorView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";
@@ -11,7 +12,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 export default function EditRecipePage() {
   const router = useRouter();
   const params = useParams();
-  const recipeId = params.id as string;
+  const recipeId = params.id as Id<"recipes">;
 
   const recipe = useQuery(api.recipes.getById, recipeId ? { id: recipeId } : "skip");
   const inventoryData = useQuery(api.inventory.list, {});
@@ -39,7 +40,7 @@ export default function EditRecipePage() {
   const handleSave = useCallback(
     async (updatedRecipe: Recipe) => {
       try {
-        await updateRecipe({ id: recipeId, ...updatedRecipe });
+        await updateRecipe({ ...updatedRecipe, id: recipeId });
         router.push(`/recipes/${recipeId}`);
       } catch (error) {
         console.error("Error updating recipe:", error);

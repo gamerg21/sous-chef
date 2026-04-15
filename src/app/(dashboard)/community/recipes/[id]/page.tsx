@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { CommunityRecipeDetailView } from "@/components/community";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -10,7 +11,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 export default function CommunityRecipeDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = params.id as Id<"recipes">;
 
   const recipe = useQuery(api.community.getRecipe, id ? { id } : "skip");
   const saveRecipe = useMutation(api.community.saveRecipe);
@@ -26,7 +27,7 @@ export default function CommunityRecipeDetailPage() {
   const handleSaveRecipe = useCallback(
     async (recipeId: string) => {
       try {
-        await saveRecipe({ id: recipeId });
+        await saveRecipe({ recipeId: recipeId as Id<"recipes"> });
         setAlertModal({
           isOpen: true,
           message: "Recipe saved to your library!",
@@ -47,7 +48,7 @@ export default function CommunityRecipeDetailPage() {
   const handleLike = useCallback(
     async (recipeId: string) => {
       try {
-        await likeRecipe({ id: recipeId });
+        await likeRecipe({ recipeId: recipeId as Id<"recipes"> });
       } catch (error) {
         console.error("Error toggling like:", error);
         setAlertModal({

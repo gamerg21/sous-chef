@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { RecipeDetailView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";
@@ -11,7 +12,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 export default function RecipeDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const recipeId = params.id as string;
+  const recipeId = params.id as Id<"recipes">;
 
   const recipe = useQuery(api.recipes.getById, recipeId ? { id: recipeId } : "skip");
   const inventoryData = useQuery(api.inventory.list, {});
@@ -50,7 +51,7 @@ export default function RecipeDetailPage() {
   const handleToggleFavorite = useCallback(
     async (id: string) => {
       try {
-        await toggleFavorite({ id });
+        await toggleFavorite({ id: id as Id<"recipes"> });
       } catch (error) {
         console.error("Error toggling favorite:", error);
         setAlertModal({
@@ -78,7 +79,7 @@ export default function RecipeDetailPage() {
           throw new Error(uploadData.error || "Failed to upload photo");
         }
 
-        await updateRecipe({ id, photoUrl: uploadData.file.url });
+        await updateRecipe({ id: id as Id<"recipes">, photoUrl: uploadData.file.url });
         setAlertModal({
           isOpen: true,
           message: "Recipe photo updated.",
@@ -102,7 +103,7 @@ export default function RecipeDetailPage() {
   const handleRemovePhoto = useCallback(
     async (id: string) => {
       try {
-        await updateRecipe({ id, photoUrl: null });
+        await updateRecipe({ id: id as Id<"recipes">, photoUrl: null });
         setAlertModal({
           isOpen: true,
           message: "Recipe photo removed.",

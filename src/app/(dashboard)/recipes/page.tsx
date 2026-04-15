@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { RecipeLibraryView } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -47,7 +48,7 @@ export default function RecipesPage() {
     message: string;
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
-  const [recipeToDelete, setRecipeToDelete] = useState<string | null>(null);
+  const [recipeToDelete, setRecipeToDelete] = useState<Id<"recipes"> | null>(null);
 
   const handleOpenRecipe = useCallback(
     (id: string) => {
@@ -154,7 +155,7 @@ export default function RecipesPage() {
   const handleToggleFavorite = useCallback(
     async (id: string) => {
       try {
-        await toggleFavorite({ id });
+        await toggleFavorite({ id: id as Id<"recipes"> });
       } catch (error) {
         console.error("Error toggling favorite:", error);
         setAlertModal({
@@ -168,7 +169,7 @@ export default function RecipesPage() {
   );
 
   const handleDeleteRecipe = useCallback((id: string) => {
-    setRecipeToDelete(id);
+    setRecipeToDelete(id as Id<"recipes">);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {

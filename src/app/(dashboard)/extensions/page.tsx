@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { ExtensionCard } from "@/components/community";
 import type { ExtensionListing, InstalledExtension } from "@/components/community/types";
@@ -60,7 +61,7 @@ export default function ExtensionsPage() {
   const handleInstallExtension = useCallback(
     async (id: string) => {
       try {
-        await installExtension({ id });
+        await installExtension({ extensionId: id as Id<"extensionListings"> });
         setAlertModal({ isOpen: true, message: "Extension installed!", variant: "success" });
       } catch (error) {
         console.error("Error installing extension:", error);
@@ -78,7 +79,7 @@ export default function ExtensionsPage() {
     async (id: string) => {
       try {
         const installed = installedExtensions.find((extension) => extension.extensionId === id);
-        await toggleExtension({ id, enabled: !installed?.enabled });
+        await toggleExtension({ extensionId: id as Id<"extensionListings"> });
       } catch (error) {
         console.error("Error toggling extension:", error);
         setAlertModal({
@@ -174,7 +175,7 @@ export default function ExtensionsPage() {
               return (
                 <ExtensionCard
                   key={extension.id}
-                  extension={extension}
+                  extension={extension as ExtensionListing}
                   installed={!!installed}
                   enabled={installed?.enabled}
                   needsConfiguration={installed?.needsConfiguration}
@@ -207,7 +208,7 @@ export default function ExtensionsPage() {
                 return (
                   <ExtensionCard
                     key={extension.id}
-                    extension={extension}
+                    extension={extension as ExtensionListing}
                     installed={true}
                     enabled={installed.enabled}
                     needsConfiguration={installed.needsConfiguration}

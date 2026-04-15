@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { KitchenInventoryDashboardView } from "@/components/inventory";
 import { BarcodeScanner } from "@/components/inventory/BarcodeScanner";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -23,9 +24,15 @@ import type {
 } from "@/components/inventory";
 interface BarcodeLookupResponse {
   found: boolean;
-  product_name?: string;
-  brand?: string;
+  prefill: {
+    name?: string;
+    barcode?: string;
+    category?: string;
+  };
   facts?: Record<string, unknown>;
+  source?: "local_manual" | "open_food_facts";
+  attribution?: { label: "Open Food Facts"; url: string; license: "ODbL" };
+  stale?: boolean;
 }
 
 function categoryToFormState(category?: string) {
@@ -73,7 +80,7 @@ export default function InventoryPage() {
     INVENTORY_ALL_CATEGORIES_VALUE
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<Id<"inventoryItems"> | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [prefillData, setPrefillData] = useState<InventoryPrefillData | null>(
@@ -98,7 +105,7 @@ export default function InventoryPage() {
   }, []);
 
   const handleEditItem = useCallback((id: string) => {
-    setEditingItemId(id);
+    setEditingItemId(id as Id<"inventoryItems">);
     setShowAddModal(true);
   }, []);
 
@@ -114,7 +121,7 @@ export default function InventoryPage() {
 
     setTimeout(async () => {
       try {
-        await removeItem({ id });
+        await removeItem({ id: id as Id<"inventoryItems"> });
 
         setDeletingItems((prev) => {
           const next = new Set(prev);
@@ -219,9 +226,31 @@ export default function InventoryPage() {
         };
 
         if (editingItemId) {
-          await updateItem({ id: editingItemId, ...cleanedData });
+          await updateItem({
+            id: editingItemId as Id<"inventoryItems">,
+            name: cleanedData.name,
+            locationId: cleanedData.locationId,
+            quantity: cleanedData.quantity,
+            unit: cleanedData.unit,
+            expiresOn: cleanedData.expiresOn,
+            category: cleanedData.category,
+            notes: cleanedData.notes,
+            barcode: cleanedData.barcode,
+          });
         } else {
-          await createItem(cleanedData);
+          if (!itemData.name || !itemData.locationId || !itemData.quantity || !itemData.unit) {
+            throw new Error("Name, location, quantity, and unit are required.");
+          }
+          await createItem({
+            name: itemData.name,
+            locationId: itemData.locationId,
+            quantity: itemData.quantity,
+            unit: itemData.unit,
+            expiresOn: cleanedData.expiresOn,
+            category: cleanedData.category,
+            notes: cleanedData.notes,
+            barcode: cleanedData.barcode,
+          });
         }
 
         setShowAddModal(false);

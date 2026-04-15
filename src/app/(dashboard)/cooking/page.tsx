@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   WhatCanICookView,
@@ -38,7 +39,7 @@ export default function CookingPage() {
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [selectedRecipeId, setSelectedRecipeId] = useState<Id<"recipes"> | null>(null);
   const [cameFromRecipePage, setCameFromRecipePage] = useState<string | null>(
     null
   );
@@ -75,7 +76,7 @@ export default function CookingPage() {
   useEffect(() => {
     const recipeId = searchParams.get("recipeId");
     if (recipeId) {
-      setSelectedRecipeId(recipeId);
+      setSelectedRecipeId(recipeId as Id<"recipes">);
       setCameFromRecipePage(recipeId);
       setViewMode("cook");
       router.replace("/cooking", { scroll: false });
@@ -83,7 +84,7 @@ export default function CookingPage() {
   }, [searchParams, router]);
 
   const handleCookRecipe = useCallback((recipeId: string) => {
-    setSelectedRecipeId(recipeId);
+    setSelectedRecipeId(recipeId as Id<"recipes">);
     setCameFromRecipePage(null);
     setViewMode("cook");
   }, []);
@@ -91,7 +92,7 @@ export default function CookingPage() {
   const handleAddMissingToShoppingList = useCallback(
     async (recipeId: string) => {
       try {
-        await addMissing({ recipeId });
+        await addMissing({ recipeId: recipeId as Id<"recipes">, items: [] });
         setAlertModal({
           isOpen: true,
           message: "Missing ingredients added to shopping list!",
@@ -116,7 +117,7 @@ export default function CookingPage() {
       try {
         await cookRecipe({
           recipeId: selectedRecipeId,
-          addMissingToList: options.addMissingToList,
+          addMissingToShoppingList: options.addMissingToList,
         });
 
         setViewMode("list");

@@ -3,7 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { IntegrationsSettingsView } from "@/components/community";
+import type { AiSettings, Integration } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
@@ -19,30 +21,23 @@ export default function IntegrationsPage() {
   const disconnectIntegration = useMutation(api.integrations.disconnect);
   const configureAiProvider = useMutation(api.aiProviders.configure);
 
-  const integrations = useMemo(
-    () => integrationsData?.integrations || [],
+  const integrations = useMemo<Integration[]>(
+    () => (integrationsData?.integrations || []) as Integration[],
     [integrationsData?.integrations]
   );
-  const aiSettings = aiSettingsData || null;
+  const aiSettings = (aiSettingsData || null) as AiSettings | null;
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     message: string;
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
-  const [integrationToDisconnect, setIntegrationToDisconnect] = useState<string | null>(null);
+  const [integrationToDisconnect, setIntegrationToDisconnect] = useState<Id<"integrations"> | null>(null);
 
   const handleConnectIntegration = useCallback(
     async (id: string) => {
       try {
-        const integration = integrations.find((item) => item.id === id);
-        await connectIntegration({
-          id,
-          provider: id,
-          name: integration?.name || id,
-          description: integration?.description || "Integration",
-          scopes: integration?.scopes || [],
-        });
+        await connectIntegration({ integrationId: id as Id<"integrations"> });
         setAlertModal({ isOpen: true, message: "Integration connected!", variant: "success" });
       } catch (error) {
         console.error("Error connecting integration:", error);
@@ -57,7 +52,7 @@ export default function IntegrationsPage() {
   );
 
   const handleDisconnectIntegration = useCallback((id: string) => {
-    setIntegrationToDisconnect(id);
+    setIntegrationToDisconnect(id as Id<"integrations">);
   }, []);
 
   const handleConfirmDisconnect = useCallback(async () => {
@@ -65,7 +60,7 @@ export default function IntegrationsPage() {
     if (!id) return;
 
     try {
-      await disconnectIntegration({ id });
+      await disconnectIntegration({ integrationId: id });
       setAlertModal({ isOpen: true, message: "Integration disconnected!", variant: "success" });
       setIntegrationToDisconnect(null);
     } catch (error) {
@@ -82,7 +77,7 @@ export default function IntegrationsPage() {
   const handleSelectActiveProvider = useCallback(
     async (providerId: string) => {
       try {
-        await configureAiProvider({ id: providerId, isActive: true });
+        await configureAiProvider({ providerId, isActive: true });
       } catch (error) {
         console.error("Error setting active provider:", error);
         setAlertModal({
@@ -98,7 +93,7 @@ export default function IntegrationsPage() {
   const handleSaveApiKey = useCallback(
     async (providerId: string, key: string) => {
       try {
-        await configureAiProvider({ id: providerId, apiKey: key });
+        await configureAiProvider({ providerId, apiKey: key });
         setAlertModal({ isOpen: true, message: "API key saved!", variant: "success" });
       } catch (error) {
         console.error("Error saving API key:", error);

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublishRecipeView } from "@/components/community";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -10,7 +11,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 export default function PublishRecipePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const recipeId = searchParams.get("recipeId") || "";
+  const recipeId = (searchParams.get("recipeId") || "") as Id<"recipes">;
 
   const recipe = useQuery(
     api.recipes.getById,
@@ -39,7 +40,7 @@ export default function PublishRecipePage() {
       }
 
       try {
-        await publishRecipe({ recipeId, visibility: data.visibility });
+        await publishRecipe({ recipeId });
 
         setAlertModal({
           isOpen: true,
