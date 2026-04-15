@@ -114,7 +114,7 @@ For Docker deployments, HTTPS can be enabled with automatic self-signed certific
 
 2. **Start your containers:**
    ```bash
-   docker-compose up -d
+   docker compose -f docker-compose.convex.yml up -d
    ```
 
 That's it! The app will automatically generate self-signed certificates on first startup. Safari will show a security warning, but you can proceed and barcode scanning will work.
@@ -133,7 +133,7 @@ If you want to provide your own certificates:
    openssl req -x509 -newkey rsa:2048 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes
    ```
 
-2. **Mount certificates in docker-compose.yml** (already configured):
+2. **Mount certificates in `docker-compose.convex.yml`** (already configured):
    ```yaml
    volumes:
      - ./certs:/app/certs:rw

@@ -34,7 +34,7 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 ### Partial / In Progress
 * Magic link auth provider is configured, but sign-in UI currently uses password flow
 * AI features are still provider-config only (no fully shipped assistant workflow yet)
-* Realtime sync strategy (SSE vs Supabase realtime) not yet implemented
+* Realtime sync strategy (SSE vs other realtime transports) not yet implemented
 
 ### Planned
 * Offline-tolerant experience
@@ -94,23 +94,13 @@ Sous Chef is intentionally designed to avoid vendor lock-in.
 * React 19 with TypeScript
 * Tailwind CSS for styling
 
-### Backend (Initial / Agnostic)
+### Backend (Recommended)
 
-* **Supabase-compatible stack**
-  * PostgreSQL
-  * Storage (photos, labels)
-  * Realtime (planned)
-* Local development via Docker
+* **Convex** for backend APIs, data access, and realtime-friendly workflows
+* Local frontend/runtime can still be self-hosted with Docker
+* Backend recommendation for new deployments is Convex
 
-### Why Supabase First?
-
-* Self-hostable
-* Open source core
-* PostgreSQL + SQL migrations
-* Strong Row Level Security (RLS)
-* Fast MVP velocity
-
-This backend can later be swapped or extended without rewriting the app logic.
+See **[docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md)** for setup guidelines.
 
 ---
 
@@ -136,7 +126,6 @@ All inventory and recipes are scoped to a household.
 * Password-reset token response hardening
 * Household role guardrails (only owners can assign owner role)
 * Encrypted secret storage for integration/provider credentials (AES-256-GCM via `APP_ENCRYPTION_KEY`)
-* PostgreSQL database (Supabase-compatible)
 * Household-based access control
 * Self-hosters fully control auth + storage
 
@@ -147,13 +136,9 @@ All inventory and recipes are scoped to a household.
 ```
 sous-chef/
 ├─ src/                 # Next.js application source
-├─ prisma/              # Prisma schema and migrations
-│  ├─ schema.prisma
-│  └─ migrations/
-├─ supabase/            # Supabase local development config
-│  ├─ migrations/       # SQL migrations
-│  ├─ config.toml
-│  └─ storage/
+├─ convex/              # Convex backend functions and schema
+│  ├─ schema.ts
+│  └─ _generated/
 ├─ public/              # Static assets
 ├─ scripts/             # Utility scripts
 └─ README.md
@@ -167,7 +152,7 @@ sous-chef/
 
 * Node.js **20 LTS** (recommended)
 * pnpm
-* Docker (required for Supabase local development)
+* Convex account/deployment access
 
 ### 1. Install dependencies
 
@@ -175,79 +160,26 @@ sous-chef/
 pnpm install
 ```
 
-### 2. Start Supabase locally
+### 2. Start Convex dev backend
 
 ```bash
-# Initialize Supabase (if not already done)
-pnpm supabase init
-
-# Start Supabase services (PostgreSQL, Auth, Storage, etc.)
-pnpm supabase start
-
-# Check status and get connection details
-pnpm supabase status
+npx convex dev
 ```
 
-After running `supabase status`, you'll see connection details including the database URL.
+Keep this running in a separate terminal while developing.
 
 ### 3. Set up environment variables
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the root directory:
 
 ```bash
-# CLI dev env (Supabase CLI + pnpm dev)
-cp env.cli.example .env
+cp .env.example .env
 
-# Get the database URL from: pnpm supabase status
-# It will look like: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-
-# NextAuth secret (generate a random string)
-# You can generate one with: openssl rand -base64 32
-NEXTAUTH_SECRET="your-secret-key-here"
-
-# App encryption key (used to encrypt provider API keys/tokens at rest)
-# Generate one with: openssl rand -base64 32
-APP_ENCRYPTION_KEY="your-32-byte-base64-key"
-
-# NextAuth URL (for local development)
-NEXTAUTH_URL="http://localhost:3000"
-
-# Canonical application URL used for password reset links
+NEXT_PUBLIC_CONVEX_URL="https://your-deployment.convex.cloud"
 APP_BASE_URL="http://localhost:3000"
 ```
 
-### Docker Compose dev/test (build from source)
-
-If you want to test the Docker build/Compose setup **without interfering** with CLI local dev, use a separate env file and different ports:
-
-```bash
-cp env.docker.example .env.docker
-
-# Runs the app on http://localhost:3001 and Postgres on localhost:5433 by default
-pnpm docker:up
-```
-
-Stop and delete volumes (⚠️ deletes Docker DB data):
-
-```bash
-pnpm docker:down
-```
-
-### 4. Run database migrations
-
-```bash
-# Run Prisma migrations to set up the database schema
-# This will also generate the Prisma client automatically
-pnpm prisma migrate dev
-
-# If you need to generate the Prisma client separately (e.g., after schema changes)
-pnpm prisma generate
-```
-
-**Note for Windows users:** If you encounter a symlink permission error when running `prisma generate`, see [docs/WINDOWS_SETUP.md](./docs/WINDOWS_SETUP.md) for solutions.
-
-### 5. Start the development server
+### 4. Start the development server
 
 ```bash
 pnpm dev
@@ -258,39 +190,35 @@ The application will be available at `http://localhost:3000`.
 ### Additional Commands
 
 ```bash
-# View Supabase Studio (database admin UI)
-# Open: http://localhost:54323
+# Type-check
+pnpm type-check
 
-# Stop Supabase services
-pnpm supabase stop
-
-# Reset Supabase (clears all data)
-pnpm supabase db reset
+# Lint
+pnpm lint
 ```
 
 ---
 
 ## 🐳 Docker Deployment (Self-Hosting)
 
-Sous Chef can be easily deployed using Docker and Docker Compose for self-hosting.
+Sous Chef can be deployed using Docker and Docker Compose for self-hosting the app runtime.
+
+For backend setup, the current recommendation is Convex:
+
+- Configure Convex first via **[docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md)**
+- Then wire your Docker/runtime environment to `NEXT_PUBLIC_CONVEX_URL`
 
 ### Deployment Options
 
-**Option 1: Pre-built Images (Recommended for End Users)**
-- No need to build from source
-- Faster setup and updates
-- Just pull the latest image and run
+**Convex-First Docker (Recommended)**
+- Use `docker-compose.convex.yml`
+- Connect the app to a Convex deployment (`NEXT_PUBLIC_CONVEX_URL`)
 - See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for instructions
 
-**Option 2: Build from Source (For Developers)**
-- Clone the repository and build locally
-- Useful for development or custom modifications
-- See **[DOCKER.md](./DOCKER.md)** for instructions
-
-### Quick Start (Pre-built Images)
+### Quick Start (Convex-First)
 
 1. **Download deployment files**
-   - `docker-compose.prod.yml`
+   - `docker-compose.convex.yml`
    - `.env.example`
 
 2. **Create environment file**
@@ -299,11 +227,12 @@ Sous Chef can be easily deployed using Docker and Docker Compose for self-hostin
    # Edit .env and set required variables
    ```
 
-3. **Update image name** in `docker-compose.prod.yml` (replace `yourusername` with actual Docker Hub username)
+3. **Set Convex URL** in `.env`
+   - `NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud`
 
 4. **Start services**
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d
+   docker compose -f docker-compose.convex.yml up -d
    ```
 
 5. **Access the application**
@@ -311,22 +240,16 @@ Sous Chef can be easily deployed using Docker and Docker Compose for self-hostin
 
 ### Full Documentation
 
-- **End Users**: See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for pre-built image deployment
-- **Developers**: See **[DOCKER.md](./DOCKER.md)** for building from source and publishing images
+- **End Users**: See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for Convex-first deployment
+- **Developers**: See **[DOCKER.md](./DOCKER.md)** for Docker runtime configuration
 
 ---
 
-## 🗄️ Database Philosophy
+## 🗄️ Data Model Philosophy
 
-* PostgreSQL is the source of truth
-* All schema changes live in SQL migrations
-* No ORM-only hidden state
-* Designed for:
-
-  * Inventory instances
-  * Expiration tracking
-  * Nutrition data
-  * Recipe sharing
+* Convex is the source of truth for backend data and business logic
+* Strongly typed function contracts between frontend and backend
+* Designed for inventory instances, expiration tracking, nutrition data, and recipe sharing
 
 ---
 

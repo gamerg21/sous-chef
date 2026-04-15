@@ -12,7 +12,7 @@ Sous Chef is an open-source kitchen management application built with Next.js an
 
 - Node.js 20 LTS or later
 - pnpm 10.x (`npm install -g pnpm`)
-- PostgreSQL (or use Supabase)
+- Convex account/deployment access
 - Git
 
 ### Setting Up Your Development Environment
@@ -29,16 +29,15 @@ Sous Chef is an open-source kitchen management application built with Next.js an
    ```
 
 3. **Configure environment variables:**
-   - Copy the CLI example env file:
+   - Copy the example env file:
      ```bash
-     cp env.cli.example .env
+     cp .env.example .env
      ```
-   - Fill in the required environment variables. See the comments in the file for guidance.
+   - Fill in the required environment variables (`NEXT_PUBLIC_CONVEX_URL`, etc.).
 
-4. **Set up the database:**
+4. **Start Convex backend dev loop:**
    ```bash
-   pnpm supabase start
-   npx prisma migrate dev
+   npx convex dev
    ```
 
 5. **Start the development server:**

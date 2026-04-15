@@ -1,0 +1,58 @@
+# ============================================================================
+# Docker Compose Configuration (Convex-First)
+# ============================================================================
+# This is the recommended Docker setup for Sous Chef.
+#
+# It runs only the web app container and connects to a Convex backend.
+# No local Postgres container or Prisma migrations are required.
+#
+# Usage:
+#   docker compose -f docker-compose.convex.yml up -d
+#
+# Required env:
+#   NEXT_PUBLIC_CONVEX_URL
+#
+# Optional env:
+#   CONVEX_DEPLOY_KEY (only needed for server-side Convex operations that
+#   require a deploy key in your environment)
+# ============================================================================
+
+services:
+  app:
+    image: gamerg21/sous-chef:latest
+    container_name: sous-chef-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_CONVEX_URL: ${NEXT_PUBLIC_CONVEX_URL:?Set NEXT_PUBLIC_CONVEX_URL in .env}
+      CONVEX_DEPLOY_KEY: ${CONVEX_DEPLOY_KEY:-}
+
+      # Auth and app URLs
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+
+      # HTTPS Configuration (optional)
+      ENABLE_HTTPS: ${ENABLE_HTTPS:-true}
+      SSL_CERT_PATH: ${SSL_CERT_PATH:-/app/certs/cert.pem}
+      SSL_KEY_PATH: ${SSL_KEY_PATH:-/app/certs/key.pem}
+      HOSTNAME: ${HOSTNAME:-0.0.0.0}
+
+      # Optional email delivery for password reset or notifications
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SMTP_FROM: ${SMTP_FROM:-Sous Chef <no-reply@souschef.local>}
+
+      # Optional Open Food Facts enrichment
+      OPEN_FOOD_FACTS_ENABLED: ${OPEN_FOOD_FACTS_ENABLED:-true}
+      OPEN_FOOD_FACTS_API_BASE_URL: ${OPEN_FOOD_FACTS_API_BASE_URL:-https://world.openfoodfacts.org}
+      OPEN_FOOD_FACTS_USER_AGENT: ${OPEN_FOOD_FACTS_USER_AGENT:-SousChef/0.1.1 (reuse@example.com)}
+      OPEN_FOOD_FACTS_TIMEOUT_MS: ${OPEN_FOOD_FACTS_TIMEOUT_MS:-2500}
+      OPEN_FOOD_FACTS_CACHE_TTL_DAYS: ${OPEN_FOOD_FACTS_CACHE_TTL_DAYS:-30}
+      OPEN_FOOD_FACTS_BACKFILL_BATCH_SIZE: ${OPEN_FOOD_FACTS_BACKFILL_BATCH_SIZE:-50}
+
+      NODE_ENV: production
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Optional: mount custom certs. If omitted and ENABLE_HTTPS=true,
+      # the app auto-generates self-signed certs into this directory.
+      - ./certs:/app/certs:rw

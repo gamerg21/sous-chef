@@ -51,16 +51,12 @@ product-plan
 
 # Docker
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
 .dockerignore
 
 # CI/CD
 .github
 .gitlab-ci.yml
-
-# Supabase local dev (not needed in production)
-supabase/.branches
-supabase/.temp
 
 # Scripts (development only)
 scripts

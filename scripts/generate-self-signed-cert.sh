@@ -86,7 +86,7 @@ echo "   This is normal and safe for self-hosted instances."
 echo ""
 echo "To use this certificate:"
 echo "  1. Set ENABLE_HTTPS=true in your .env file"
-echo "  2. Mount the certs directory in docker-compose.yml (already configured)"
+echo "  2. Mount the certs directory in docker-compose.convex.yml (already configured)"
 echo "  3. Restart your containers"
 echo ""
 
