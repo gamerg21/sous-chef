@@ -1,12 +1,10 @@
-import { AlertTriangle, CheckCircle2, Link2, PlugZap } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Link2 } from 'lucide-react'
 import type { Integration, IntegrationStatus } from './types'
 import { cx } from './utils'
 
 export interface IntegrationRowProps {
   integration: Integration
-  onConnect?: (id: string) => void
   onDisconnect?: (id: string) => void
-  onManage?: (id: string) => void
 }
 
 function statusPill(status: IntegrationStatus) {
@@ -17,11 +15,16 @@ function statusPill(status: IntegrationStatus) {
       return { label: 'Needs attention', cls: 'bg-rose-100 text-rose-900 dark:bg-rose-950/40 dark:text-rose-200', icon: AlertTriangle }
     case 'disconnected':
     default:
-      return { label: 'Disconnected', cls: 'bg-stone-100 text-stone-700 dark:bg-stone-900/60 dark:text-stone-200', icon: Link2 }
+      return { label: 'Not connected', cls: 'bg-stone-100 text-stone-700 dark:bg-stone-900/60 dark:text-stone-200', icon: Link2 }
   }
 }
 
-export function IntegrationRow({ integration, onConnect, onDisconnect, onManage }: IntegrationRowProps) {
+/**
+ * Read-only row. No provider adapter exists yet, so there is no Connect or
+ * Manage action; a row that was marked connected by earlier data can only be
+ * disconnected, which clears its stored tokens.
+ */
+export function IntegrationRow({ integration, onDisconnect }: IntegrationRowProps) {
   const pill = statusPill(integration.status)
   const Icon = pill.icon
 
@@ -59,38 +62,18 @@ export function IntegrationRow({ integration, onConnect, onDisconnect, onManage 
           )}
         </div>
 
-        <div className="shrink-0 flex items-center gap-2">
-          {integration.status === 'connected' ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onManage?.(integration.id)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-              >
-                Manage
-              </button>
-              <button
-                type="button"
-                onClick={() => onDisconnect?.(integration.id)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-200 text-sm font-medium hover:bg-rose-100/70 dark:hover:bg-rose-950/30 transition-colors"
-              >
-                Disconnect
-              </button>
-            </>
-          ) : (
+        {integration.status === 'connected' && onDisconnect ? (
+          <div className="shrink-0">
             <button
               type="button"
-              onClick={() => onConnect?.(integration.id)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+              onClick={() => onDisconnect(integration.id)}
+              className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-200 text-sm font-medium hover:bg-rose-100/70 dark:hover:bg-rose-950/30 transition-colors"
             >
-              <PlugZap className="w-4 h-4" strokeWidth={1.75} />
-              Connect
+              Disconnect
             </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )
 }
-
-

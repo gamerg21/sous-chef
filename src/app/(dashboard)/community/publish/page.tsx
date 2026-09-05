@@ -128,7 +128,7 @@ export default function PublishRecipePage() {
       {isPublished && (
         <div className="max-w-2xl mx-auto mb-4 flex items-center justify-between gap-3 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3">
           <p className="text-sm text-emerald-800 dark:text-emerald-300">
-            This recipe is currently shared with the community
+            This recipe is currently shared with other households on this instance
             {recipeData?.visibility === "unlisted" ? " (unlisted)" : ""}.
           </p>
           <button

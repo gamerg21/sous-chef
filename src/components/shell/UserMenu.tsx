@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronUp, LogOut, User as UserIcon } from 'lucide-react'
+import { ChevronUp, LogOut, Sparkles, User as UserIcon, Users } from 'lucide-react'
 
 export type ShellUser = { name: string; avatarUrl?: string }
 
@@ -22,6 +22,13 @@ export interface UserMenuProps {
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
 }
+
+/** Settings surfaces that work today. Household members and AI settings had no entry point before. */
+const menuLinks = [
+  { href: '/account', label: 'Account & preferences', icon: UserIcon },
+  { href: '/settings/household-users', label: 'Household members', icon: Users },
+  { href: '/settings/ai', label: 'AI settings', icon: Sparkles },
+] as const
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).slice(0, 2)
@@ -77,21 +84,27 @@ export default function UserMenu({ user, onNavigate, onPrefetch, onLogout, neutr
             'bg-white dark:bg-stone-950 overflow-hidden'
           )}
         >
-          <button
-            type="button"
-            role="menuitem"
-            onMouseEnter={() => onPrefetch?.('/account')}
-            onFocus={() => onPrefetch?.('/account')}
-            onTouchStart={() => onPrefetch?.('/account')}
-            onClick={() => {
-              setOpen(false)
-              onNavigate?.('/account')
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/50"
-          >
-            <UserIcon className="w-4 h-4 text-stone-500 dark:text-stone-400" strokeWidth={1.75} />
-            Settings
-          </button>
+          {menuLinks.map((link) => {
+            const Icon = link.icon
+            return (
+              <button
+                key={link.href}
+                type="button"
+                role="menuitem"
+                onMouseEnter={() => onPrefetch?.(link.href)}
+                onFocus={() => onPrefetch?.(link.href)}
+                onTouchStart={() => onPrefetch?.(link.href)}
+                onClick={() => {
+                  setOpen(false)
+                  onNavigate?.(link.href)
+                }}
+                className="w-full min-h-11 flex items-center gap-2 px-3 py-2 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/50"
+              >
+                <Icon className="w-4 h-4 text-stone-500 dark:text-stone-400" strokeWidth={1.75} />
+                {link.label}
+              </button>
+            )
+          })}
 
           <button
             type="button"
@@ -100,7 +113,7 @@ export default function UserMenu({ user, onNavigate, onPrefetch, onLogout, neutr
               setOpen(false)
               onLogout?.()
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/50"
+            className="w-full min-h-11 flex items-center gap-2 px-3 py-2 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/50"
           >
             <LogOut className="w-4 h-4 text-stone-500 dark:text-stone-400" strokeWidth={1.75} />
             Log out

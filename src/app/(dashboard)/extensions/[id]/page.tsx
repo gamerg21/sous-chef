@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -16,52 +16,31 @@ export default function ExtensionDetailPage() {
   const id = params.id as Id<"extensionListings">;
 
   const extension = useQuery(api.extensions.getById, id ? { id } : "skip");
-  const installExtension = useMutation(api.extensions.install);
   const uninstallExtension = useMutation(api.extensions.uninstall);
-
-  const extensionData = useMemo(() => extension || null, [extension]);
 
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     message: string;
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
-  const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
-  const handleInstall = useCallback(
-    async (extensionId: string) => {
-      try {
-        await installExtension({ extensionId: extensionId as Id<"extensionListings"> });
-        setAlertModal({ isOpen: true, message: "Extension installed!", variant: "success" });
-      } catch (error) {
-        console.error("Error installing extension:", error);
-        setAlertModal({
-          isOpen: true,
-          message: "Failed to install extension. Please try again.",
-          variant: "error",
-        });
-      }
-    },
-    [installExtension]
-  );
-
-  const handleConfirmUninstall = useCallback(async () => {
-    if (!extensionData) return;
-
+  const handleConfirmRemove = useCallback(async () => {
+    if (!extension) return;
     try {
-      await uninstallExtension({ extensionId: extensionData.id });
-      setAlertModal({ isOpen: true, message: "Extension uninstalled!", variant: "success" });
-      setShowUninstallConfirm(false);
+      await uninstallExtension({ extensionId: extension.id });
+      setAlertModal({ isOpen: true, message: "Listing removed from this kitchen.", variant: "success" });
     } catch (error) {
-      console.error("Error uninstalling extension:", error);
+      console.error("Error removing extension listing:", error);
       setAlertModal({
         isOpen: true,
-        message: "Failed to uninstall extension. Please try again.",
+        message: "Couldn’t remove the listing. Please try again.",
         variant: "error",
       });
-      setShowUninstallConfirm(false);
+    } finally {
+      setShowRemoveConfirm(false);
     }
-  }, [extensionData, uninstallExtension]);
+  }, [extension, uninstallExtension]);
 
   if (extension === undefined) {
     return (
@@ -71,7 +50,7 @@ export default function ExtensionDetailPage() {
     );
   }
 
-  if (!extensionData) {
+  if (!extension) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-stone-600 dark:text-stone-400">Extension not found</p>
@@ -79,21 +58,21 @@ export default function ExtensionDetailPage() {
     );
   }
 
-  const installed: InstalledExtension | null = extensionData.installedExtension
+  const installed: InstalledExtension | null = extension.installedExtension
     ? {
-        extensionId: extensionData.id,
-        enabled: extensionData.installedExtension.enabled,
-        needsConfiguration: extensionData.installedExtension.needsConfiguration,
+        extensionId: extension.id,
+        enabled: extension.installedExtension.enabled,
+        needsConfiguration: extension.installedExtension.needsConfiguration,
       }
     : null;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <ExtensionDetailView
-        extension={extensionData as ExtensionListing}
+        extension={extension as ExtensionListing}
         installed={installed}
-        onInstall={handleInstall}
-        onBack={() => router.back()}
+        onBack={() => router.push("/extensions")}
+        onRemove={() => setShowRemoveConfirm(true)}
       />
       <AlertModal
         isOpen={alertModal.isOpen}
@@ -104,12 +83,12 @@ export default function ExtensionDetailPage() {
         variant={alertModal.variant}
       />
       <ConfirmModal
-        isOpen={showUninstallConfirm}
-        onClose={() => setShowUninstallConfirm(false)}
-        onConfirm={handleConfirmUninstall}
-        title="Uninstall extension"
-        message="Are you sure you want to uninstall this extension?"
-        confirmText="Uninstall"
+        isOpen={showRemoveConfirm}
+        onClose={() => setShowRemoveConfirm(false)}
+        onConfirm={handleConfirmRemove}
+        title="Remove listing"
+        message="Remove this listing's record from your kitchen? Nothing else changes, because the extension was never active."
+        confirmText="Remove"
         cancelText="Cancel"
         confirmVariant="danger"
       />

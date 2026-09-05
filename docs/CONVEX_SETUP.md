@@ -73,7 +73,7 @@ If recovery says it succeeded but nothing arrives, first check the delivery mode
 
 ## Optional AI configuration
 
-To store provider keys, generate a 32-byte encryption key (`openssl rand -base64 32`) and set it as `SECRETS_ENCRYPTION_KEY` on Convex. Back it up securely: replacing it makes stored credentials unreadable. New recipe → Idea from pantry creates a reviewable recipe draft. Configure the provider, its exact text-generation model ID, and API key in AI & Integrations, then test the key. Generation makes one bounded request and has a three-per-minute household limit. A connection test validates credentials, not model access or billing availability. Existing legacy plaintext keys remain readable; re-save them after enabling encryption. Conversational assistance and meal scheduling remain future work.
+To store provider keys, generate a 32-byte encryption key (`openssl rand -base64 32`) and set it as `SECRETS_ENCRYPTION_KEY` on Convex. Back it up securely: replacing it makes stored credentials unreadable. New recipe → Idea from pantry creates a reviewable recipe draft. Configure the provider, its exact text-generation model ID, and API key under AI settings (account menu), then test the key. Generation makes one bounded request and has a three-per-minute household limit. A connection test validates credentials, not model access or billing availability. Existing legacy plaintext keys remain readable; re-save them after enabling encryption. Conversational assistance and meal scheduling remain future work.
 
 ## Troubleshooting
 

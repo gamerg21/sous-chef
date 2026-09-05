@@ -19,7 +19,6 @@ const navigationItems = [
   { label: "What can I cook?", href: "/cooking" },
   { label: "Shopping List", href: "/shopping-list" },
   { label: "Community", href: "/community" },
-  { label: "Extensions", href: "/extensions" },
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -143,7 +142,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           "/cooking",
           "/shopping-list",
           "/community",
-          "/extensions",
           "/account",
         ]}
       />

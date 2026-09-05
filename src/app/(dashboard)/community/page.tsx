@@ -77,14 +77,7 @@ export default function CommunityPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <CommunityHubView
-        title="Community"
-        description="Discover and share recipes with the community."
-        showFeaturedRecipes={true}
-        showMarketplace={false}
-        categories={[]}
         featuredRecipes={featuredRecipes}
-        extensions={[]}
-        installedExtensions={[]}
         onOpenRecipe={handleOpenRecipe}
         onSaveRecipe={handleSaveRecipe}
         onViewAllRecipes={() => router.push("/community/recipes")}

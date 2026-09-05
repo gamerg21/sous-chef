@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId, resolveHouseholdId } from "./helpers";
@@ -31,9 +31,16 @@ export const list = query({
   },
 });
 
+export const INTEGRATIONS_UNAVAILABLE_MESSAGE =
+  "Third-party integrations are not available yet. No grocery, calendar, or device connection exists to set up.";
+
 /**
  * Public entry point. Runs as an action so OAuth tokens can be encrypted
  * with Web Crypto (unavailable in mutations) before they are stored.
+ *
+ * No provider adapter exists yet, so marking a row "connected" would only
+ * mislead the household. The action rejects until a real connection flow
+ * ships; `saveConnection` stays as the storage half of that future flow.
  */
 export const connect = action({
   args: {
@@ -43,6 +50,9 @@ export const connect = action({
     config: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!hasIntegrationAdapter()) {
+      throw new ConvexError(INTEGRATIONS_UNAVAILABLE_MESSAGE);
+    }
     const result: { success: boolean } = await ctx.runMutation(
       internal.integrations.saveConnection,
       {
@@ -58,6 +68,11 @@ export const connect = action({
     return result;
   },
 });
+
+/** Flip this when the first real provider connection flow is implemented. */
+function hasIntegrationAdapter(): boolean {
+  return false;
+}
 
 export const saveConnection = internalMutation({
   args: {

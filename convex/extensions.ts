@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId, getCurrentHouseholdId } from "./helpers";
 
@@ -13,7 +13,7 @@ export const list = query({
     let extensions = await ctx.db
       .query("extensionListings")
       .withIndex("by_enabled", (q) => q.eq("enabled", true))
-      .collect();
+      .take(100);
 
     if (args.category) {
       extensions = extensions.filter((e) => e.category === args.category);
@@ -90,7 +90,28 @@ export const getById = query({
   },
 });
 
+/**
+ * Listings are a catalog preview. No listing ships an adapter yet, so
+ * installing one would only record a row that changes nothing in the kitchen.
+ * Reject installs until a listing can actually do something.
+ */
+export const EXTENSIONS_UNAVAILABLE_MESSAGE =
+  "Extensions cannot be installed yet. Listings are a preview of a future catalog.";
+
 export const install = mutation({
+  args: { extensionId: v.id("extensionListings") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const householdId = await getCurrentHouseholdId(ctx, userId);
+    if (!householdId) throw new Error("No household");
+
+    const ext = await ctx.db.get(args.extensionId);
+    if (!ext) throw new Error("Extension not found");
+    throw new ConvexError(EXTENSIONS_UNAVAILABLE_MESSAGE);
+  },
+});
+
+export const uninstall = mutation({
   args: { extensionId: v.id("extensionListings") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -103,61 +124,9 @@ export const install = mutation({
         q.eq("extensionId", args.extensionId).eq("householdId", householdId),
       )
       .unique();
-    if (existing) throw new Error("Already installed");
+    if (!existing) throw new Error("Not installed");
 
-    await ctx.db.insert("installedExtensions", {
-      extensionId: args.extensionId,
-      householdId,
-      enabled: true,
-      needsConfiguration: false,
-    });
-
-    // Increment install count
-    const ext = await ctx.db.get(args.extensionId);
-    if (ext) {
-      await ctx.db.patch(args.extensionId, { installs: ext.installs + 1 });
-    }
-
-    return { success: true };
-  },
-});
-
-export const toggle = mutation({
-  args: { extensionId: v.id("extensionListings") },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const householdId = await getCurrentHouseholdId(ctx, userId);
-    if (!householdId) throw new Error("No household");
-
-    const installed = await ctx.db
-      .query("installedExtensions")
-      .withIndex("by_extensionId_and_householdId", (q) =>
-        q.eq("extensionId", args.extensionId).eq("householdId", householdId),
-      )
-      .unique();
-    if (!installed) throw new Error("Not installed");
-
-    await ctx.db.patch(installed._id, { enabled: !installed.enabled });
-    return { enabled: !installed.enabled };
-  },
-});
-
-export const uninstall = mutation({
-  args: { extensionId: v.id("extensionListings") },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const householdId = await getCurrentHouseholdId(ctx, userId);
-    if (!householdId) throw new Error("No household");
-
-    const installed = await ctx.db
-      .query("installedExtensions")
-      .withIndex("by_extensionId_and_householdId", (q) =>
-        q.eq("extensionId", args.extensionId).eq("householdId", householdId),
-      )
-      .unique();
-    if (!installed) throw new Error("Not installed");
-
-    await ctx.db.delete(installed._id);
+    await ctx.db.delete(existing._id);
     return { success: true };
   },
 });

@@ -1,6 +1,6 @@
 # Optional pantry recipe drafts
 
-In **AI & Integrations**, select OpenAI, Anthropic, or Google AI, enter the exact model ID available to your account, and save a provider key. New keys require `SECRETS_ENCRYPTION_KEY` on the Convex deployment. The web container needs no provider credentials. Selecting a provider changes the household's active provider; all household members use that configuration.
+Open the account menu and choose **AI settings**. Select OpenAI, Anthropic, or Google AI, enter the exact model ID available to your account, and save a provider key. New keys require `SECRETS_ENCRYPTION_KEY` on the Convex deployment. The web container needs no provider credentials. Selecting a provider changes the household's active provider; all household members use that configuration.
 
 Open **Recipes → New recipe → Idea from pantry**. The explicit Generate action sends inventory names, quantities, units, and your preferences to the selected provider. Its pricing and data policies apply. The result opens in the recipe editor for review and is saved only when you press Save. It can replace the current unsaved draft. Check dietary requirements and preparation instructions yourself.
 

@@ -26,7 +26,7 @@ Run `pnpm run doctor` to check local configuration and backend reachability. The
 - Email/password signin and recovery by email, or operator-assisted recovery when email is not configured.
 - Community recipe sharing within a deployment; optional pantry-to-recipe drafts using your own AI provider key.
 
-**Still unfinished:** Conversational AI/meal planning, third-party grocery/calendar integrations, magic links, offline operation, cross-instance community federation, and native apps. Pantry recipe drafts work with a configured provider; extension listings do not yet provide third-party adapters.
+**Still unfinished:** Conversational AI/meal planning, third-party grocery/calendar integrations, magic links, offline operation, cross-instance community federation, and native apps. Pantry recipe drafts work with a configured provider. The extension catalog is a preview: listings cannot be installed, integrations cannot be connected, and neither appears in the main navigation.
 
 Validation commands: `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm build`.
 
@@ -45,7 +45,7 @@ Validation commands: `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm buil
 
 ### Recipes
 
-* Private by default, **shareable with the community**
+* Private by default, **shareable with other households on your instance**
 * Ingredient-to-inventory mapping
 * Nutrition macros per serving
 * Photos and notes (recipe detail upload/remove implemented)
@@ -59,17 +59,14 @@ Validation commands: `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm buil
 
 ### Community Recipes
 
-* Recipes can be published to a **public community catalog**
-* Self-hosted users retain full functionality via:
-
-  * Sharing within their own deployment
-  * Import/export
-  * A hosted community connection is future work
+* Recipes can be published as public or unlisted to the **community catalog of your own instance**
+* Sharing stays within one deployment; import/export moves recipes between instances
+* Connecting instances to each other or to a hosted community is future work
 
 ### AI (Optional)
 
 * New recipe → **Idea from pantry** generates one editable recipe draft.
-* Configure OpenAI, Anthropic, or Google AI, an exact model ID, and your own API key in AI & Integrations.
+* Configure OpenAI, Anthropic, or Google AI, an exact model ID, and your own API key under **AI settings** (open the account menu).
 * The Generate button sends pantry names, quantities, units, and preferences to that provider; your provider may bill the request. Nothing is saved automatically.
 * Set `SECRETS_ENCRYPTION_KEY` on Convex before saving new provider keys.
 * Meal planning, substitutions, and nutrition insights are planned/in progress

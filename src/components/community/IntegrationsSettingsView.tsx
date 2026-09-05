@@ -9,9 +9,8 @@ export interface IntegrationsSettingsViewProps {
   integrations: Integration[]
   onBack?: () => void
   onSelectActiveProvider?: (providerId: string) => void
-  onConnectIntegration?: (id: string) => void
   onDisconnectIntegration?: (id: string) => void
-  onManageIntegration?: (id: string) => void
+  onOpenExtensionCatalog?: () => void
   onTestAiConnection?: () => void
   onSaveApiKey?: (providerId: string, key: string, model: string) => Promise<boolean> | boolean | void
 }
@@ -22,9 +21,8 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
     integrations,
     onBack,
     onSelectActiveProvider,
-    onConnectIntegration,
     onDisconnectIntegration,
-    onManageIntegration,
+    onOpenExtensionCatalog,
     onTestAiConnection,
     onSaveApiKey,
   } = props
@@ -50,9 +48,9 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-2">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">AI & Integrations</h1>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">AI settings</h1>
               <p className="text-sm text-stone-600 dark:text-stone-400">
-                Configure third-party connections and AI. Bring your own key per provider.
+                Bring your own provider key for optional pantry recipe drafts. Settings apply to the whole household.
               </p>
             </div>
             {onBack ? (
@@ -198,33 +196,33 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
 
           {/* Integrations */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Integrations</h2>
-              <span className="text-sm text-stone-500 dark:text-stone-400">{integrations.length}</span>
+            <div>
+              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Third-party integrations</h2>
+              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
+                Grocery services, calendars, and smart kitchen devices are not available yet. There is nothing to connect,
+                and nothing in Sous Chef depends on them.
+                {onOpenExtensionCatalog ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={onOpenExtensionCatalog}
+                      className="underline text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100"
+                    >
+                      Preview the extension catalog
+                    </button>
+                    .
+                  </>
+                ) : null}
+              </p>
             </div>
-            <div className="grid grid-cols-1 gap-3">
-              {integrations.length === 0 && (
-                <div className="rounded-lg border border-dashed border-stone-200 dark:border-stone-800 p-6 text-center">
-                  <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                    No integrations available yet
-                  </p>
-                  <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-                    Third-party integrations (grocery services, calendars, smart
-                    kitchen devices) will appear here as they are added to Sous
-                    Chef.
-                  </p>
-                </div>
-              )}
-              {integrations.map((it) => (
-                <IntegrationRow
-                  key={it.id}
-                  integration={it}
-                  onConnect={onConnectIntegration}
-                  onDisconnect={onDisconnectIntegration}
-                  onManage={onManageIntegration}
-                />
-              ))}
-            </div>
+            {integrations.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3">
+                {integrations.map((it) => (
+                  <IntegrationRow key={it.id} integration={it} onDisconnect={onDisconnectIntegration} />
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -119,7 +119,6 @@ export function DashboardPrewarm({
     const onCookingPage = pathname === "/cooking";
     const onShoppingListPage = pathname === "/shopping-list";
     const onCommunityPage = pathname === "/community" || pathname.startsWith("/community/");
-    const onExtensionsPage = pathname === "/extensions" || pathname.startsWith("/extensions/");
 
     if (!onInventoryPage) {
       queries.inventory = { query: api.inventory.list, args: {} };
@@ -144,10 +143,6 @@ export function DashboardPrewarm({
           query: api.community.listRecipes,
           args: { limit: 6, sort: "popular" },
         };
-      }
-
-      if (!onExtensionsPage) {
-        queries.extensions = { query: api.extensions.list, args: {} };
       }
     }
 

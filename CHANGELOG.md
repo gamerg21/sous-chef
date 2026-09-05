@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - Calculate cooking readiness and shopping shortages from actual quantities and compatible units; explicitly review uncertain amounts.
 - Paste recipe text into an editable draft; fix saving and editing recipes with ingredients.
 - Show cooking instructions alongside exact inventory changes and prevent duplicate saves.
+- Keep unfinished extensions out of the everyday journey: the extension catalog and third-party integrations left the main navigation, listings cannot be installed and integrations cannot be connected until an adapter exists, and placeholder reviews were removed.
+- AI provider settings moved to Settings → AI settings; the account menu now links to account preferences, household members, and AI settings. Old `/extensions/integrations` links redirect.
+- Community copy states that sharing stays within this instance.
 
 ## [Unreleased]
 

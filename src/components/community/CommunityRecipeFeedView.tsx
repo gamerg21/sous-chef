@@ -82,7 +82,7 @@ export function CommunityRecipeFeedView(props: CommunityRecipeFeedViewProps) {
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">Community</h1>
             <p className="text-sm text-stone-600 dark:text-stone-400">
-              Browse public recipes and save copies into your private library.
+              Browse recipes shared on this Sous Chef instance and save copies into your private library.
             </p>
           </div>
 

@@ -42,7 +42,6 @@ export function PublishRecipeView({ draft, onBack, onPublish }: PublishRecipeVie
               <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
               Back
             </button>
-            <span className="text-xs text-stone-500 dark:text-stone-500">Preview-only publishing flow</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -50,7 +49,7 @@ export function PublishRecipeView({ draft, onBack, onPublish }: PublishRecipeVie
             <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
               <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">Publish recipe</h1>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Share a recipe to the community catalog. You can publish as public or keep it unlisted.
+                Share a recipe with other households on this Sous Chef instance. Public recipes appear in Community; unlisted ones are reachable only by link.
               </p>
 
               <div className="mt-5 space-y-4">
