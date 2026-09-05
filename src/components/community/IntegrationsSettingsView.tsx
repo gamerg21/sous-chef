@@ -13,7 +13,7 @@ export interface IntegrationsSettingsViewProps {
   onDisconnectIntegration?: (id: string) => void
   onManageIntegration?: (id: string) => void
   onTestAiConnection?: () => void
-  onSaveApiKey?: (providerId: string, key: string) => void
+  onSaveApiKey?: (providerId: string, key: string, model: string) => Promise<boolean> | boolean | void
 }
 
 export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
@@ -36,6 +36,8 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
   const [localProviderId, setLocalProviderId] = useState<string>(safeAi.activeProviderId ?? safeAi.providers[0]?.id ?? 'openai')
   const [reveal, setReveal] = useState(false)
   const [apiKey, setApiKey] = useState('')
+  const [models, setModels] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
 
   const effectiveProviderId = onSelectActiveProvider ? (safeAi.activeProviderId ?? localProviderId) : localProviderId
 
@@ -103,7 +105,9 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
                         type="button"
                         disabled={disabled}
                         onClick={() => {
-                          if (disabled) return
+                          if (disabled || saving) return
+                          setApiKey('')
+                          setReveal(false)
                           if (onSelectActiveProvider) onSelectActiveProvider(p.id)
                           else setLocalProviderId(p.id)
                         }}
@@ -120,7 +124,7 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
                           {p.name}
                         </div>
                         <div className="mt-0.5 text-xs text-stone-600 dark:text-stone-400">
-                          {p.recommendedModel ? `Recommended: ${p.recommendedModel}` : '—'}
+                          {p.model || 'Choose a model'} · {p.hasKey ? 'Key saved' : 'Needs key'}
                         </div>
                       </button>
                     )
@@ -133,7 +137,7 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Selected provider</div>
                     <div className="mt-1 text-xs text-stone-600 dark:text-stone-400">
-                      {provider ? `${provider.name} • ${provider.recommendedModel ?? 'model TBD'}` : '—'}
+                      {provider ? `${provider.name} • ${provider.model ?? 'choose a model'}` : '—'}
                     </div>
                   </div>
                   <span className="text-[11px] px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-900/60 text-stone-700 dark:text-stone-200">
@@ -149,10 +153,12 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
                       <input
+                        aria-label="Provider API key"
+                        autoComplete="off"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         type={reveal ? 'text' : 'password'}
-                        placeholder="Paste your API key"
+                        placeholder={provider?.hasKey ? "Leave blank to keep saved key" : "Paste your API key"}
                         className="w-full pr-10 pl-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                       />
                       <button
@@ -167,17 +173,23 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!provider) return
-                        onSaveApiKey?.(provider.id, apiKey)
+                      disabled={saving || !provider || !(models[provider.id] ?? provider.model ?? '').trim() || (!apiKey.trim() && !provider.hasKey)}
+                      onClick={async () => {
+                        if (!provider || saving) return
+                        setSaving(true)
+                        try {
+                          const success = await onSaveApiKey?.(provider.id, apiKey, models[provider.id] ?? provider.model ?? '')
+                          if (success) { setApiKey(''); setReveal(false) }
+                        } finally { setSaving(false) }
                       }}
                       className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
                     >
-                      Save
+                      {saving ? 'Saving…' : 'Save'}
                     </button>
                   </div>
+                  {provider && <label className="block text-sm font-medium">Model ID<input value={models[provider.id] ?? provider.model ?? ''} onChange={e => setModels(previous => ({ ...previous, [provider.id]: e.target.value }))} placeholder="Exact model ID from your provider" maxLength={120} className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 text-base dark:border-stone-700 dark:bg-stone-900" /></label>}
                   <p className="text-xs text-stone-500 dark:text-stone-500">
-                    Keys are masked by default. In real implementation, store keys securely and never log them.
+                    New keys are encrypted on the backend. Choose a text-generation model available to your provider account. Saved keys are never sent back to this browser.
                   </p>
                 </div>
               </div>

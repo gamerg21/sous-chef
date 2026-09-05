@@ -92,6 +92,8 @@ export interface Integration {
 export interface AiProvider {
   id: string
   name: string
+  model?: string
+  hasKey?: boolean
   recommendedModel?: string
   availableByok?: boolean
   status?: 'ready' | 'needs-key' | 'error'

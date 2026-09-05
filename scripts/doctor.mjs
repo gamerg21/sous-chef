@@ -27,6 +27,8 @@ console.log('\nBackend checklist (set these on Convex, not in the web container)
 console.log('  Initialize Convex Auth signing keys with pnpm exec auth.');
 console.log('  Set SITE_URL to the exact browser URL; keep any APP_BASE_URL override in sync.');
 console.log('  Deploy functions, then seed units: pnpm exec convex run units:seed');
+console.log('  Optional AI: set SECRETS_ENCRYPTION_KEY, then choose a provider key and model in the app.');
+console.log('  Backups: pnpm run backup --deployment <dev|prod|local|deployment-name>');
 console.log('  Optional email: RESEND_API_KEY + a verified SMTP_FROM sender.');
 console.log('  Without email, the operator retrieves password recovery links from Convex logs.');
 console.log('  See docs/CONVEX_SETUP.md. This check does not verify login or email delivery.');

@@ -1,5 +1,6 @@
 "use client";
 
+import { ConvexError } from "convex/values";
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -44,7 +45,7 @@ export default function IntegrationsPage() {
         });
       }
     },
-    [integrations, connectIntegration]
+    [connectIntegration]
   );
 
   const handleDisconnectIntegration = useCallback((id: string) => {
@@ -87,17 +88,18 @@ export default function IntegrationsPage() {
   );
 
   const handleSaveApiKey = useCallback(
-    async (providerId: string, key: string) => {
+    async (providerId: string, key: string, model: string) => {
       try {
-        await configureAiProvider({ providerId, apiKey: key });
-        setAlertModal({ isOpen: true, message: "API key saved!", variant: "success" });
+        await configureAiProvider({ providerId, apiKey: key.trim() || undefined, model, isActive: true });
+        setAlertModal({ isOpen: true, message: "Provider settings saved.", variant: "success" });
+        return true;
       } catch (error) {
-        console.error("Error saving API key:", error);
         setAlertModal({
           isOpen: true,
-          message: "Failed to save API key. Please try again.",
+          message: error instanceof ConvexError && typeof error.data === "string" ? error.data : "Failed to save provider settings. Please try again.",
           variant: "error",
         });
+        return false;
       }
     },
     [configureAiProvider]
@@ -142,7 +144,7 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full">
       <IntegrationsSettingsView
         integrations={integrations}
         ai={aiSettings || { keyMode: "bring-your-own", providers: [], activeProviderId: undefined }}

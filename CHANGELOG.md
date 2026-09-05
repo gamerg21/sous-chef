@@ -82,3 +82,9 @@ All notable changes to this project will be documented in this file.
 
 - This release establishes Convex as the primary application backend and auth provider.
 - Historical tags created before changelog tracking began: `v0.1.0`, `v0.1.1`, `v0.1.1a`.
+
+### Optional pantry AI and home backups
+
+- Generate a reviewable recipe draft from pantry contents using a configured OpenAI, Anthropic, or Google model.
+- Add provider model selection, encrypted new keys, bounded requests, household limits, and explicit provider-data disclosure.
+- Add a private database-and-file export command with an explicit deployment target and a restore-drill guide.

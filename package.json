@@ -17,7 +17,8 @@
     "type-check:watch": "tsc --noEmit --watch",
     "prepare": "husky",
     "doctor": "node scripts/doctor.mjs",
-    "setup:backend": "convex dev --once && auth && convex dev --once && convex run units:seed"
+    "setup:backend": "convex dev --once && auth && convex dev --once && convex run units:seed",
+    "backup": "node scripts/backup.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",

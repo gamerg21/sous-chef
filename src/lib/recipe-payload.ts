@@ -1,4 +1,4 @@
-import type { Recipe } from '@/components/recipes/types'
+import type { Recipe } from '../components/recipes/types'
 
 /** UI IDs and display timestamps are not part of the mutation contract. */
 export function recipeCreatePayload(recipe: Recipe) {

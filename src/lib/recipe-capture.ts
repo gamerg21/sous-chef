@@ -1,5 +1,5 @@
 import { parseAmount } from './units'
-import type { Recipe, RecipeIngredient } from '@/components/recipes/types'
+import type { Recipe, RecipeIngredient } from '../components/recipes/types'
 
 const fractions: Record<string, string> = { '¼':'1/4', '½':'1/2', '¾':'3/4', '⅓':'1/3', '⅔':'2/3', '⅛':'1/8', '⅜':'3/8', '⅝':'5/8', '⅞':'7/8' }
 const unitPattern = /^(fl\s*oz|fluid ounces?|tablespoons?|teaspoons?|milliliters?|liters?|kilograms?|grams?|ounces?|pounds?|cups?|tbsp|tsp|ml|kg|oz|lb|g|l|each|count|cloves?|slices?|cans?|pinches?)\.?\s+(.+)$/i

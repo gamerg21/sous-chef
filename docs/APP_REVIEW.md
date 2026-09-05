@@ -43,7 +43,7 @@ These are browser viewport checks, not physical iPhone/Android camera tests. Pop
 
 ## Validation
 
-- 59 automated tests pass, including authorization, kitchen bootstrap/switching, shopping edits/atomic clearing, unit conversion/cooking, and public runtime config/auth URL regressions.
+- 66 automated tests pass, including authorization, kitchen bootstrap/switching, shopping edits/atomic clearing, unit conversion/cooking, and public runtime config/auth URL regressions.
 - Type check and production Next.js build pass with build-time type checking enabled.
 - ESLint has no errors; the remaining warnings include existing generated-file, image, and React-hook warnings.
 - Production standalone process served a different runtime backend URL than the build configuration, with `Cache-Control: no-store`.
@@ -56,7 +56,7 @@ These are browser viewport checks, not physical iPhone/Android camera tests. Pop
 1. **Completed: shared cooking plan.** Quantity-aware cards, shortages, unit conversion, oldest-expiry allocation, repeated ingredients, explicit manual checks, instructions, and actual deductions use the same calculation. Add-missing derives server-side shortages and avoids multiplying an unchanged request.
 2. **Completed: purchases to inventory.** Reviewed quantities, units, storage, and expiry create separate batches atomically. Repeated requests cannot stock the same purchase twice; changed or foreign purchases are rejected.
 3. **Completed: paste-to-draft capture.** Recipes with title/Ingredients/Instructions sections become editable drafts, preserving original text and attribution. Create/edit payloads now strip UI-only IDs, and editing can clear optional fields. Direct URL fetching remains unimplemented.
-4. **Ship one optional AI workflow.** Existing provider configuration/testing and encrypted key storage are infrastructure. A constrained “ideas from my pantry” workflow with structured recipe drafts would be a useful first feature. It needs provider/model decisions, failure/timeout handling, and end-to-end testing with an operator-supplied key.
+4. **Implemented: optional pantry recipe drafts.** OpenAI, Anthropic, and Google adapters produce a validated, editable recipe through an explicit Generate action. Provider/model setup, encrypted new keys, bounded response parsing, timeout/error handling, and per-household limits are covered. Mocked provider tests pass; real provider generation still needs an operator key and model with available credit.
 5. **Keep unavailable extensions out of the core journey.** Grocery/calendar integrations and a cross-instance community network remain scaffolding. Community sharing currently stays within a deployment. Avoid implying that enabling a listing installs a working integration.
 6. **Finish home-server release acceptance.** Fresh Docker checkout, trusted HTTPS from a real phone, barcode camera permission/device selection, verified email delivery, household invitations, and data/storage restore drill. Document and test the self-hosted Convex backend path on real infrastructure before calling it one-click.
 7. **Then offline and native clients.** Offline operation is not implemented. Decide what can be cached and which edits can safely queue before promising offline support. A future native client should connect to the same instance/backend rather than fork the domain rules.
@@ -70,3 +70,7 @@ On a fresh instance: create an account, add milk/eggs/rice, save a recipe, verif
 - Live 390×844 purchase review stocked a temporary 2 l item in Fridge. A pasted recipe requiring 3 l correctly previewed 2 l deduction and 1 l shortage, then cooked successfully.
 - This exercise exposed and fixed unit-selection focus reopening and recipe create/edit payload validation failures.
 - New tests cover preview/mutation agreement, shortage deduplication, manual checks, purchase retry safety and household isolation, text capture, and actual recipe create/edit payloads.
+
+- Pantry AI setup and disabled-until-configured behavior verified live; no paid provider request was made.
+- A private backup command now includes file storage and requires an explicit target deployment. The CLI options were verified against the installed CLI; no snapshot or restore was run against the user's kitchen.
+- Checkpoints before optional AI work: `137674f` and `dc55b9d`. Application work is committed separately from the user's skill and branding changes.

@@ -265,3 +265,22 @@ test('editor payload creates and edits a complete recipe, including clearing opt
   expect(updated?.servings).toBeUndefined();
   expect(updated?.steps[0].text).toBe('Warm the milk.');
 });
+
+test('pantry idea preparation requires configuration and limits usage within the correct household', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const other = await setupKitchen(t);
+  await addInventory(t, kitchen, 'Milk', 1, 'l');
+  await addInventory(t, other, 'Private ingredient', 4, 'each');
+  await expect(kitchen.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('AI settings');
+  await t.run(ctx => ctx.db.insert('aiProviderSettings', { householdId: kitchen.householdId, providerId: 'openai', providerName: 'OpenAI', model: 'test-model', apiKey: 'test-only', status: 'ready', isActive: true }));
+  const prepared = await kitchen.asUser.mutation(internal.recipeIdeas.prepare, {});
+  expect(prepared.pantry).toEqual([{ name: 'Milk', quantity: 1, unit: 'l' }]);
+  await kitchen.asUser.mutation(internal.recipeIdeas.prepare, {});
+  await kitchen.asUser.mutation(internal.recipeIdeas.prepare, {});
+  await expect(kitchen.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('Wait a minute');
+  await expect(other.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('AI settings');
+  const publicSettings = await kitchen.asUser.query(api.aiProviders.list, {});
+  expect(JSON.stringify(publicSettings)).not.toContain('test-only');
+  expect(publicSettings.providers[0]).toMatchObject({ model: 'test-model', hasKey: true });
+});

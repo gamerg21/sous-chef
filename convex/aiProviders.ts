@@ -1,20 +1,20 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation, action, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId, getCurrentHouseholdId, resolveHouseholdId } from "./helpers";
 import { encryptSecret, decryptSecret } from "./secrets";
 
 const DEFAULT_PROVIDERS = [
-  { providerId: "openai", providerName: "OpenAI", recommendedModel: "gpt-4" },
+  { providerId: "openai", providerName: "OpenAI", recommendedModel: "" },
   {
     providerId: "anthropic",
     providerName: "Anthropic",
-    recommendedModel: "claude-3.5-sonnet",
+    recommendedModel: "",
   },
   {
     providerId: "google",
     providerName: "Google AI",
-    recommendedModel: "gemini-pro",
+    recommendedModel: "",
   },
 ];
 
@@ -32,6 +32,8 @@ export const list = query({
           recommendedModel: p.recommendedModel,
           availableByok: true,
           status: "needs-key",
+          model: undefined as string | undefined,
+          hasKey: false,
         })),
         activeProviderId: undefined,
       };
@@ -53,6 +55,8 @@ export const list = query({
         recommendedModel: p.recommendedModel,
         availableByok: true,
         status: setting?.status ?? "needs-key",
+        model: setting?.model,
+        hasKey: !!setting?.apiKey,
       };
     });
 
@@ -76,13 +80,18 @@ export const configure = action({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    if (!DEFAULT_PROVIDERS.some(provider => provider.providerId === args.providerId)) throw new ConvexError("Choose a supported provider");
+    const context = await ctx.runQuery(internal.aiProviders.getSettingWithKey, { providerId: args.providerId });
+    if (!context) throw new ConvexError("No household");
+    if (args.model !== undefined && (!args.model.trim() || args.model.length > 120)) throw new ConvexError("Enter a model ID from your provider");
+    if (args.apiKey && !process.env.SECRETS_ENCRYPTION_KEY) throw new ConvexError("The server operator must set SECRETS_ENCRYPTION_KEY before saving provider keys");
     const apiKey =
       args.apiKey !== undefined && args.apiKey !== ""
         ? await encryptSecret(args.apiKey)
         : args.apiKey;
     const result: { success: boolean } = await ctx.runMutation(
       internal.aiProviders.saveConfiguration,
-      { ...args, apiKey },
+      { ...args, householdId: context.householdId, model: args.model?.trim(), apiKey },
     );
     return result;
   },
@@ -90,6 +99,7 @@ export const configure = action({
 
 export const saveConfiguration = internalMutation({
   args: {
+    householdId: v.id("households"),
     providerId: v.string(),
     apiKey: v.optional(v.string()),
     model: v.optional(v.string()),
@@ -97,8 +107,8 @@ export const saveConfiguration = internalMutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = await getCurrentHouseholdId(ctx, userId);
-    if (!householdId) throw new Error("No household");
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
+    if (!householdId) throw new ConvexError("No household");
 
     const existing = await ctx.db
       .query("aiProviderSettings")
@@ -168,7 +178,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     const householdId = await getCurrentHouseholdId(ctx, userId);
-    if (!householdId) throw new Error("No household");
+    if (!householdId) throw new ConvexError("No household");
 
     const setting = await ctx.db
       .query("aiProviderSettings")
@@ -195,16 +205,15 @@ export const getSettingWithKey = internalQuery({
         q.eq("householdId", householdId).eq("providerId", args.providerId),
       )
       .unique();
-    if (!setting) return null;
-    return { apiKey: setting.apiKey ?? null, model: setting.model ?? null };
+    return { householdId, apiKey: setting?.apiKey ?? null, model: setting?.model ?? null };
   },
 });
 
 export const recordTestResult = internalMutation({
-  args: { providerId: v.string(), success: v.boolean() },
+  args: { providerId: v.string(), success: v.boolean(), householdId: v.id("households") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = await getCurrentHouseholdId(ctx, userId);
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) return null;
     const setting = await ctx.db
       .query("aiProviderSettings")
@@ -233,7 +242,7 @@ export const test = action({
     ctx,
     args,
   ): Promise<{ success: boolean; error?: string }> => {
-    const setting: { apiKey: string | null; model: string | null } | null =
+    const setting: { householdId: import("./_generated/dataModel").Id<"households">; apiKey: string | null; model: string | null } | null =
       await ctx.runQuery(internal.aiProviders.getSettingWithKey, {
         providerId: args.providerId,
       });
@@ -268,8 +277,8 @@ export const test = action({
         break;
       case "google":
         request = {
-          url: `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
-          headers: {},
+          url: "https://generativelanguage.googleapis.com/v1beta/models",
+          headers: { "x-goog-api-key": apiKey },
         };
         break;
       default:
@@ -284,6 +293,7 @@ export const test = action({
       const success = response.ok;
       await ctx.runMutation(internal.aiProviders.recordTestResult, {
         providerId: args.providerId,
+        householdId: setting.householdId,
         success,
       });
       if (!success) {
@@ -299,6 +309,7 @@ export const test = action({
     } catch (error) {
       await ctx.runMutation(internal.aiProviders.recordTestResult, {
         providerId: args.providerId,
+        householdId: setting.householdId,
         success: false,
       });
       return {

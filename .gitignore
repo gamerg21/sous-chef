@@ -52,3 +52,6 @@ localhost+*-key.pem
 
 # product plan
 product-plan/
+
+# Private database / file snapshots
+/.backups/

@@ -24,9 +24,9 @@ Run `pnpm run doctor` to check local configuration and backend reachability. The
 - Household membership/roles and a working kitchen switcher.
 - Convex realtime subscriptions, responsive web layouts, and accessible scrollable dialogs.
 - Email/password signin and recovery by email, or operator-assisted recovery when email is not configured.
-- Community recipe sharing within a deployment; optional AI provider configuration with encrypted keys.
+- Community recipe sharing within a deployment; optional pantry-to-recipe drafts using your own AI provider key.
 
-**Still unfinished:** AI assistant/meal planning, third-party grocery/calendar integrations, magic links, offline operation, cross-instance community federation, and native apps. Existing extension/provider settings should not be mistaken for completed end-user workflows.
+**Still unfinished:** Conversational AI/meal planning, third-party grocery/calendar integrations, magic links, offline operation, cross-instance community federation, and native apps. Pantry recipe drafts work with a configured provider; extension listings do not yet provide third-party adapters.
 
 Validation commands: `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm build`.
 
@@ -68,7 +68,10 @@ Validation commands: `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm buil
 
 ### AI (Optional)
 
-* BYOK provider configuration is available
+* New recipe → **Idea from pantry** generates one editable recipe draft.
+* Configure OpenAI, Anthropic, or Google AI, an exact model ID, and your own API key in AI & Integrations.
+* The Generate button sends pantry names, quantities, units, and preferences to that provider; your provider may bill the request. Nothing is saved automatically.
+* Set `SECRETS_ENCRYPTION_KEY` on Convex before saving new provider keys.
 * Meal planning, substitutions, and nutrition insights are planned/in progress
 * **Self-hosted**: user-supplied API keys only
 
@@ -214,3 +217,7 @@ Sous Chef aims to be the *trusted digital assistant* in your kitchen —
 not a data-harvesting appliance, not a walled garden, and not another abandoned recipe app.
 
 Built **with** the community, **for** the community.
+
+## Back up your kitchen
+
+Run `pnpm run backup --deployment dev` (or explicitly select `prod`, `local`, or a deployment name). The command exports tables and uploaded files into the git-ignored `.backups/` directory with private file permissions. Keep a separate secure copy of deployment environment values, particularly auth signing and encryption keys. See [backup and restore](docs/BACKUP.md) for a restore drill.
