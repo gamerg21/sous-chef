@@ -4,6 +4,7 @@ import {
   Boxes,
   BookOpen,
   ShoppingCart,
+  ChefHat,
   Users,
   Settings,
   type LucideIcon,
@@ -37,7 +38,8 @@ function iconForLabel(label: string): LucideIcon {
   const normalized = label.toLowerCase()
   if (normalized.includes('inventory')) return Boxes
   if (normalized.includes('recipe')) return BookOpen
-  if (normalized.includes('shopping') || normalized.includes('cook')) return ShoppingCart
+  if (normalized.includes('cook')) return ChefHat
+  if (normalized.includes('shopping')) return ShoppingCart
   if (normalized.includes('community') || normalized.includes('extension')) return Users
   if (normalized.includes('settings')) return Settings
   return Boxes
@@ -66,12 +68,13 @@ export default function MainNav({
             <li key={item.href}>
               <button
                 type="button"
+                aria-current={active ? 'page' : undefined}
                 onClick={() => onNavigate?.(item.href)}
                 onMouseEnter={() => onPrefetch?.(item.href)}
                 onFocus={() => onPrefetch?.(item.href)}
                 onTouchStart={() => onPrefetch?.(item.href)}
                 className={cx(
-                  'w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-left',
+                  'min-h-11 w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-left',
                   'transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2',
                   accent.ring,

@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { KitchenInventoryDashboardView } from "@/components/inventory";
 import { BarcodeScanner } from "@/components/inventory/BarcodeScanner";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { UnitPicker } from "@/components/ui/unit-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Modal } from "@/components/ui/modal";
 import { AlertModal } from "@/components/ui/alert-modal";
 import {
   INVENTORY_ALL_CATEGORIES_VALUE,
@@ -67,6 +69,7 @@ export default function InventoryPage() {
   const removeItem = useMutation(api.inventory.remove);
   const createItem = useMutation(api.inventory.create);
   const updateItem = useMutation(api.inventory.update);
+  const lookupBarcode = useAction(api.barcodes.lookup);
 
   const items = inventoryData?.items || [];
   const locations = inventoryData?.locations || [];
@@ -154,11 +157,9 @@ export default function InventoryPage() {
 
   const handleBarcodeScanned = useCallback(async (barcode: string) => {
     try {
-      const response = await fetch(
-        `/api/barcode/lookup?code=${encodeURIComponent(barcode)}`
-      );
+      const data = (await lookupBarcode({ code: barcode })) as BarcodeLookupResponse;
 
-      if (response.status === 404) {
+      if (!data.found) {
         setConfirmModal({
           isOpen: true,
           message: `Barcode "${barcode}" not found. Would you like to add it manually?`,
@@ -173,12 +174,6 @@ export default function InventoryPage() {
         });
         return;
       }
-
-      if (!response.ok) {
-        throw new Error("Failed to lookup barcode");
-      }
-
-      const data = (await response.json()) as BarcodeLookupResponse;
 
       setPrefillData({
         name: data.prefill.name,
@@ -208,7 +203,7 @@ export default function InventoryPage() {
         variant: "error",
       });
     }
-  }, []);
+  }, [lookupBarcode]);
 
   const handleViewExpiringSoon = useCallback(() => {
     setFilter("expiring-soon");
@@ -398,7 +393,7 @@ function InventoryItemModal({
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
   const inputClassName =
-    "w-full h-10 px-3 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100";
+    "w-full h-11 px-3 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100";
   const textareaClassName =
     "w-full min-h-[72px] px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100";
   const categorySelectOptions = [
@@ -475,26 +470,13 @@ function InventoryItemModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 p-4 sm:p-6 w-full max-w-md mx-4 shadow-xl max-h-[90vh] overflow-y-auto"
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 className="text-xl font-semibold mb-4 text-stone-900 dark:text-stone-100">
-          {item ? "Edit Item" : "Add Item"}
-        </h2>
+    <Modal isOpen onClose={onClose} title={item ? "Edit item" : "Add item"}>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+            <label htmlFor="inventory-name" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
               Name *
             </label>
-            <input
+            <input id="inventory-name" autoFocus
               type="text"
               value={formData.name}
               onChange={(event) =>
@@ -505,12 +487,12 @@ function InventoryItemModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+              <label htmlFor="inventory-location" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
                 Location *
               </label>
-              <select
+              <select id="inventory-location"
                 value={formData.locationId}
                 onChange={(event) =>
                   setFormData({
@@ -530,10 +512,10 @@ function InventoryItemModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+              <label htmlFor="inventory-unit" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
                 Unit *
               </label>
-              <UnitPicker
+              <UnitPicker id="inventory-unit"
                 value={formData.unit}
                 onChange={(unit) => setFormData({ ...formData, unit })}
                 ingredientName={formData.name}
@@ -542,12 +524,12 @@ function InventoryItemModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+              <label htmlFor="inventory-quantity" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
                 Quantity *
               </label>
-              <input
+              <input id="inventory-quantity"
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -567,13 +549,12 @@ function InventoryItemModal({
               <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
                 Expiration Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 value={formData.expiresOn}
-                onChange={(event) =>
-                  setFormData({ ...formData, expiresOn: event.target.value })
+                onChange={(expiresOn) =>
+                  setFormData({ ...formData, expiresOn })
                 }
-                className={inputClassName}
+                placeholder="No expiration"
               />
             </div>
           </div>
@@ -603,10 +584,10 @@ function InventoryItemModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+            <label htmlFor="inventory-notes" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
               Notes
             </label>
-            <textarea
+            <textarea id="inventory-notes"
               value={formData.notes}
               onChange={(event) =>
                 setFormData({ ...formData, notes: event.target.value })
@@ -617,10 +598,10 @@ function InventoryItemModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+            <label htmlFor="inventory-barcode" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
               Barcode
             </label>
-            <input
+            <input id="inventory-barcode"
               type="text"
               value={formData.barcode}
               onChange={(event) =>
@@ -728,7 +709,6 @@ function InventoryItemModal({
             </button>
           </div>
         </form>
-      </div>
       <AlertModal
         isOpen={alertModal.isOpen}
         onClose={() =>
@@ -737,6 +717,6 @@ function InventoryItemModal({
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </Modal>
   );
 }

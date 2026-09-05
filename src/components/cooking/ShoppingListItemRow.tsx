@@ -47,6 +47,9 @@ export function ShoppingListItemRow({ item, onToggle, onEdit, onRemove, isDeleti
     >
       <button 
         type="button" 
+        role="checkbox"
+        aria-checked={checked}
+        aria-label={item.name}
         onClick={() => onToggle?.(item.id)} 
         className="flex items-start gap-3 text-left min-w-0 group"
       >
@@ -98,8 +101,8 @@ export function ShoppingListItemRow({ item, onToggle, onEdit, onRemove, isDeleti
           <button
             type="button"
             onClick={() => onEdit(item.id)}
-            className="p-2 rounded-md text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-[color,background-color,transform] duration-200 ease-in-out hover:scale-110"
-            title="Edit"
+            className="min-h-11 min-w-11 p-2 rounded-md text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-[color,background-color,transform] duration-200 ease-in-out hover:scale-110"
+            aria-label={`Edit ${item.name}`} title="Edit"
           >
             <Pencil className="w-4 h-4" strokeWidth={1.75} />
           </button>
@@ -107,8 +110,8 @@ export function ShoppingListItemRow({ item, onToggle, onEdit, onRemove, isDeleti
         <button
           type="button"
           onClick={() => onRemove?.(item.id)}
-          className="p-2 rounded-md text-stone-400 hover:text-red-600 dark:text-stone-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-[color,background-color,transform] duration-200 ease-in-out hover:scale-110"
-          title="Remove"
+          className="min-h-11 min-w-11 p-2 rounded-md text-stone-400 hover:text-red-600 dark:text-stone-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-[color,background-color,transform] duration-200 ease-in-out hover:scale-110"
+          aria-label={`Remove ${item.name}`} title="Remove"
         >
           <Trash2 className="w-4 h-4" strokeWidth={1.75} />
         </button>

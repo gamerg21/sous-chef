@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe, RecipeIngredient, RecipeStep, RecipeVisibility, IngredientUnit } from './types'
 import { cx } from './utils'
 import { UnitPicker } from '../ui/unit-picker'
+import { parseAmount } from '@/lib/units'
 
 export interface RecipeEditorDraft {
   title: string
@@ -43,28 +44,7 @@ export interface RecipeEditorViewProps {
 type EditorTab = 'basics' | 'ingredients' | 'steps' | 'notes'
 
 function parseQuantityInput(value: string): number | undefined {
-  const raw = value.trim()
-  if (!raw) return undefined
-
-  const mixed = raw.match(/^(\d+)\s+(\d+)\/(\d+)$/)
-  if (mixed) {
-    const whole = Number(mixed[1])
-    const num = Number(mixed[2])
-    const den = Number(mixed[3])
-    if (den !== 0) return whole + num / den
-    return undefined
-  }
-
-  const fraction = raw.match(/^(\d+)\/(\d+)$/)
-  if (fraction) {
-    const num = Number(fraction[1])
-    const den = Number(fraction[2])
-    if (den !== 0) return num / den
-    return undefined
-  }
-
-  const numeric = Number(raw)
-  return Number.isFinite(numeric) ? numeric : undefined
+  return parseAmount(value) ?? undefined
 }
 
 function parseNonNegativeInput(value: string): number | undefined {
@@ -202,7 +182,7 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
             {recipe ? 'Edit recipe' : 'New recipe'}
           </h1>
           <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-            Keep it fast: title, ingredients, steps — mapping is optional and can be refined later.
+            Start with a title, ingredients, and steps. You can add nutrition and match pantry items later.
           </p>
         </div>
 
@@ -574,10 +554,10 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
         <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">Mapping tips</h2>
         <ul className="mt-2 space-y-2 text-sm text-stone-700 dark:text-stone-300 list-disc pl-5">
           <li>
-            Map ingredients to the <span className="font-mono text-xs">inventory item label</span> you want to match later.
+            Match an ingredient to its name in your inventory when the recipe uses a different name.
           </li>
-          <li>Keep mapping loose; you can refine with a data model later.</li>
-          <li>This editor is preview-only; nothing is persisted in Design OS.</li>
+          <li>For example, match “whole milk” to “Milk” in your fridge.</li>
+          <li>Save your recipe to keep it in your kitchen. You can update these matches at any time.</li>
         </ul>
       </div>
     </div>

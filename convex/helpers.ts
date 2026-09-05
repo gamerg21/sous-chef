@@ -38,12 +38,18 @@ export async function getAuthUserId(
 
 /**
  * Get user's current household ID.
- * Returns the first household the user belongs to.
+ * Honors the selected household, falling back if membership was removed.
  */
 export async function getCurrentHouseholdId(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
 ): Promise<Id<"households"> | null> {
+  const preferences = await ctx.db.query("userPreferences")
+    .withIndex("by_userId", q => q.eq("userId", userId)).unique();
+  if (preferences?.activeHouseholdId) {
+    const membership = await getHouseholdMembership(ctx, userId, preferences.activeHouseholdId);
+    if (membership && await ctx.db.get(preferences.activeHouseholdId)) return preferences.activeHouseholdId;
+  }
   const membership = await ctx.db
     .query("householdMembers")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -96,6 +102,30 @@ export async function createDefaultHousehold(
 }
 
 /**
+ * Resolve the household to operate on. When an explicit householdId is
+ * requested, the caller must be a member of it; otherwise fall back to the
+ * user's current household.
+ */
+export async function resolveHouseholdId(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  requestedHouseholdId?: Id<"households">,
+): Promise<Id<"households"> | null> {
+  if (requestedHouseholdId) {
+    const membership = await getHouseholdMembership(
+      ctx,
+      userId,
+      requestedHouseholdId,
+    );
+    if (!membership) {
+      throw new Error("Permission denied");
+    }
+    return requestedHouseholdId;
+  }
+  return await getCurrentHouseholdId(ctx, userId);
+}
+
+/**
  * Check if user is a member of the household and return their role.
  */
 export async function getHouseholdMembership(
@@ -109,6 +139,25 @@ export async function getHouseholdMembership(
       q.eq("userId", userId).eq("householdId", householdId),
     )
     .unique();
+}
+
+/**
+ * Decode a recipe ingredient's note + inventory mapping. New rows store the
+ * mapping in mappingLabel; legacy rows encoded it as a "MAPPING:<label>"
+ * prefix inside note. Returns the user-facing note (never the legacy
+ * marker) and the mapping label, if any.
+ */
+export function decodeIngredientMapping(ing: {
+  note?: string;
+  mappingLabel?: string;
+}): { note?: string; mappingLabel?: string } {
+  const legacy = ing.note?.startsWith("MAPPING:")
+    ? ing.note.replace("MAPPING:", "").trim()
+    : undefined;
+  return {
+    note: legacy ? undefined : ing.note,
+    mappingLabel: ing.mappingLabel ?? legacy,
+  };
 }
 
 /**

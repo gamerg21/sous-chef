@@ -4,10 +4,11 @@ import {
 } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "./helpers";
-import { normalizeEmail } from "../src/lib/auth-utils";
+import { checkAndRecordRateLimit } from "./rateLimit";
+import { isValidEmail, normalizeEmail } from "../src/lib/auth-utils";
 
 export const getProfile = query({
   args: {},
@@ -99,6 +100,20 @@ export const repairPasswordAccountByEmail = mutation({
       return { repaired: false };
     }
 
+    // This mutation is necessarily unauthenticated (it runs before sign-in
+    // to recover accounts orphaned by the Prisma→Convex migration), so it is
+    // rate-limited per email and always returns the same shape to avoid
+    // acting as an account-enumeration oracle.
+    const allowed = await checkAndRecordRateLimit(ctx, {
+      scope: "auth-repair",
+      subject: email,
+      windowMs: 15 * 60 * 1000,
+      max: 10,
+    });
+    if (!allowed) {
+      return { repaired: false };
+    }
+
     const account = await ctx.db
       .query("authAccounts")
       .withIndex("providerAndAccountId", (q) =>
@@ -134,9 +149,82 @@ export const updateProfile = mutation({
     const userId = await getAuthUserId(ctx);
     const patch: Record<string, string | undefined> = {};
     if (args.name !== undefined) patch.name = args.name;
-    if (args.email !== undefined) patch.email = args.email;
+
+    if (args.email !== undefined) {
+      const email = normalizeEmail(args.email);
+      if (!isValidEmail(email)) {
+        throw new Error("Invalid email address");
+      }
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", email))
+        .first();
+      if (existing && existing._id !== userId) {
+        throw new Error("That email is already in use");
+      }
+      patch.email = email;
+
+      // Keep the password sign-in identifier in sync so the user can still
+      // log in with their new email.
+      const account = await ctx.db
+        .query("authAccounts")
+        .withIndex("userIdAndProvider", (q) =>
+          q.eq("userId", userId).eq("provider", "password"),
+        )
+        .unique();
+      if (account) {
+        await ctx.db.patch(account._id, { providerAccountId: email });
+      }
+    }
+
     if (args.image !== undefined) patch.image = args.image;
     await ctx.db.patch(userId, patch);
     return { success: true };
+  },
+});
+
+/**
+ * Operator recovery path for when password-reset email delivery is not
+ * configured. Call via the Convex CLI only:
+ *   npx convex run users:setPasswordHashByEmail '{"email":"...","passwordHash":"..."}'
+ * Hash the password first with scripts/set-temp-password.mjs so we match
+ * the Scrypt format Convex Auth expects.
+ */
+export const setPasswordHashByEmail = internalMutation({
+  args: {
+    email: v.string(),
+    passwordHash: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = normalizeEmail(args.email);
+    if (!isValidEmail(email)) {
+      throw new Error("Invalid email address");
+    }
+    if (!args.passwordHash.includes(":")) {
+      throw new Error("passwordHash must be a Lucia Scrypt hash (salt:digest)");
+    }
+
+    const account = await ctx.db
+      .query("authAccounts")
+      .withIndex("providerAndAccountId", (q) =>
+        q.eq("provider", "password").eq("providerAccountId", email),
+      )
+      .unique();
+    if (!account) {
+      throw new Error(`No password account found for ${email}`);
+    }
+
+    await ctx.db.patch(account._id, { secret: args.passwordHash });
+
+    // Drop outstanding reset codes so stale emailed/logged links can't be reused.
+    const codes = await ctx.db
+      .query("authVerificationCodes")
+      .withIndex("accountId", (q) => q.eq("accountId", account._id))
+      .collect();
+    for (const code of codes) {
+      await ctx.db.delete(code._id);
+    }
+
+    return { success: true, accountId: account._id, userId: account.userId };
   },
 });

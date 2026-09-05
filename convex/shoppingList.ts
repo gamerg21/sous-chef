@@ -1,12 +1,17 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId, getCurrentHouseholdId } from "./helpers";
+import { getAuthUserId, resolveHouseholdId } from "./helpers";
+
+function validateItem(name?: string, quantity?: number | null) {
+  if (name !== undefined && (!name.trim() || name.trim().length > 200)) throw new Error("Item name must be between 1 and 200 characters");
+  if (quantity != null && (!Number.isFinite(quantity) || quantity <= 0)) throw new Error("Quantity must be greater than zero");
+}
 
 export const get = query({
   args: { householdId: v.optional(v.id("households")) },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) return { items: [] };
 
     const shoppingList = await ctx.db
@@ -51,7 +56,8 @@ export const addItem = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    validateItem(args.name, args.quantity);
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) throw new Error("No household found");
 
     const shoppingList = await ctx.db
@@ -62,7 +68,7 @@ export const addItem = mutation({
 
     const itemId = await ctx.db.insert("shoppingListItems", {
       shoppingListId: shoppingList._id,
-      name: args.name,
+      name: args.name.trim(),
       quantity: args.quantity,
       unit: args.unit,
       category: args.category,
@@ -88,6 +94,7 @@ export const updateItem = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    validateItem(args.name, args.quantity);
     const item = await ctx.db.get(args.id);
     if (!item) throw new Error("Item not found");
 
@@ -104,7 +111,7 @@ export const updateItem = mutation({
     if (!membership) throw new Error("Permission denied");
 
     const patch: Record<string, unknown> = {};
-    if (args.name !== undefined) patch.name = args.name;
+    if (args.name !== undefined) patch.name = args.name.trim();
     if (args.quantity !== undefined) patch.quantity = args.quantity ?? undefined;
     if (args.unit !== undefined) patch.unit = args.unit ?? undefined;
     if (args.category !== undefined) patch.category = args.category ?? undefined;
@@ -136,5 +143,25 @@ export const deleteItem = mutation({
 
     await ctx.db.delete(args.id);
     return { success: true };
+  },
+});
+
+/** Clear the confirmed selection atomically; retrying cannot delete new items. */
+export const clearChecked = mutation({
+  args: { ids: v.array(v.id('shoppingListItems')) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (args.ids.length > 200) throw new Error('Clear up to 200 items at a time');
+    let removed = 0;
+    for (const id of new Set(args.ids)) {
+      const item = await ctx.db.get(id);
+      if (!item) continue;
+      const list = await ctx.db.get(item.shoppingListId);
+      if (!list) throw new Error('Shopping list not found');
+      await resolveHouseholdId(ctx, userId, list.householdId);
+      // Another household member may have unchecked it since confirmation.
+      if (item.checked) { await ctx.db.delete(id); removed++; }
+    }
+    return { removed };
   },
 });

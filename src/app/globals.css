@@ -7,12 +7,22 @@
   --color-secondary: amber;
   --color-neutral: stone;
 
-  /* Typography */
-  --font-heading: var(--font-heading);
-  --font-body: var(--font-body);
-  --font-mono: var(--font-mono);
+
 }
 
 body {
   font-family: var(--font-body);
 }
+
+/* Avoid input zoom and undersized controls on phones. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
+  }
+  button, input:not([type="checkbox"]):not([type="radio"]), select {
+    min-height: 44px;
+  }
+}
+
+button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: not-allowed; }

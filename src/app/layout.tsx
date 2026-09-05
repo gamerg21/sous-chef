@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -25,13 +25,14 @@ export const metadata: Metadata = {
   title: "Sous Chef",
   description: "Open-source, self-hostable personal kitchen assistant",
   manifest: "/manifest.json",
-  themeColor: "#059669",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Sous Chef",
   },
 };
+
+export const viewport: Viewport = { themeColor: "#059669", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({
   children,
@@ -40,16 +41,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="theme-color" content="#059669" />
-        <meta
-          name="description"
-          content="Your Personal Kitchen Assistant"
-        />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Sous Chef" />
-      </head>
       <body
         className={`${manrope.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >

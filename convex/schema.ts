@@ -145,6 +145,10 @@ export default defineSchema({
     quantity: v.optional(v.number()),
     unit: v.optional(v.string()),
     note: v.optional(v.string()),
+    // Label of the inventory item this ingredient maps to. Legacy rows
+    // encode this as a "MAPPING:<label>" prefix in `note` instead — read
+    // through decodeIngredientMapping() in helpers.ts.
+    mappingLabel: v.optional(v.string()),
     order: v.number(),
   })
     .index("by_recipeId", ["recipeId"])
@@ -257,6 +261,7 @@ export default defineSchema({
   // ── User Preferences ──────────────────────────────────────────────────
   userPreferences: defineTable({
     userId: v.id("users"),
+    activeHouseholdId: v.optional(v.id("households")),
     measurementSystem: v.string(), // "metric" | "imperial"
     defaultWeightUnit: v.string(),
     defaultVolumeUnit: v.string(),

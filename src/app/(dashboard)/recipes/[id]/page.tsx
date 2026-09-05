@@ -18,6 +18,8 @@ export default function RecipeDetailPage() {
   const inventoryData = useQuery(api.inventory.list, {});
   const toggleFavorite = useMutation(api.recipes.toggleFavorite);
   const updateRecipe = useMutation(api.recipes.update);
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+  const saveStorageId = useMutation(api.storage.saveStorageId);
 
   const pantrySnapshot = useMemo(
     () => inventoryData?.items || [],
@@ -67,19 +69,21 @@ export default function RecipeDetailPage() {
   const handleUploadPhoto = useCallback(
     async (id: string, file: File) => {
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const uploadResponse = await fetch("/api/upload/recipe", {
+        const postUrl = await generateUploadUrl();
+        const uploadResponse = await fetch(postUrl, {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": file.type },
+          body: file,
         });
-        const uploadData = await uploadResponse.json();
         if (!uploadResponse.ok) {
-          throw new Error(uploadData.error || "Failed to upload photo");
+          throw new Error("Failed to upload photo");
         }
+        const { storageId } = (await uploadResponse.json()) as {
+          storageId: Id<"_storage">;
+        };
 
-        await updateRecipe({ id: id as Id<"recipes">, photoUrl: uploadData.file.url });
+        // saveStorageId also patches the recipe's photoUrl.
+        await saveStorageId({ storageId, recipeId: id as Id<"recipes"> });
         setAlertModal({
           isOpen: true,
           message: "Recipe photo updated.",
@@ -97,7 +101,7 @@ export default function RecipeDetailPage() {
         });
       }
     },
-    [updateRecipe]
+    [generateUploadUrl, saveStorageId]
   );
 
   const handleRemovePhoto = useCallback(

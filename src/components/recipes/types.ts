@@ -1,6 +1,6 @@
 export type RecipeId = string
 
-export type RecipeVisibility = 'private' | 'household'
+export type RecipeVisibility = 'private' | 'household' | 'public' | 'unlisted'
 
 export type IngredientUnit = string
 

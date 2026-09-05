@@ -54,7 +54,7 @@ export function RecipeMatchCard({ recipe, pantrySnapshot, onCook, onAddMissingTo
       <div className="mt-3 rounded-md bg-stone-50 dark:bg-stone-900/40 border border-stone-200/60 dark:border-stone-800/60 p-3">
         {cookability.missingCount === 0 ? (
           <div className="text-sm text-emerald-700 dark:text-emerald-300">
-            You have everything you need (based on the current snapshot).
+            All ingredient names match your inventory. Check amounts and units before cooking.
           </div>
         ) : (
           <div className="text-sm text-stone-700 dark:text-stone-300">

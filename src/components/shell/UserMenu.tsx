@@ -59,7 +59,7 @@ export default function UserMenu({ user, onNavigate, onPrefetch, onLogout, neutr
 
         <div className="min-w-0 flex-1 text-left">
           <div className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">{displayName}</div>
-          <div className={cx('text-xs truncate', neutral.muted)}>Household member</div>
+          <div className={cx('text-xs truncate', neutral.muted)}>Your account</div>
         </div>
 
         <ChevronUp

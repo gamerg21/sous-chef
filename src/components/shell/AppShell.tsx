@@ -2,11 +2,12 @@
 
 import type { ReactNode } from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import MainNav, { type NavigationItem } from './MainNav'
 import UserMenu, { type ShellUser } from './UserMenu'
 import HouseholdSwitcher from './HouseholdSwitcher'
+import { Modal } from '../ui/modal'
 
 export interface AppShellProps {
   children: ReactNode
@@ -227,12 +228,13 @@ function AppShellInternal({
   )
 
   const handleNavigate = (href: string) => {
+    setMobileNavOpen(false)
     router.push(href)
   }
 
   return (
     <div
-      className={cx('min-h-screen w-full', neutral.pageBg, neutral.text)}
+      className={cx('min-h-dvh w-full', neutral.pageBg, neutral.text)}
       style={{
         fontFamily: bodyFont,
       }}
@@ -244,7 +246,7 @@ function AppShellInternal({
             type="button"
             onClick={() => setMobileNavOpen(true)}
             className={cx(
-              'inline-flex items-center justify-center rounded-md h-9 w-9 border',
+              'inline-flex items-center justify-center rounded-md h-11 w-11 border',
               neutral.panelBorder,
               'bg-white/50 dark:bg-black/10',
               'focus-visible:outline-none focus-visible:ring-2',
@@ -265,49 +267,9 @@ function AppShellInternal({
         </div>
       </div>
 
-      {/* Mobile drawer */}
-      {mobileNavOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Close navigation overlay"
-            onClick={() => setMobileNavOpen(false)}
-          />
-          <aside
-            className={cx(
-              'absolute left-0 top-0 h-full w-[min(20rem,85vw)]',
-              neutral.panelBg,
-              'border-r',
-              neutral.panelBorder,
-              'p-3 flex flex-col'
-            )}
-          >
-            <div className="flex items-center justify-between gap-3 px-2 py-2">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold truncate" style={{ fontFamily: headingFont }}>
-                  {brand?.name || 'Sous Chef'}
-                </div>
-                <div className={cx('text-xs', neutral.muted)} style={{ fontFamily: monoFont }}>
-                  Household Kitchen
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileNavOpen(false)}
-                className={cx(
-                  'inline-flex items-center justify-center rounded-md h-9 w-9 border',
-                  neutral.panelBorder,
-                  'bg-white/50 dark:bg-black/10',
-                  'focus-visible:outline-none focus-visible:ring-2',
-                  accent.ring
-                )}
-                aria-label="Close navigation"
-              >
-                <X className="w-5 h-5" strokeWidth={1.75} />
-              </button>
-            </div>
-
+      {/* The native dialog provides focus trapping and Escape dismissal. */}
+      <Modal isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} title="Your kitchen">
+          <div className="flex min-h-0 flex-col">
             {households && households.length > 0 && (
               <div className="px-2 py-2">
                 <HouseholdSwitcher
@@ -347,13 +309,12 @@ function AppShellInternal({
                 accent={accent}
               />
             </div>
-          </aside>
-        </div>
-      )}
+          </div>
+      </Modal>
 
       {/* Desktop layout */}
-      <div className="hidden lg:flex h-screen overflow-hidden">
-        <aside className={cx('w-72 shrink-0 border-r h-screen', neutral.panelBorder, neutral.panelBg)}>
+      <div className="lg:flex lg:h-dvh lg:overflow-hidden">
+        <aside className={cx('hidden lg:block w-64 shrink-0 border-r h-dvh', neutral.panelBorder, neutral.panelBg)}>
           <div className="h-full flex flex-col overflow-hidden">
             <div className={cx('px-5 py-5 border-b', neutral.panelBorder)}>
               <div className="flex items-start justify-between gap-3">
@@ -407,13 +368,12 @@ function AppShellInternal({
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0 h-screen overflow-y-auto">
+        <main id="main-content" className="flex-1 min-w-0 lg:h-dvh lg:overflow-y-auto">
           <div className="min-h-full">{children}</div>
         </main>
       </div>
 
-      {/* Mobile content */}
-      <div className="lg:hidden">{children}</div>
+
     </div>
   )
 }

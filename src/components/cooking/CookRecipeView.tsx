@@ -6,11 +6,12 @@ import { computeRecipeCookability, cx } from './utils'
 export interface CookRecipeViewProps {
   recipe: Recipe
   pantrySnapshot: PantrySnapshotItem[]
+  isCooking?: boolean
   onBack?: () => void
   onConfirmCook?: (options: { addMissingToList: boolean }) => void
 }
 
-export function CookRecipeView({ recipe, pantrySnapshot, onBack, onConfirmCook }: CookRecipeViewProps) {
+export function CookRecipeView({ recipe, pantrySnapshot, onBack, onConfirmCook, isCooking = false }: CookRecipeViewProps) {
   const cookability = useMemo(() => computeRecipeCookability(recipe.ingredients, pantrySnapshot), [recipe, pantrySnapshot])
   const [addMissingToList, setAddMissingToList] = useState(true)
 
@@ -39,7 +40,7 @@ export function CookRecipeView({ recipe, pantrySnapshot, onBack, onConfirmCook }
               <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 p-4">
                 <div className="text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Will use</div>
                 <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{cookability.availableCount}</div>
-                <div className="mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ingredients in snapshot</div>
+                <div className="mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ingredients matched in your kitchen</div>
               </div>
               <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 p-4">
                 <div className="text-xs uppercase tracking-wide text-amber-800 dark:text-amber-200">Missing</div>
@@ -100,11 +101,12 @@ export function CookRecipeView({ recipe, pantrySnapshot, onBack, onConfirmCook }
               </button>
               <button
                 type="button"
+                disabled={isCooking}
                 onClick={() => onConfirmCook?.({ addMissingToList })}
                 className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
               >
                 <CheckCircle2 className="w-4 h-4" strokeWidth={1.75} />
-                Confirm cook
+                {isCooking ? 'Updating kitchen…' : 'Confirm cook'}
               </button>
             </div>
           </div>

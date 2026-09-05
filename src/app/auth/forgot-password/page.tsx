@@ -1,13 +1,14 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "../../../../convex/_generated/api";
 import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
 export default function ForgotPassword() {
+  const delivery = useQuery(api.auth.resetDelivery, {});
   const { signIn } = useAuthActions();
   const repairPasswordAccountByEmail = useMutation(
     api.users.repairPasswordAccountByEmail,
@@ -48,7 +49,9 @@ export default function ForgotPassword() {
 
       await signIn("password", formData);
       setMessage(
-        "If an account with that email exists, a password reset link has been sent.",
+        delivery?.mode === 'operator'
+          ? "Recovery requested. This instance does not send email. Ask the instance owner to retrieve your reset link from the Convex function logs."
+          : "If an account with that email exists, a password reset link has been sent.",
       );
     } catch (error) {
       console.error("Forgot password error:", error);
@@ -56,17 +59,21 @@ export default function ForgotPassword() {
         error instanceof Error ? error.message : "Failed to request password reset";
 
       if (
-        /not configured|SITE_URL|Internal Server Error|Provider/i.test(
+        /not configured|SITE_URL|APP_BASE_URL|Internal Server Error|Provider/i.test(
           errorMessage,
         )
       ) {
         setMessage(
           "Error: Password reset is not configured correctly. Check the auth environment and Convex logs.",
         );
-      } else {
+      } else if (/InvalidAccountId|Invalid credentials/i.test(errorMessage)) {
         setMessage(
-          "If an account with that email exists, a password reset link has been sent.",
+          delivery?.mode === 'operator'
+            ? "Recovery requested. This instance does not send email. Ask the instance owner to retrieve your reset link from the Convex function logs."
+            : "If an account with that email exists, a password reset link has been sent.",
         );
+      } else {
+        setMessage("Error: We couldn’t complete the reset request. Please try again in a few minutes, or contact the instance owner.");
       }
     } finally {
       setIsLoading(false);
@@ -81,7 +88,7 @@ export default function ForgotPassword() {
             Reset your password
           </h1>
           <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            Enter your email address and we&apos;ll send you a link to reset your password
+            {delivery?.mode === 'operator' ? 'Email delivery isn’t enabled on this instance. You can request a recovery link from the instance owner.' : 'Enter your email address to request a password reset link.'}
           </p>
         </div>
 
@@ -105,6 +112,7 @@ export default function ForgotPassword() {
 
           {message && (
             <div
+              role="status"
               className={`rounded-md p-3 text-sm ${
                 message.includes("Error")
                   ? "bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800"
@@ -118,10 +126,10 @@ export default function ForgotPassword() {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !delivery}
               className="group relative flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
             >
-              {isLoading ? "Sending..." : "Send reset link"}
+              {isLoading ? "Requesting…" : delivery?.mode === 'operator' ? "Request recovery link" : "Send reset link"}
             </button>
           </div>
         </form>

@@ -7,3 +7,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "✅ Type check passed!"
+
+echo "🧪 Running tests..."
+npm run test
+
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Please fix the failures before committing."
+  exit 1
+fi
+
+echo "✅ Tests passed!"

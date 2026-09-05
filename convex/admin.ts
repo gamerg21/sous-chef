@@ -25,7 +25,9 @@ export const listUsers = query({
     const limit = args.limit ?? 50;
     const page = args.page ?? 1;
 
-    let users = await ctx.db.query("users").collect();
+    // Bounded scan: the admin table paginates client-side over this window.
+    // Move to cursor pagination if the user base outgrows it.
+    let users = await ctx.db.query("users").take(1000);
 
     if (args.search) {
       const search = args.search.toLowerCase();
@@ -108,6 +110,10 @@ export const updateUser = mutation({
       if (args.isAppAdmin && !existing) {
         await ctx.db.insert("appAdmins", { userId: args.userId });
       } else if (!args.isAppAdmin && existing) {
+        const admins = await ctx.db.query("appAdmins").take(2);
+        if (admins.length <= 1) {
+          throw new Error("Cannot remove the last admin");
+        }
         await ctx.db.delete(existing._id);
       }
     }
@@ -181,6 +187,33 @@ export const deleteUser = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
     if (prefs) await ctx.db.delete(prefs._id);
+
+    // Delete community interactions and unit personalization data
+    const likes = await ctx.db
+      .query("communityRecipeLikes")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+    for (const like of likes) await ctx.db.delete(like._id);
+
+    const saves = await ctx.db
+      .query("communityRecipeSaves")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+    for (const save of saves) await ctx.db.delete(save._id);
+
+    const unitUsage = await ctx.db
+      .query("userUnitUsage")
+      .withIndex("by_userId_and_unitId", (q) => q.eq("userId", args.userId))
+      .collect();
+    for (const usage of unitUsage) await ctx.db.delete(usage._id);
+
+    const unitPrefs = await ctx.db
+      .query("userIngredientUnitPreferences")
+      .withIndex("by_userId_and_ingredientKey_and_unitId", (q) =>
+        q.eq("userId", args.userId),
+      )
+      .collect();
+    for (const pref of unitPrefs) await ctx.db.delete(pref._id);
 
     await ctx.db.delete(args.userId);
     return { success: true };

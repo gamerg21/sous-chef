@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Security
+
+- Enforced household-membership checks on every read query that accepts an explicit `householdId` (inventory, recipes, shopping list, cooking, integrations, AI providers).
+- `community.saveRecipe` and `community.likeRecipe` now verify recipe visibility — private recipes from other households can no longer be copied or liked by ID.
+- `storage.getUrl` now requires authentication, and `storage.saveStorageId` verifies household ownership of the target recipe/inventory item.
+- Rate-limited the unauthenticated auth-repair mutation (per email) and password-reset email sending, using the previously unused `authRateLimitEvents` table.
+- AI provider API keys and integration tokens are now encrypted at rest with AES-256-GCM when `SECRETS_ENCRYPTION_KEY` is set on the Convex deployment.
+- Household owner role can only move via explicit ownership transfer (old owner becomes admin); admins can no longer demote the owner. The last app admin can no longer be removed.
+- `admin.deleteUser` now also cleans up community likes/saves and unit-usage data; `users.updateProfile` validates email format/uniqueness and keeps the password sign-in identifier in sync.
+
+### Added
+
+- Full unit system per the unit-picker spec: seedable catalog with aliases and ingredient-unit profiles (`pnpm seed:units`), ranked suggestion/search/usage-tracking functions, and an accessible combobox unit picker with a grouped "More units…" modal.
+- Custom calendar date picker for inventory expiration dates (replaces the native browser input).
+- Convex-native barcode lookup backed by Open Food Facts with local caching in the `barcodes` table (replaces the removed `/api/barcode/lookup` route; scans now work again and get faster over time).
+- Recipe JSON import/export as Convex functions (replaces the removed `/api/recipes/*` routes).
+- Recipe photo upload via Convex storage (replaces the removed `/api/upload/recipe` route).
+- AI provider "test key" action that pings the provider and records `lastTestedAt`/status (replaces the removed `/api/ai/providers/:id/test` route).
+- Community recipes can now be published as `unlisted` and unpublished back to private.
+- Household member management UI is now functional (add existing users by email, change roles, transfer ownership, remove members).
+- "Surprise me" opens a random cookable recipe; community "View all" navigates to the browse page.
+- Vitest + convex-test test suite (52 tests) covering security rules, the unit system, and cooking, run in CI and the pre-commit hook via `pnpm test`.
+
+### Changed
+
+- Portable Docker runtime configuration, setup diagnostics, and complete Convex Auth setup instructions.
+- Password recovery honors SITE_URL and explains operator-assisted recovery when email is unavailable.
+- Working household switching, single-render responsive dashboard, mobile summaries, and accessible nested dialogs.
+- Full shopping quantity/unit editing with preserved failed drafts and atomic clearing of checked items.
+- Cooking tracks stock consumed by repeated ingredient rows and prevents duplicate confirmation submissions.
+
+- Cooking now deducts inventory unit-aware (e.g. 500 ml from a 1 l bottle) and skips deduction instead of subtracting nonsense when units are incompatible; qualitative units ("to taste") are never deducted.
+- Recipe ingredient→inventory mapping moved from the `MAPPING:` note prefix to a real `mappingLabel` field (legacy rows still read correctly).
+- `/` now redirects to the dashboard instead of a static component showcase; `/settings` redirects to household user management.
+- Community and admin list queries are bounded instead of scanning whole tables.
+
+### Removed
+
+- Orphaned magic-link `verify-request` page, dead test files for modules deleted in the Convex migration, and stale Prisma references in `tsconfig.json`, `eslint.config.mjs`, and docs (including the obsolete Windows/Prisma setup guide).
+
 ## [v0.2.0] - 2026-04-14
 
 ### Added

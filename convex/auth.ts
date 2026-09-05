@@ -1,6 +1,10 @@
 import { convexAuth } from "@convex-dev/auth/server";
 import { Email } from "@convex-dev/auth/providers/Email";
 import { Password } from "@convex-dev/auth/providers/Password";
+import { internal } from "./_generated/api";
+import { query } from "./_generated/server";
+import type { GenericActionCtx } from "convex/server";
+import type { DataModel } from "./_generated/dataModel";
 import { resolveAllowedRedirectUrl } from "../src/lib/app-url";
 import { isValidEmail, normalizeEmail } from "../src/lib/auth-utils";
 
@@ -32,8 +36,36 @@ function validatePasswordRequirements(password: string) {
   }
 }
 
-const passwordResetProvider = Email({
-  async sendVerificationRequest({ identifier, url, expires }) {
+/** Public instance capability; never exposes credentials or account existence. */
+export const resetDelivery = query({
+  args: {},
+  handler: async () => ({ mode: process.env.RESEND_API_KEY ? 'email' as const : 'operator' as const }),
+});
+
+// Convex Auth invokes sendVerificationRequest with a second `ctx` argument
+// at runtime, but the Email() config type only declares one parameter (the
+// library itself carries a @ts-expect-error at the call site) — hence the
+// cast below where this handler is registered.
+async function sendPasswordResetEmail(
+  {
+    identifier,
+    url,
+    expires,
+  }: { identifier: string; url: string; expires: Date },
+  ctx: GenericActionCtx<DataModel>,
+) {
+    const { allowed } = await ctx.runMutation(internal.rateLimit.checkAndRecord, {
+      scope: "password-reset-email",
+      subject: normalizeEmail(identifier),
+      windowMs: 15 * 60 * 1000,
+      max: 3,
+    });
+    if (!allowed) {
+      throw new Error(
+        "Too many password reset requests. Please try again later.",
+      );
+    }
+
     if (process.env.RESEND_API_KEY) {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -76,7 +108,15 @@ const passwordResetProvider = Email({
         "Set RESEND_API_KEY to send emails automatically.",
     );
     console.info(`[auth] Password reset link for ${identifier}: ${url}`);
-  },
+}
+
+const passwordResetProvider = Email({
+  sendVerificationRequest:
+    sendPasswordResetEmail as unknown as (params: {
+      identifier: string;
+      url: string;
+      expires: Date;
+    }) => Promise<void>,
 });
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({

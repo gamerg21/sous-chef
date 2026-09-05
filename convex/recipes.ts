@@ -1,12 +1,16 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId, getCurrentHouseholdId } from "./helpers";
+import {
+  getAuthUserId,
+  resolveHouseholdId,
+  decodeIngredientMapping,
+} from "./helpers";
 
 export const list = query({
   args: { householdId: v.optional(v.id("households")) },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) return { recipes: [] };
 
     const recipes = await ctx.db
@@ -37,7 +41,7 @@ export const list = query({
         description: recipe.description,
         photoUrl: recipe.photoUrl,
         tags: recipe.tags && recipe.tags.length > 0 ? recipe.tags : undefined,
-        visibility: recipe.visibility as "private" | "household",
+        visibility: recipe.visibility as "private" | "household" | "public" | "unlisted",
         servings: recipe.servings,
         totalTimeMinutes: recipe.totalTimeMinutes,
         caloriesKcal: recipe.caloriesKcal,
@@ -46,21 +50,19 @@ export const list = query({
         fatGrams: recipe.fatGrams,
         sourceUrl: recipe.sourceUrl,
         notes: recipe.notes,
-        ingredients: ingredients.map((ing) => ({
-          id: ing._id,
-          name: ing.name,
-          quantity: ing.quantity,
-          unit: ing.unit,
-          note:
-            ing.note && !ing.note.startsWith("MAPPING:") ? ing.note : undefined,
-          mapping:
-            ing.note && ing.note.startsWith("MAPPING:")
-              ? {
-                  inventoryItemLabel: ing.note.replace("MAPPING:", "").trim(),
-                  suggested: false,
-                }
+        ingredients: ingredients.map((ing) => {
+          const { note, mappingLabel } = decodeIngredientMapping(ing);
+          return {
+            id: ing._id,
+            name: ing.name,
+            quantity: ing.quantity,
+            unit: ing.unit,
+            note,
+            mapping: mappingLabel
+              ? { inventoryItemLabel: mappingLabel, suggested: false }
               : undefined,
-        })),
+          };
+        }),
         steps: steps.map((s) => ({ id: s._id, text: s.text })),
         updatedAt: new Date(recipe._creationTime).toISOString().split("T")[0],
         lastCookedAt: recipe.lastCookedAt
@@ -108,7 +110,7 @@ export const getById = query({
       description: recipe.description,
       photoUrl: recipe.photoUrl,
       tags: recipe.tags && recipe.tags.length > 0 ? recipe.tags : undefined,
-      visibility: recipe.visibility as "private" | "household",
+      visibility: recipe.visibility as "private" | "household" | "public" | "unlisted",
       servings: recipe.servings,
       totalTimeMinutes: recipe.totalTimeMinutes,
       caloriesKcal: recipe.caloriesKcal,
@@ -117,21 +119,19 @@ export const getById = query({
       fatGrams: recipe.fatGrams,
       sourceUrl: recipe.sourceUrl,
       notes: recipe.notes,
-      ingredients: ingredients.map((ing) => ({
-        id: ing._id,
-        name: ing.name,
-        quantity: ing.quantity,
-        unit: ing.unit,
-        note:
-          ing.note && !ing.note.startsWith("MAPPING:") ? ing.note : undefined,
-        mapping:
-          ing.note && ing.note.startsWith("MAPPING:")
-            ? {
-                inventoryItemLabel: ing.note.replace("MAPPING:", "").trim(),
-                suggested: false,
-              }
+      ingredients: ingredients.map((ing) => {
+        const { note, mappingLabel } = decodeIngredientMapping(ing);
+        return {
+          id: ing._id,
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          note,
+          mapping: mappingLabel
+            ? { inventoryItemLabel: mappingLabel, suggested: false }
             : undefined,
-      })),
+        };
+      }),
       steps: steps.map((s) => ({ id: s._id, text: s.text })),
       updatedAt: new Date(recipe._creationTime).toISOString().split("T")[0],
       lastCookedAt: recipe.lastCookedAt
@@ -177,7 +177,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) throw new Error("No household found");
 
     const recipeId = await ctx.db.insert("recipes", {
@@ -205,9 +205,8 @@ export const create = mutation({
         name: ing.name,
         quantity: ing.quantity,
         unit: ing.unit,
-        note: ing.mapping
-          ? `MAPPING:${ing.mapping.inventoryItemLabel}`
-          : ing.note,
+        note: ing.note,
+        mappingLabel: ing.mapping?.inventoryItemLabel,
         order: i,
       });
     }
@@ -313,9 +312,8 @@ export const update = mutation({
           name: ing.name,
           quantity: ing.quantity,
           unit: ing.unit,
-          note: ing.mapping
-            ? `MAPPING:${ing.mapping.inventoryItemLabel}`
-            : ing.note,
+          note: ing.note,
+          mappingLabel: ing.mapping?.inventoryItemLabel,
           order: i,
         });
       }
@@ -405,5 +403,154 @@ export const toggleFavorite = mutation({
 
     await ctx.db.patch(args.id, { favorited: !recipe.favorited });
     return { favorited: !recipe.favorited };
+  },
+});
+
+/**
+ * Portable JSON export of the household's recipes. The client turns this
+ * into a downloadable file. Round-trips with importRecipes.
+ * (Replaces the removed /api/recipes/export route.)
+ */
+export const exportAll = query({
+  args: { householdId: v.optional(v.id("households")) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
+    if (!householdId) return { recipes: [] };
+
+    const recipes = await ctx.db
+      .query("recipes")
+      .withIndex("by_householdId", (q) => q.eq("householdId", householdId))
+      .collect();
+
+    const exported = [];
+    for (const recipe of recipes) {
+      const ingredients = await ctx.db
+        .query("recipeIngredients")
+        .withIndex("by_recipeId", (q) => q.eq("recipeId", recipe._id))
+        .collect();
+      ingredients.sort((a, b) => a.order - b.order);
+      const steps = await ctx.db
+        .query("recipeSteps")
+        .withIndex("by_recipeId", (q) => q.eq("recipeId", recipe._id))
+        .collect();
+      steps.sort((a, b) => a.order - b.order);
+
+      exported.push({
+        title: recipe.title,
+        description: recipe.description,
+        tags: recipe.tags,
+        servings: recipe.servings,
+        totalTimeMinutes: recipe.totalTimeMinutes,
+        caloriesKcal: recipe.caloriesKcal,
+        proteinGrams: recipe.proteinGrams,
+        carbsGrams: recipe.carbsGrams,
+        fatGrams: recipe.fatGrams,
+        sourceUrl: recipe.sourceUrl,
+        notes: recipe.notes,
+        ingredients: ingredients.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          unit: i.unit,
+          note: i.note,
+        })),
+        steps: steps.map((s) => s.text),
+      });
+    }
+    return { recipes: exported };
+  },
+});
+
+/**
+ * Import recipes from the exportAll JSON format. Accepts either a bare
+ * array or { recipes: [...] }. Unknown fields are ignored; recipes import
+ * as private. (Replaces the removed /api/recipes/import route.)
+ */
+export const importRecipes = mutation({
+  args: {
+    householdId: v.optional(v.id("households")),
+    data: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
+    if (!householdId) throw new Error("No household found");
+
+    const raw = args.data as unknown;
+    const list = Array.isArray(raw)
+      ? raw
+      : raw && typeof raw === "object" && Array.isArray((raw as { recipes?: unknown }).recipes)
+        ? ((raw as { recipes: unknown[] }).recipes)
+        : null;
+    if (!list) {
+      throw new Error(
+        "Invalid import format: expected an array of recipes or { recipes: [...] }",
+      );
+    }
+    if (list.length > 500) {
+      throw new Error("Import is limited to 500 recipes at a time");
+    }
+
+    const str = (value: unknown): string | undefined =>
+      typeof value === "string" && value.trim() ? value : undefined;
+    const num = (value: unknown): number | undefined =>
+      typeof value === "number" && Number.isFinite(value) ? value : undefined;
+
+    let importedCount = 0;
+    for (const entry of list) {
+      if (!entry || typeof entry !== "object") continue;
+      const item = entry as Record<string, unknown>;
+      const title = str(item.title);
+      if (!title) continue;
+
+      const recipeId = await ctx.db.insert("recipes", {
+        householdId,
+        title,
+        description: str(item.description),
+        tags: Array.isArray(item.tags)
+          ? (item.tags.filter((t) => typeof t === "string") as string[])
+          : undefined,
+        visibility: "private",
+        servings: num(item.servings),
+        totalTimeMinutes: num(item.totalTimeMinutes),
+        caloriesKcal: num(item.caloriesKcal),
+        proteinGrams: num(item.proteinGrams),
+        carbsGrams: num(item.carbsGrams),
+        fatGrams: num(item.fatGrams),
+        sourceUrl: str(item.sourceUrl),
+        notes: str(item.notes),
+        favorited: false,
+      });
+
+      const ingredients = Array.isArray(item.ingredients) ? item.ingredients : [];
+      let order = 0;
+      for (const ing of ingredients.slice(0, 200)) {
+        const name =
+          typeof ing === "string" ? ing : str((ing as Record<string, unknown>)?.name);
+        if (!name) continue;
+        const obj = typeof ing === "object" && ing ? (ing as Record<string, unknown>) : {};
+        await ctx.db.insert("recipeIngredients", {
+          recipeId,
+          name,
+          quantity: num(obj.quantity),
+          unit: str(obj.unit),
+          note: str(obj.note),
+          order: order++,
+        });
+      }
+
+      const steps = Array.isArray(item.steps) ? item.steps : [];
+      order = 0;
+      for (const step of steps.slice(0, 200)) {
+        const text =
+          typeof step === "string" ? step : str((step as Record<string, unknown>)?.text);
+        if (!text) continue;
+        await ctx.db.insert("recipeSteps", { recipeId, text, order: order++ });
+      }
+
+      importedCount++;
+    }
+
+    return { importedCount };
   },
 });

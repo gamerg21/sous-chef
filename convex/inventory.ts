@@ -1,12 +1,12 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId, getCurrentHouseholdId, locationNameToId, locationIdToName } from "./helpers";
+import { getAuthUserId, resolveHouseholdId, locationNameToId, locationIdToName } from "./helpers";
 
 export const list = query({
   args: { householdId: v.optional(v.id("households")) },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) return { items: [], locations: [] };
 
     const items = await ctx.db
@@ -102,7 +102,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) throw new Error("No household found");
 
     // Find or create FoodItem

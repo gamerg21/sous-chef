@@ -34,3 +34,6 @@ jobs:
 
       - name: ESLint
         run: pnpm run lint
+
+      - name: Tests (vitest)
+        run: pnpm run test

@@ -8,6 +8,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "luci
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Modal } from "@/components/ui/modal";
 
 interface AdminUser {
   id: Id<"users">;
@@ -386,18 +387,8 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 p-6 w-full max-w-md mx-4 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-semibold mb-4 text-stone-900 dark:text-stone-100">
-          {user ? "Edit User" : "Add User"}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen onClose={onClose} title={user ? "Edit User" : "Add User"}>
+      <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
               Email *
@@ -474,14 +465,13 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
               {saving ? "Saving..." : "Save"}
             </button>
           </div>
-        </form>
-      </div>
+      </form>
       <AlertModal
         isOpen={alertModal.isOpen}
         onClose={() => setAlertModal({ isOpen: false, message: "", variant: "error" })}
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </Modal>
   );
 }

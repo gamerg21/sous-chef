@@ -48,11 +48,11 @@ Sous Chef is an open-source kitchen management application built with Next.js an
 
    The app should now be running at `http://localhost:3000`
 
-6. **(Optional) Seed demo data:**
+6. **Seed the unit catalog** (required for the unit picker):
    ```bash
-   pnpm seed:demo
+   pnpm seed:units
    ```
-   This creates a demo user (`demo@souschef.app` / `demo1234`) with sample recipes, inventory, and shopping list items.
+   This loads the canonical units, aliases, and ingredient-unit profiles into your Convex deployment. It is idempotent and safe to re-run.
 
 ## Development Workflow
 

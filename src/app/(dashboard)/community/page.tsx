@@ -87,6 +87,7 @@ export default function CommunityPage() {
         installedExtensions={[]}
         onOpenRecipe={handleOpenRecipe}
         onSaveRecipe={handleSaveRecipe}
+        onViewAllRecipes={() => router.push("/community/recipes")}
         onPublishRecipe={handlePublishRecipe}
       />
       <AlertModal

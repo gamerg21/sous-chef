@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -24,6 +24,8 @@ export default function CookingPage() {
   const shoppingListData = useQuery(api.shoppingList.get, {});
   const addMissing = useMutation(api.cooking.addMissingToShoppingList);
   const cookRecipe = useMutation(api.cooking.cookRecipe);
+  const cookingInFlight = useRef(false);
+  const [isCooking, setIsCooking] = useState(false);
 
   const recipes = useMemo(
     () => cookingData?.recipes || [],
@@ -112,8 +114,9 @@ export default function CookingPage() {
 
   const handleConfirmCook = useCallback(
     async (options: { addMissingToList: boolean }) => {
-      if (!selectedRecipeId) return;
-
+      if (!selectedRecipeId || cookingInFlight.current) return;
+      cookingInFlight.current = true;
+      setIsCooking(true);
       try {
         await cookRecipe({
           recipeId: selectedRecipeId,
@@ -125,8 +128,9 @@ export default function CookingPage() {
         setCameFromRecipePage(null);
         setAlertModal({
           isOpen: true,
-          message:
-            "Recipe cooked! Inventory updated and missing items added to shopping list.",
+          message: options.addMissingToList
+            ? "Recipe cooked. Inventory updated; any missing ingredients were added to your shopping list."
+            : "Recipe cooked. Inventory updated.",
           variant: "success",
         });
       } catch (error) {
@@ -136,6 +140,9 @@ export default function CookingPage() {
           message: "Failed to cook recipe. Please try again.",
           variant: "error",
         });
+      } finally {
+        cookingInFlight.current = false;
+        setIsCooking(false);
       }
     },
     [cookRecipe, selectedRecipeId]
@@ -177,6 +184,7 @@ export default function CookingPage() {
           pantrySnapshot={pantrySnapshot}
           onBack={handleBack}
           onConfirmCook={handleConfirmCook}
+          isCooking={isCooking}
         />
         <AlertModal
           isOpen={alertModal.isOpen}

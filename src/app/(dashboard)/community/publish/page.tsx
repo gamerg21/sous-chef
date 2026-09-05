@@ -18,6 +18,7 @@ export default function PublishRecipePage() {
     recipeId ? { id: recipeId } : "skip"
   );
   const publishRecipe = useMutation(api.community.publishRecipe);
+  const unpublishRecipe = useMutation(api.community.unpublishRecipe);
 
   const recipeData = useMemo(() => recipe || null, [recipe]);
 
@@ -40,7 +41,7 @@ export default function PublishRecipePage() {
       }
 
       try {
-        await publishRecipe({ recipeId });
+        await publishRecipe({ recipeId, visibility: data.visibility });
 
         setAlertModal({
           isOpen: true,
@@ -59,6 +60,28 @@ export default function PublishRecipePage() {
     },
     [publishRecipe, recipeId, router]
   );
+
+  const isPublished =
+    recipeData?.visibility === "public" || recipeData?.visibility === "unlisted";
+
+  const handleUnpublish = useCallback(async () => {
+    if (!recipeId) return;
+    try {
+      await unpublishRecipe({ recipeId });
+      setAlertModal({
+        isOpen: true,
+        message: "Recipe is now private.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Error unpublishing recipe:", error);
+      setAlertModal({
+        isOpen: true,
+        message: "Failed to unpublish recipe. Please try again.",
+        variant: "error",
+      });
+    }
+  }, [unpublishRecipe, recipeId]);
 
   if (!recipeId) {
     return (
@@ -102,6 +125,21 @@ export default function PublishRecipePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {isPublished && (
+        <div className="max-w-2xl mx-auto mb-4 flex items-center justify-between gap-3 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3">
+          <p className="text-sm text-emerald-800 dark:text-emerald-300">
+            This recipe is currently shared with the community
+            {recipeData?.visibility === "unlisted" ? " (unlisted)" : ""}.
+          </p>
+          <button
+            type="button"
+            onClick={handleUnpublish}
+            className="shrink-0 px-3 py-1.5 rounded-md border border-emerald-300 dark:border-emerald-800 text-sm font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+          >
+            Unpublish
+          </button>
+        </div>
+      )}
       <PublishRecipeView
         draft={{
           title: recipeData.title,

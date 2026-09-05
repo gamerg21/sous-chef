@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { DashboardPrewarm } from "./DashboardPrewarm";
 import AppShell from "./shell/AppShell";
+import type { Id } from "../../convex/_generated/dataModel";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -15,7 +16,7 @@ interface DashboardLayoutProps {
 const navigationItems = [
   { label: "Kitchen Inventory", href: "/inventory" },
   { label: "Recipes", href: "/recipes" },
-  { label: "Cooking & Shopping", href: "/cooking" },
+  { label: "What can I cook?", href: "/cooking" },
   { label: "Shopping List", href: "/shopping-list" },
   { label: "Community", href: "/community" },
   { label: "Extensions", href: "/extensions" },
@@ -26,6 +27,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { signOut } = useAuthActions();
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [switchError, setSwitchError] = useState(false);
+  const selectHousehold = useMutation(api.households.select);
 
   const ensureCurrentUser = useMutation(api.users.ensureCurrentUser);
   const profile = useQuery(
@@ -50,15 +55,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     void (async () => {
       try {
         await ensureCurrentUser({});
+        await ensureHousehold({});
         if (!cancelled) {
           setAuthReady(true);
         }
       } catch (error) {
         console.error("Auth bootstrap failed:", error);
         if (!cancelled) {
-          setAuthReady(false);
-          await signOut();
-          router.replace("/auth/signin");
+          setBootstrapError(true);
         }
       }
     })();
@@ -66,24 +70,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => {
       cancelled = true;
     };
-  }, [authReady, ensureCurrentUser, isAuthenticated, router, signOut]);
-
-  useEffect(() => {
-    if (
-      authReady &&
-      isAuthenticated &&
-      households !== undefined &&
-      households.length === 0
-    ) {
-      ensureHousehold({});
-    }
-  }, [authReady, isAuthenticated, households, ensureHousehold]);
+  }, [authReady, ensureCurrentUser, ensureHousehold, isAuthenticated, attempt]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.replace("/auth/signin");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  if (bootstrapError) return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="text-xl font-semibold">Your kitchen couldn’t finish loading</h1>
+      <p role="alert">Check your connection and try again. Your account is still signed in.</p>
+      <button className="min-h-11 rounded-lg bg-emerald-700 px-5 text-white" onClick={() => { setBootstrapError(false); setAttempt(value => value + 1); }}>Try again</button>
+      <button className="min-h-11 underline" onClick={() => void signOut()}>Sign out</button>
+    </div>
+  );
 
   if (isLoading || (isAuthenticated && !authReady)) {
     return (
@@ -107,7 +109,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const currentHouseholdId =
-    households.length > 0 ? String(households[0].id) : "";
+    String(households.find(h => h.isCurrent)?.id ?? households[0]?.id ?? "");
 
   const handleLogout = async () => {
     await signOut();
@@ -116,6 +118,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <AppShell
+      key={currentHouseholdId}
       navigationItems={navigationItems}
       user={{
         name: profile.user.name || profile.user.email || "User",
@@ -126,6 +129,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         name: h.name,
       }))}
       currentHouseholdId={currentHouseholdId}
+      onHouseholdChange={(id) => {
+        setSwitchError(false);
+        void selectHousehold({ householdId: id as Id<"households"> }).catch(() => setSwitchError(true));
+      }}
       onLogout={handleLogout}
     >
       <DashboardPrewarm
@@ -140,6 +147,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           "/account",
         ]}
       />
+      {switchError && <p role="alert" className="bg-red-50 p-4 text-red-800">Couldn’t switch kitchens. Please try again.</p>}
       {children}
     </AppShell>
   );

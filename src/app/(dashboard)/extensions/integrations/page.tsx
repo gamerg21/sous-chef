@@ -1,25 +1,21 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { IntegrationsSettingsView } from "@/components/community";
 import type { AiSettings, Integration } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
 
 export default function IntegrationsPage() {
   const integrationsData = useQuery(api.integrations.list, {});
   const aiSettingsData = useQuery(api.aiProviders.list, {});
-  const connectIntegration = useMutation(api.integrations.connect);
+  const connectIntegration = useAction(api.integrations.connect);
   const disconnectIntegration = useMutation(api.integrations.disconnect);
-  const configureAiProvider = useMutation(api.aiProviders.configure);
+  const configureAiProvider = useAction(api.aiProviders.configure);
+  const testAiProvider = useAction(api.aiProviders.test);
 
   const integrations = useMemo<Integration[]>(
     () => (integrationsData?.integrations || []) as Integration[],
@@ -114,14 +110,9 @@ export default function IntegrationsPage() {
     }
 
     try {
-      const data = await fetchJSON<{ success: boolean; error?: string }>(
-        `/api/ai/providers/${aiSettings.activeProviderId}/test`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ apiKey: "test" }),
-        }
-      );
+      const data = await testAiProvider({
+        providerId: aiSettings.activeProviderId,
+      });
 
       if (data.success) {
         setAlertModal({ isOpen: true, message: "Connection test successful!", variant: "success" });
@@ -140,7 +131,7 @@ export default function IntegrationsPage() {
         variant: "error",
       });
     }
-  }, [aiSettings]);
+  }, [aiSettings, testAiProvider]);
 
   if (integrationsData === undefined || aiSettingsData === undefined) {
     return (

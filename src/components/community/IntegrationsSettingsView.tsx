@@ -191,6 +191,18 @@ export function IntegrationsSettingsView(props: IntegrationsSettingsViewProps) {
               <span className="text-sm text-stone-500 dark:text-stone-400">{integrations.length}</span>
             </div>
             <div className="grid grid-cols-1 gap-3">
+              {integrations.length === 0 && (
+                <div className="rounded-lg border border-dashed border-stone-200 dark:border-stone-800 p-6 text-center">
+                  <p className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                    No integrations available yet
+                  </p>
+                  <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                    Third-party integrations (grocery services, calendars, smart
+                    kitchen devices) will appear here as they are added to Sous
+                    Chef.
+                  </p>
+                </div>
+              )}
               {integrations.map((it) => (
                 <IntegrationRow
                   key={it.id}

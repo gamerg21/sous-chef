@@ -8,6 +8,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Crown } from "lucid
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Modal } from "@/components/ui/modal";
 
 interface HouseholdUser {
   id: Id<"users">;
@@ -17,7 +18,12 @@ interface HouseholdUser {
 }
 
 export default function HouseholdUsersClient() {
-  const usersData = useQuery(api.households.getMembers, "skip");
+  const households = useQuery(api.households.list, {});
+  const householdId = (households?.find(h => h.isCurrent) ?? households?.[0])?.id;
+  const usersData = useQuery(
+    api.households.getMembers,
+    householdId ? { householdId } : "skip",
+  );
   const addMember = useMutation(api.households.addMember);
   const updateMember = useMutation(api.households.updateMember);
   const removeMember = useMutation(api.households.removeMember);
@@ -50,16 +56,18 @@ export default function HouseholdUsersClient() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || !householdId) return;
 
     try {
+      await removeMember({
+        householdId,
+        memberId: userToDelete.id as Id<"users">,
+      });
       setAlertModal({
         isOpen: true,
-        message: "Removing members from this screen is not configured.",
-        variant: "info",
+        message: `${userToDelete.name} was removed from the household.`,
+        variant: "success",
       });
-      setUserToDelete(null);
-      return;
       setUserToDelete(null);
     } catch (err) {
       console.error("Error removing user:", err);
@@ -77,20 +85,28 @@ export default function HouseholdUsersClient() {
 
   const handleSaveUser = async (userData: {
     email: string;
-    name: string;
     role: "owner" | "admin" | "member";
-    password?: string;
   }) => {
+    if (!householdId) return;
     try {
-      setAlertModal({
-        isOpen: true,
-        message: editingUser
-          ? "Updating members from this screen is not configured."
-          : "Adding members from this screen is not configured.",
-        variant: "info",
-      });
-      return;
-
+      if (editingUser) {
+        await updateMember({
+          householdId,
+          memberId: editingUser.id,
+          role: userData.role,
+        });
+      } else {
+        if (userData.role === "owner") {
+          throw new Error(
+            "Add the user first, then transfer ownership by editing their role.",
+          );
+        }
+        await addMember({
+          householdId,
+          email: userData.email,
+          role: userData.role,
+        });
+      }
       setShowAddModal(false);
       setEditingUser(null);
     } catch (err) {
@@ -124,10 +140,20 @@ export default function HouseholdUsersClient() {
     return badges[role as keyof typeof badges] || badges.member;
   };
 
-  if (usersData === undefined) {
+  if (households === undefined || (householdId && usersData === undefined)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-stone-600 dark:text-stone-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!householdId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-stone-600 dark:text-stone-400">
+          No household found. Visit the dashboard first to set one up.
+        </div>
       </div>
     );
   }
@@ -275,9 +301,7 @@ interface UserModalProps {
   user: HouseholdUser | null;
   onSave: (data: {
     email: string;
-    name: string;
     role: "owner" | "admin" | "member";
-    password?: string;
   }) => Promise<void>;
   onClose: () => void;
 }
@@ -285,9 +309,7 @@ interface UserModalProps {
 function UserModal({ user, onSave, onClose }: UserModalProps) {
   const [formData, setFormData] = useState({
     email: user?.email || "",
-    name: user?.name || "",
     role: (user?.role || "member") as "owner" | "admin" | "member",
-    password: "",
   });
   const [saving, setSaving] = useState(false);
   const [alertModal, setAlertModal] = useState<{
@@ -298,17 +320,8 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.email.trim() || !formData.name.trim()) {
-      setAlertModal({ isOpen: true, message: "Email and name are required", variant: "error" });
-      return;
-    }
-
-    if (!user && !formData.password) {
-      setAlertModal({
-        isOpen: true,
-        message: "Password is required for new users",
-        variant: "error",
-      });
+    if (!formData.email.trim()) {
+      setAlertModal({ isOpen: true, message: "Email is required", variant: "error" });
       return;
     }
 
@@ -316,9 +329,7 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
     try {
       await onSave({
         email: formData.email,
-        name: formData.name,
         role: formData.role,
-        password: user ? undefined : formData.password,
       });
     } finally {
       setSaving(false);
@@ -326,18 +337,8 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 p-6 w-full max-w-md mx-4 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-semibold mb-4 text-stone-900 dark:text-stone-100">
-          {user ? "Edit User" : "Add User"}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen onClose={onClose} title={user ? "Edit User" : "Add User"}>
+      <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
               Email *
@@ -350,24 +351,15 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
               required
               disabled={!!user}
             />
-            {user && (
+            {user ? (
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Email cannot be changed
               </p>
+            ) : (
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                The person must already have a Sous Chef account with this email
+              </p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
-              required
-            />
           </div>
 
           <div>
@@ -384,28 +376,9 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
             >
               <option value="member">Member</option>
               <option value="admin">Admin</option>
-              <option value="owner">Owner</option>
+              {user && <option value="owner">Owner (transfer ownership)</option>}
             </select>
           </div>
-
-          {!user && (
-            <div>
-              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                Password *
-              </label>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
-                required
-                minLength={8}
-              />
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                Minimum 8 characters
-              </p>
-            </div>
-          )}
 
           <div className="flex gap-3 pt-4">
             <button
@@ -423,14 +396,13 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
               {saving ? "Saving..." : "Save"}
             </button>
           </div>
-        </form>
-      </div>
+      </form>
       <AlertModal
         isOpen={alertModal.isOpen}
         onClose={() => setAlertModal({ isOpen: false, message: "", variant: "error" })}
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </Modal>
   );
 }

@@ -165,7 +165,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
               <button
                 type="button"
                 onClick={onScanBarcode}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
               >
                 <Barcode className="w-4 h-4" strokeWidth={1.75} />
                 Scan
@@ -173,7 +173,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
               <button
                 type="button"
                 onClick={onAddItem}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
+                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
               >
                 <Plus className="w-4 h-4" strokeWidth={1.75} />
                 Add item
@@ -182,22 +182,22 @@ export function ShoppingListView(props: ShoppingListViewProps) {
           </div>
 
           {/* Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
               <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Items</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.total}</div>
-              <div className="mt-1 text-sm text-stone-600 dark:text-stone-400">Across all categories</div>
+              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Across all categories</div>
             </div>
-            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 p-4">
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 p-3 sm:p-4">
               <div className="text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Checked off</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.checked}</div>
-              <div className="mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ready to clear</div>
+              <div className="hidden sm:block mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ready to clear</div>
             </div>
             <button
               type="button"
               onClick={onClearChecked}
               className={cx(
-                'text-left rounded-lg border p-4 transition-colors',
+                'text-left rounded-lg border p-3 sm:p-4 transition-colors',
                 derived.checked > 0
                   ? 'border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-900/40 hover:bg-stone-200/70 dark:hover:bg-stone-900/60'
                   : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 opacity-70 cursor-not-allowed'
@@ -209,9 +209,9 @@ export function ShoppingListView(props: ShoppingListViewProps) {
                   <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Action</div>
                   <div className="mt-2 text-base font-semibold text-stone-900 dark:text-stone-100">Clear checked</div>
                 </div>
-                <ShoppingCart className="w-5 h-5 text-stone-500 dark:text-stone-400" strokeWidth={1.75} />
+                <ShoppingCart className="hidden sm:block w-5 h-5 text-stone-500 dark:text-stone-400" strokeWidth={1.75} />
               </div>
-              <div className="mt-1 text-sm text-stone-600 dark:text-stone-400">Keeps the list tidy while you shop</div>
+              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Keeps the list tidy while you shop</div>
             </button>
           </div>
 
@@ -245,7 +245,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
                   <button
                     type="button"
                     onClick={onAddItem}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+                    className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
                   >
                     <Plus className="w-4 h-4" strokeWidth={1.75} />
                     Add item
@@ -253,7 +253,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
                   <button
                     type="button"
                     onClick={onScanBarcode}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
+                    className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
                   >
                     <Barcode className="w-4 h-4" strokeWidth={1.75} />
                     Scan

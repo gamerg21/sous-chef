@@ -1,6 +1,12 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
-import { getAuthUserId, getCurrentHouseholdId } from "./helpers";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+import {
+  getAuthUserId,
+  getCurrentHouseholdId,
+  getHouseholdMembership,
+  decodeIngredientMapping,
+} from "./helpers";
 
 export const listRecipes = query({
   args: {
@@ -15,16 +21,21 @@ export const listRecipes = query({
     const limit = args.limit ?? 20;
     const offset = args.offset ?? 0;
 
-    // Get public/unlisted recipes
+    // Get public/unlisted recipes. Bounded to the newest 200 per bucket so
+    // this query cannot scan the whole table as the community grows; at
+    // larger scale this should move to cursor pagination + denormalized
+    // like/save counters.
     let recipes = await ctx.db
       .query("recipes")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-      .collect();
+      .order("desc")
+      .take(200);
 
     const unlistedRecipes = await ctx.db
       .query("recipes")
       .withIndex("by_visibility", (q) => q.eq("visibility", "unlisted"))
-      .collect();
+      .order("desc")
+      .take(200);
     recipes = [...recipes, ...unlistedRecipes];
 
     // Filter by search term
@@ -46,11 +57,14 @@ export const listRecipes = query({
     }
 
     // Sort
-    if (args.sort === "popular" || args.sort === "trending") {
-      // Sort by likes count (computed below)
-    } else {
-      // Default: most recent
+    const sortByPopularity =
+      args.sort === "popular" || args.sort === "trending";
+    if (!sortByPopularity) {
+      // Default: most recent. Slice before the per-recipe enrichment below
+      // so we only pay for the page we return. Popularity sorting needs
+      // like-counts for the whole (bounded) window, so it can't pre-slice.
       recipes.sort((a, b) => b._creationTime - a._creationTime);
+      recipes = recipes.slice(offset, offset + limit);
     }
 
     // Build response with author info and counts
@@ -106,7 +120,7 @@ export const listRecipes = query({
           name: i.name,
           quantity: i.quantity,
           unit: i.unit,
-          note: i.note && !i.note.startsWith("MAPPING:") ? i.note : undefined,
+          note: decodeIngredientMapping(i).note,
         })),
         steps: steps.map((s) => ({ id: s._id, text: s.text })),
         author: {
@@ -121,13 +135,13 @@ export const listRecipes = query({
       });
     }
 
-    // Sort by popular if needed
-    if (args.sort === "popular" || args.sort === "trending") {
+    // Popularity sort still needs to rank the whole window, then paginate;
+    // the recent path was already sliced above.
+    let paginated = transformed;
+    if (sortByPopularity) {
       transformed.sort((a, b) => b._likesCount - a._likesCount);
+      paginated = transformed.slice(offset, offset + limit);
     }
-
-    // Paginate
-    const paginated = transformed.slice(offset, offset + limit);
 
     return {
       recipes: paginated.map(({ _likesCount, ...r }) => r),
@@ -206,7 +220,7 @@ export const getRecipe = query({
         name: i.name,
         quantity: i.quantity,
         unit: i.unit,
-        note: i.note && !i.note.startsWith("MAPPING:") ? i.note : undefined,
+        note: decodeIngredientMapping(i).note,
       })),
       steps: steps.map((s) => ({ id: s._id, text: s.text })),
       author: {
@@ -224,6 +238,31 @@ export const getRecipe = query({
 });
 
 export const publishRecipe = mutation({
+  args: {
+    recipeId: v.id("recipes"),
+    visibility: v.optional(v.union(v.literal("public"), v.literal("unlisted"))),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const recipe = await ctx.db.get(args.recipeId);
+    if (!recipe) throw new Error("Recipe not found");
+
+    const membership = await ctx.db
+      .query("householdMembers")
+      .withIndex("by_userId_and_householdId", (q) =>
+        q.eq("userId", userId).eq("householdId", recipe.householdId),
+      )
+      .unique();
+    if (!membership) throw new Error("Permission denied");
+
+    await ctx.db.patch(args.recipeId, {
+      visibility: args.visibility ?? "public",
+    });
+    return { success: true };
+  },
+});
+
+export const unpublishRecipe = mutation({
   args: { recipeId: v.id("recipes") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -238,15 +277,39 @@ export const publishRecipe = mutation({
       .unique();
     if (!membership) throw new Error("Permission denied");
 
-    await ctx.db.patch(args.recipeId, { visibility: "public" });
+    await ctx.db.patch(args.recipeId, { visibility: "private" });
     return { success: true };
   },
 });
+
+/**
+ * A recipe can be interacted with through the community surface if it is
+ * shared publicly, or if the user belongs to the household that owns it.
+ */
+async function assertCommunityRecipeAccess(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  recipeId: Id<"recipes">,
+) {
+  const recipe = await ctx.db.get(recipeId);
+  if (!recipe) throw new Error("Recipe not found");
+  if (recipe.visibility === "public" || recipe.visibility === "unlisted") {
+    return recipe;
+  }
+  const membership = await getHouseholdMembership(
+    ctx,
+    userId,
+    recipe.householdId,
+  );
+  if (!membership) throw new Error("Recipe not publicly available");
+  return recipe;
+}
 
 export const likeRecipe = mutation({
   args: { recipeId: v.id("recipes") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    await assertCommunityRecipeAccess(ctx, userId, args.recipeId);
 
     const existing = await ctx.db
       .query("communityRecipeLikes")
@@ -275,9 +338,13 @@ export const saveRecipe = mutation({
     const householdId = await getCurrentHouseholdId(ctx, userId);
     if (!householdId) throw new Error("No household found");
 
-    // Copy recipe to user's household
-    const sourceRecipe = await ctx.db.get(args.recipeId);
-    if (!sourceRecipe) throw new Error("Recipe not found");
+    // Copy recipe to user's household. Only recipes shared with the
+    // community (or owned by one of the user's households) can be copied.
+    const sourceRecipe = await assertCommunityRecipeAccess(
+      ctx,
+      userId,
+      args.recipeId,
+    );
 
     const newRecipeId = await ctx.db.insert("recipes", {
       householdId,
@@ -309,6 +376,7 @@ export const saveRecipe = mutation({
         quantity: ing.quantity,
         unit: ing.unit,
         note: ing.note,
+        mappingLabel: ing.mappingLabel,
         order: ing.order,
       });
     }

@@ -161,7 +161,13 @@ export function RecipeDetailView(props: RecipeDetailViewProps) {
             </span>
             {recipe.visibility && (
               <span className="rounded-md border border-stone-200 dark:border-stone-800 px-2 py-1 text-stone-700 dark:text-stone-200">
-                {recipe.visibility === 'household' ? 'Household' : 'Private'}
+                {recipe.visibility === 'household'
+                  ? 'Household'
+                  : recipe.visibility === 'public'
+                    ? 'Published'
+                    : recipe.visibility === 'unlisted'
+                      ? 'Unlisted'
+                      : 'Private'}
               </span>
             )}
             {recipe.sourceUrl && (

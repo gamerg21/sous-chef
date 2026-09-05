@@ -1,9 +1,9 @@
-export default function SettingsPage() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold mb-4">Settings</h1>
-      <p className="text-stone-600">Settings coming soon...</p>
-    </div>
-  );
-}
+import { redirect } from "next/navigation";
 
+/**
+ * Household user management is currently the only settings surface; land
+ * there instead of a placeholder index.
+ */
+export default function SettingsPage() {
+  redirect("/settings/household-users");
+}

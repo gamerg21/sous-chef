@@ -5,12 +5,14 @@ import {
   ensureUserHasHousehold,
   createDefaultHousehold,
   getHouseholdMembership,
+  getCurrentHouseholdId,
 } from "./helpers";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
+    const currentHouseholdId = await getCurrentHouseholdId(ctx, userId);
     const memberships = await ctx.db
       .query("householdMembers")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -24,10 +26,29 @@ export const list = query({
           id: h._id,
           name: h.name,
           role: m.role,
+          isCurrent: h._id === currentHouseholdId,
         });
       }
     }
     return households;
+  },
+});
+
+export const select = mutation({
+  args: { householdId: v.id("households") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!await getHouseholdMembership(ctx, userId, args.householdId) || !await ctx.db.get(args.householdId)) {
+      throw new Error("Permission denied");
+    }
+    const preferences = await ctx.db.query("userPreferences")
+      .withIndex("by_userId", q => q.eq("userId", userId)).unique();
+    if (preferences) await ctx.db.patch(preferences._id, { activeHouseholdId: args.householdId });
+    else await ctx.db.insert("userPreferences", {
+      userId, activeHouseholdId: args.householdId,
+      measurementSystem: "metric", defaultWeightUnit: "g", defaultVolumeUnit: "ml",
+    });
+    return null;
   },
 });
 
@@ -237,6 +258,29 @@ export const updateMember = mutation({
       args.householdId,
     );
     if (!targetMembership) throw new Error("Member not found");
+
+    // The owner role can only move via an explicit transfer (below), never a
+    // demotion — this keeps every household with exactly one owner.
+    if (targetMembership.role === "owner" && args.role !== "owner") {
+      throw new Error(
+        "Transfer ownership by promoting another member to owner instead",
+      );
+    }
+
+    if (args.role === "owner" && targetMembership.role !== "owner") {
+      // Ownership transfer: the current owner(s) become admins.
+      const members = await ctx.db
+        .query("householdMembers")
+        .withIndex("by_householdId", (q) =>
+          q.eq("householdId", args.householdId),
+        )
+        .collect();
+      for (const member of members) {
+        if (member.role === "owner") {
+          await ctx.db.patch(member._id, { role: "admin" });
+        }
+      }
+    }
 
     await ctx.db.patch(targetMembership._id, { role: args.role });
     return { success: true };

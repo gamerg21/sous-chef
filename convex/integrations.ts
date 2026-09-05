@@ -1,12 +1,14 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
-import { getAuthUserId, getCurrentHouseholdId } from "./helpers";
+import { query, mutation, action, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { getAuthUserId, resolveHouseholdId } from "./helpers";
+import { encryptSecret } from "./secrets";
 
 export const list = query({
   args: { householdId: v.optional(v.id("households")) },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const householdId = args.householdId ?? (await getCurrentHouseholdId(ctx, userId));
+    const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) return { integrations: [] };
 
     const integrations = await ctx.db
@@ -29,7 +31,35 @@ export const list = query({
   },
 });
 
-export const connect = mutation({
+/**
+ * Public entry point. Runs as an action so OAuth tokens can be encrypted
+ * with Web Crypto (unavailable in mutations) before they are stored.
+ */
+export const connect = action({
+  args: {
+    integrationId: v.id("integrations"),
+    accessToken: v.optional(v.string()),
+    refreshToken: v.optional(v.string()),
+    config: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const result: { success: boolean } = await ctx.runMutation(
+      internal.integrations.saveConnection,
+      {
+        ...args,
+        accessToken: args.accessToken
+          ? await encryptSecret(args.accessToken)
+          : args.accessToken,
+        refreshToken: args.refreshToken
+          ? await encryptSecret(args.refreshToken)
+          : args.refreshToken,
+      },
+    );
+    return result;
+  },
+});
+
+export const saveConnection = internalMutation({
   args: {
     integrationId: v.id("integrations"),
     accessToken: v.optional(v.string()),

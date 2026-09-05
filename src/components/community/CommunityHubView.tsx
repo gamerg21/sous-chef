@@ -27,6 +27,7 @@ export interface CommunityHubViewProps {
   onCategoryChange?: (c: string | 'all') => void
   onOpenRecipe?: (id: string) => void
   onSaveRecipe?: (id: string) => void
+  onViewAllRecipes?: () => void
   onOpenExtension?: (id: string) => void
   onInstallExtension?: (id: string) => void
   onToggleExtensionEnabled?: (id: string) => void
@@ -57,6 +58,7 @@ export function CommunityHubView(props: CommunityHubViewProps) {
     onCategoryChange,
     onOpenRecipe,
     onSaveRecipe,
+    onViewAllRecipes,
     onOpenExtension,
     onInstallExtension,
     onToggleExtensionEnabled,
@@ -151,10 +153,10 @@ export function CommunityHubView(props: CommunityHubViewProps) {
                 <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">
                   {featuredRecipesTitle}
                 </h2>
-                {featuredRecipesShowViewAll ? (
+                {featuredRecipesShowViewAll && onViewAllRecipes ? (
                   <button
                     type="button"
-                    onClick={() => console.log('[Community] View all recipes')}
+                    onClick={onViewAllRecipes}
                     className="text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
                   >
                     View all

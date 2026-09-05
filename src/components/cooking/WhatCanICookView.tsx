@@ -121,6 +121,28 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
   const empty = derived.list.length === 0
   const showSearchEmpty = Boolean(effectiveQuery.trim()) && empty
 
+  // Open the cook view for a random recipe, preferring ones that can be
+  // cooked right now, then "almost", then anything.
+  const handleSurpriseMe = () => {
+    if (recipes.length === 0 || !onCookRecipe) return
+    const byBucket: Record<'cook-now' | 'almost' | 'missing', Recipe[]> = {
+      'cook-now': [],
+      almost: [],
+      missing: [],
+    }
+    for (const recipe of recipes) {
+      const { missingCount } = computeRecipeCookability(recipe.ingredients, pantrySnapshot)
+      byBucket[bucketForMissingCount(missingCount)].push(recipe)
+    }
+    const pool = byBucket['cook-now'].length
+      ? byBucket['cook-now']
+      : byBucket.almost.length
+        ? byBucket.almost
+        : recipes
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    onCookRecipe(pick.id)
+  }
+
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
       <div className="px-4 py-5 sm:px-6 sm:py-6">
@@ -132,15 +154,16 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
                 What can I cook?
               </h1>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Discover recipes you can make now, or get a tight shopping list for what&apos;s missing.
+                Find recipes using ingredients in your kitchen. Matches use ingredient names; check quantities and units before cooking.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:pt-1">
               <button
                 type="button"
-                onClick={() => console.log('[Cooking] Surprise me')}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+                onClick={handleSurpriseMe}
+                disabled={recipes.length === 0}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Sparkles className="w-4 h-4" strokeWidth={1.75} />
                 Surprise me

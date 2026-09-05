@@ -97,7 +97,7 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">Recipes</h1>
               <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Your private-by-default recipe library, with lightweight ingredient mapping for &quot;what can I cook?&quot;
+                Save recipes you love and see what you can make with what’s in your kitchen.
               </p>
             </div>
 
@@ -105,7 +105,7 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
               <button
                 type="button"
                 onClick={onImportRecipe}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
               >
                 <Upload className="w-4 h-4" strokeWidth={1.75} />
                 Import
@@ -113,7 +113,7 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
               <button
                 type="button"
                 onClick={onCreateRecipe}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
+                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
               >
                 <Plus className="w-4 h-4" strokeWidth={1.75} />
                 New recipe
@@ -130,23 +130,23 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
           </div>
 
           {/* Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
               <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Recipes</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.total}</div>
-              <div className="mt-1 text-sm text-stone-600 dark:text-stone-400">Across private + household</div>
+              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Saved recipes</div>
             </div>
-            <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-4">
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-3 sm:p-4">
               <div className="text-xs uppercase tracking-wide text-amber-800 dark:text-amber-200">Favorites</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.favorites}</div>
-              <div className="mt-1 text-sm text-amber-900/80 dark:text-amber-200/80">Pinned for fast access</div>
+              <div className="hidden sm:block mt-1 text-sm text-amber-900/80 dark:text-amber-200/80">Pinned for fast access</div>
             </div>
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-4">
-              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Inventory context</div>
+            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
+              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">In your kitchen</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">
                 {pantrySnapshot?.length ?? 0}
               </div>
-              <div className="mt-1 text-sm text-stone-600 dark:text-stone-400">Items in snapshot (preview-only)</div>
+              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Ingredients in your inventory</div>
             </div>
           </div>
 
@@ -259,7 +259,7 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
                     <button
                       type="button"
                       onClick={onImportRecipe}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+                      className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
                     >
                       <Upload className="w-4 h-4" strokeWidth={1.75} />
                       Import
@@ -267,7 +267,7 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
                     <button
                       type="button"
                       onClick={onCreateRecipe}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
+                      className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
                     >
                       <Plus className="w-4 h-4" strokeWidth={1.75} />
                       New recipe

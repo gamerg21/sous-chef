@@ -37,7 +37,8 @@ jobs:
         run: |
           DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
           if [ -z "$DOCKER_USERNAME" ]; then
-            DOCKER_USERNAME="gamerg21"
+            # Forks without a DOCKER_USERNAME secret publish under their own namespace
+            DOCKER_USERNAME="${{ github.repository_owner }}"
           fi
           # Remove any leading/trailing slashes that might cause issues
           DOCKER_USERNAME=$(echo "$DOCKER_USERNAME" | sed 's|^/||' | sed 's|/$||')

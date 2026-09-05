@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import {
@@ -13,6 +13,8 @@ import {
 import { BarcodeScanner } from "@/components/inventory/BarcodeScanner";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { AlertModal } from "@/components/ui/alert-modal";
+import type { ShoppingItemValues } from "@/components/cooking/ShoppingItemForm";
+
 interface BarcodeLookupResponse {
   found: boolean;
   prefill: {
@@ -55,6 +57,8 @@ export default function ShoppingListPage() {
   const addItem = useMutation(api.shoppingList.addItem);
   const updateItem = useMutation(api.shoppingList.updateItem);
   const deleteItem = useMutation(api.shoppingList.deleteItem);
+  const clearChecked = useMutation(api.shoppingList.clearChecked);
+  const lookupBarcode = useAction(api.barcodes.lookup);
 
   const items = useMemo<ShoppingListItem[]>(
     () =>
@@ -141,30 +145,6 @@ export default function ShoppingListPage() {
     setIsAddModalOpen(true);
   }, []);
 
-  const handleUpdateItemWithData = useCallback(
-    async (id: string, itemData: Partial<ShoppingListItem>) => {
-      try {
-        await updateItem({
-          id: id as Id<"shoppingListItems">,
-          name: itemData.name,
-          quantity: itemData.quantity,
-          unit: itemData.unit,
-          category: itemData.category,
-          checked: itemData.checked,
-          note: itemData.note,
-        });
-      } catch (error) {
-        console.error("Error updating item:", error);
-        setAlertModal({
-          isOpen: true,
-          message: "Failed to update item. Please try again.",
-          variant: "error",
-        });
-      }
-    },
-    [updateItem]
-  );
-
   const handleEditItem = useCallback(
     (id: string) => {
       const item = items.find((candidate) => candidate.id === id);
@@ -175,35 +155,21 @@ export default function ShoppingListPage() {
   );
 
   const handleSaveEdit = useCallback(
-    async (id: string, updates: { name: string; category?: ShoppingListItem["category"] }) => {
-      await handleUpdateItemWithData(id, updates);
-      setEditingItem(null);
-    },
-    [handleUpdateItemWithData]
+    async (id: string, values: ShoppingItemValues) => {
+      await updateItem({
+        id: id as Id<"shoppingListItems">,
+        name: values.name,
+        quantity: values.quantity ?? null,
+        unit: values.unit ?? null,
+        category: values.category ?? null,
+      });
+    }, [updateItem]
   );
 
   const handleAddItemWithData = useCallback(
-    async (itemData: {
-      name: string;
-      quantity?: number;
-      unit?: string;
-      category?: ShoppingListItem["category"];
-    }) => {
-      try {
-        await addItem({
-          ...itemData,
-          source: "manual",
-        });
-      } catch (error) {
-        console.error("Error adding item:", error);
-        setAlertModal({
-          isOpen: true,
-          message: "Failed to add item. Please try again.",
-          variant: "error",
-        });
-      }
-    },
-    [addItem]
+    async (values: ShoppingItemValues) => {
+      await addItem({ ...values, source: "manual" });
+    }, [addItem]
   );
 
   const handleScanBarcode = useCallback(() => {
@@ -213,11 +179,11 @@ export default function ShoppingListPage() {
   const handleBarcodeScanned = useCallback(
     async (barcode: string) => {
       try {
-        const lookupResponse = await fetch(
-          `/api/barcode/lookup?code=${encodeURIComponent(barcode)}`
-        );
+        const lookupData = (await lookupBarcode({
+          code: barcode,
+        })) as BarcodeLookupResponse;
 
-        if (lookupResponse.status === 404) {
+        if (!lookupData.found) {
           setPrefillItem({ name: barcode });
           setIsAddModalOpen(true);
           setAlertModal({
@@ -228,11 +194,6 @@ export default function ShoppingListPage() {
           return;
         }
 
-        if (!lookupResponse.ok) {
-          throw new Error("Failed to lookup barcode");
-        }
-
-        const lookupData = (await lookupResponse.json()) as BarcodeLookupResponse;
         if (!lookupData.prefill.name) {
           throw new Error("Scanned barcode result did not include a product name.");
         }
@@ -259,7 +220,7 @@ export default function ShoppingListPage() {
         });
       }
     },
-    [addItem]
+    [addItem, lookupBarcode]
   );
 
   const handleClearChecked = useCallback(() => {
@@ -269,38 +230,14 @@ export default function ShoppingListPage() {
   }, [items]);
 
   const handleConfirmClearChecked = useCallback(async () => {
-    const checkedItems = items.filter((item) => item.checked);
-    if (checkedItems.length === 0) return;
-
-    const checkedIds = new Set(checkedItems.map((item) => item.id));
-    setDeletingItems((previous) => new Set([...previous, ...checkedIds]));
-
-    setTimeout(async () => {
-      try {
-        await Promise.all(
-          checkedItems.map((item) => deleteItem({ id: item.id as Id<"shoppingListItems"> }))
-        );
-
-        setDeletingItems((previous) => {
-          const next = new Set(previous);
-          checkedIds.forEach((id) => next.delete(id));
-          return next;
-        });
-      } catch (error) {
-        console.error("Error clearing checked items:", error);
-        setDeletingItems((previous) => {
-          const next = new Set(previous);
-          checkedIds.forEach((id) => next.delete(id));
-          return next;
-        });
-        setAlertModal({
-          isOpen: true,
-          message: "Failed to clear checked items. Please try again.",
-          variant: "error",
-        });
-      }
-    }, 300);
-  }, [items, deleteItem]);
+    const ids = items.filter(item => item.checked).slice(0, 200).map(item => item.id as Id<"shoppingListItems">);
+    if (!ids.length) return;
+    try {
+      await clearChecked({ ids });
+    } catch {
+      setAlertModal({ isOpen: true, message: "Couldn’t clear checked items. Please try again.", variant: "error" });
+    }
+  }, [items, clearChecked]);
 
   if (shoppingListData === undefined) {
     return (
@@ -351,7 +288,7 @@ export default function ShoppingListPage() {
         onClose={() => setIsClearCheckedModalOpen(false)}
         onConfirm={handleConfirmClearChecked}
         title="Clear checked items"
-        message={`Remove ${items.filter((item) => item.checked).length} checked item(s)?`}
+        message={`Remove ${Math.min(items.filter((item) => item.checked).length, 200)} checked item(s)?`}
         confirmText="Remove"
         cancelText="Cancel"
         confirmVariant="danger"

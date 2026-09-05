@@ -7,27 +7,24 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvex } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { RecipeLibraryView } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
 
 export default function RecipesPage() {
   const router = useRouter();
+  const convex = useConvex();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const recipesData = useQuery(api.recipes.list, {});
   const inventoryData = useQuery(api.inventory.list, {});
   const toggleFavorite = useMutation(api.recipes.toggleFavorite);
   const removeRecipe = useMutation(api.recipes.remove);
+  const importRecipes = useMutation(api.recipes.importRecipes);
 
   const recipes = useMemo(
     () => recipesData?.recipes || [],
@@ -80,14 +77,7 @@ export default function RecipesPage() {
           throw new Error("Selected file is not valid JSON.");
         }
 
-        const data = await fetchJSON<{ importedCount?: number }>(
-          "/api/recipes/import",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(parsed),
-          }
-        );
+        const data = await importRecipes({ data: parsed });
 
         setAlertModal({
           isOpen: true,
@@ -106,25 +96,18 @@ export default function RecipesPage() {
         });
       }
     },
-    []
+    [importRecipes]
   );
 
   const handleExportAll = useCallback(() => {
     (async () => {
       try {
-        const response = await fetch("/api/recipes/export");
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(error.error || "Failed to export recipes");
-        }
-
-        const blob = await response.blob();
+        const data = await convex.query(api.recipes.exportAll, {});
+        const blob = new Blob([JSON.stringify(data.recipes, null, 2)], {
+          type: "application/json",
+        });
         const url = URL.createObjectURL(blob);
-        const contentDisposition = response.headers.get("content-disposition");
-        const fileNameMatch = contentDisposition?.match(/filename="([^"]+)"/);
-        const fileName =
-          fileNameMatch?.[1] ||
-          `recipes-${new Date().toISOString().split("T")[0]}.json`;
+        const fileName = `recipes-${new Date().toISOString().split("T")[0]}.json`;
 
         const link = document.createElement("a");
         link.href = url;
@@ -143,7 +126,7 @@ export default function RecipesPage() {
         });
       }
     })();
-  }, []);
+  }, [convex]);
 
   const handleEditRecipe = useCallback(
     (id: string) => {

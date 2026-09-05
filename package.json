@@ -10,9 +10,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=200",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "seed:units": "convex run units:seed",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
-    "prepare": "husky"
+    "prepare": "husky",
+    "doctor": "node scripts/doctor.mjs",
+    "setup:backend": "convex dev --once && auth && convex dev --once && convex run units:seed"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
@@ -25,17 +30,20 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "convex-test": "^0.0.54",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "husky": "^9.1.7",
     "npm-run-all": "^4.1.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   },
   "pnpm": {
     "overrides": {

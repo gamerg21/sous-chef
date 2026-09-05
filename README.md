@@ -7,39 +7,28 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 
 ---
 
-## ✨ Core Principles
+## Start here
 
-* **Community-first & Open Source**
-* **Self-host agnostic** (runs locally or in the cloud)
-* **Offline-tolerant** mobile experience
-* **Household-based** (multiple users, shared kitchen)
-* **Extensible** (AI, integrations, scanners, future hardware)
+Sous Chef uses **Convex**, either hosted by Convex or on your own infrastructure. The web app is the current product; native companion apps and a managed paid service are future possibilities.
 
----
+1. Follow [Convex setup](docs/CONVEX_SETUP.md) to initialize auth, deploy functions, and seed units.
+2. Run locally with `pnpm dev`, or follow [the home-server Docker guide](DEPLOYMENT.md).
+3. Create your account and add your first pantry items. No AI key or mail provider is needed for the core kitchen flows.
 
-## ✅ Current Implementation Status (April 2026)
+Run `pnpm run doctor` to check local configuration and backend reachability. The app shows setup instructions when its backend URL is missing. Docker reads the URL at runtime, so one image can connect to any configured Convex instance.
 
-### Implemented
-* Household-scoped auth, inventory CRUD, recipes CRUD, cooking flow, shopping list CRUD
-* Barcode lookup and barcode-to-food mapping support
-* Shopping list barcode flow (scan -> lookup -> add/fallback) wired end-to-end
-* Recipe parity features: JSON import/export and recipe photo upload/remove wiring
-* Unit-system foundation (units, aliases, usage tracking) with combobox + "More units" modal
-* Nutrition macros per serving in recipe model, editor, and detail views
-* Community recipe publish/browse/save/like flows
-* Extensions and integrations management scaffolding
-* BYOK AI provider settings (configure/select/test endpoint scaffold) with encrypted key/token storage at rest
-* Security hardening for password-reset token handling and household owner-role assignment guardrails
+## Current scope
 
-### Partial / In Progress
-* Magic-link sign-in flow is not implemented yet
-* AI features are still provider-config only (no fully shipped assistant workflow yet)
-* Realtime sync strategy (SSE vs other realtime transports) not yet implemented
+- Household inventory, recipe editing/import/export, photos, nutrition fields, ingredient matching, unit-aware cooking, and a shared shopping list.
+- Barcode lookup through Open Food Facts, with camera scanning on trusted HTTPS.
+- Household membership/roles and a working kitchen switcher.
+- Convex realtime subscriptions, responsive web layouts, and accessible scrollable dialogs.
+- Email/password signin and recovery by email, or operator-assisted recovery when email is not configured.
+- Community recipe sharing within a deployment; optional AI provider configuration with encrypted keys.
 
-### Planned
-* Offline-tolerant experience
-* AI meal planning/substitutions/nutrition insights
-* Manual non-barcode label scanning
+**Still unfinished:** AI assistant/meal planning, third-party grocery/calendar integrations, magic links, offline operation, cross-instance community federation, and native apps. Existing extension/provider settings should not be mistaken for completed end-user workflows.
+
+Validation commands: `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm build`.
 
 ---
 
@@ -73,9 +62,9 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 * Recipes can be published to a **public community catalog**
 * Self-hosted users retain full functionality via:
 
-  * Local sharing
+  * Sharing within their own deployment
   * Import/export
-  * Optional connection to hosted community
+  * A hosted community connection is future work
 
 ### AI (Optional)
 
@@ -94,11 +83,11 @@ Sous Chef is intentionally designed to avoid vendor lock-in.
 * React 19 with TypeScript
 * Tailwind CSS for styling
 
-### Backend (Recommended)
+### Backend
 
 * **Convex** for backend APIs, data access, and realtime-friendly workflows
 * Local frontend/runtime can still be self-hosted with Docker
-* Backend recommendation for new deployments is Convex
+* Convex is the application backend; it can also be self-hosted
 
 See **[docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md)** for setup guidelines.
 
@@ -106,7 +95,7 @@ See **[docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md)** for setup guidelines.
 
 ## 🏠 Household Model
 
-* One household (kitchen) per installation (for now)
+* Multiple households (kitchens), with an active kitchen per user
 * Multiple users per household
 * Roles:
 
@@ -125,7 +114,7 @@ All inventory and recipes are scoped to a household.
 * Password reset via email delivery provider integration
 * Password-reset token response hardening
 * Household role guardrails (only owners can assign owner role)
-* Encrypted secret storage for integration/provider credentials (AES-256-GCM via `APP_ENCRYPTION_KEY`)
+* Encrypted secret storage for integration/provider credentials (AES-256-GCM via `SECRETS_ENCRYPTION_KEY`)
 * Household-based access control
 * Self-hosters fully control auth + app runtime configuration
 
@@ -146,109 +135,14 @@ sous-chef/
 
 ---
 
-## 🧪 Local Development Setup
+## Run and deploy
 
-### Prerequisites
+- [First-run and Convex setup](docs/CONVEX_SETUP.md)
+- [Home-server deployment](DEPLOYMENT.md)
+- [Docker configuration reference](DOCKER.md)
+- [Implementation and UX review](docs/APP_REVIEW.md)
 
-* Node.js **20 LTS** (recommended)
-* pnpm
-* Convex account/deployment access
-
-### 1. Install dependencies
-
-```bash
-pnpm install
-```
-
-### 2. Start Convex dev backend
-
-```bash
-npx convex dev
-```
-
-Keep this running in a separate terminal while developing.
-
-### 3. Set up environment variables
-
-Create a `.env` file in the root directory:
-
-```bash
-cp .env.example .env
-
-NEXT_PUBLIC_CONVEX_URL="https://your-deployment.convex.cloud"
-APP_BASE_URL="http://localhost:3000"
-```
-
-Optional (for email-based password reset delivery):
-
-```bash
-RESEND_API_KEY="your-resend-api-key"
-SMTP_FROM="Sous Chef <no-reply@souschef.local>"
-```
-
-### 4. Start the development server
-
-```bash
-pnpm dev
-```
-
-The application will be available at `http://localhost:3000`.
-
-### Additional Commands
-
-```bash
-# Type-check
-pnpm type-check
-
-# Lint
-pnpm lint
-```
-
----
-
-## 🐳 Docker Deployment (Self-Hosting)
-
-Sous Chef can be deployed using Docker and Docker Compose for self-hosting the app runtime.
-
-For backend setup, the current recommendation is Convex:
-
-- Configure Convex first via **[docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md)**
-- Then wire your Docker/runtime environment to `NEXT_PUBLIC_CONVEX_URL`
-
-### Deployment Options
-
-**Convex-First Docker (Recommended)**
-- Use `docker-compose.convex.yml`
-- Connect the app to a Convex deployment (`NEXT_PUBLIC_CONVEX_URL`)
-- See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for instructions
-
-### Quick Start (Convex-First)
-
-1. **Download deployment files**
-   - `docker-compose.convex.yml`
-   - `.env.example`
-
-2. **Create environment file**
-   ```bash
-   cp .env.example .env
-   # Edit .env and set required variables
-   ```
-
-3. **Set Convex URL** in `.env`
-   - `NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud`
-
-4. **Start services**
-   ```bash
-   docker compose -f docker-compose.convex.yml up -d
-   ```
-
-5. **Access the application**
-   Open `http://localhost:3000` in your browser
-
-### Full Documentation
-
-- **End Users**: See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for Convex-first deployment
-- **Developers**: See **[DOCKER.md](./DOCKER.md)** for Docker runtime configuration
+Use Node.js 22 and the pinned pnpm version. The frontend uses Next.js and React; Convex owns backend data, auth, files, and realtime updates. See the setup guide for the full sequence, including auth keys and the units catalog.
 
 ---
 
@@ -268,7 +162,7 @@ This ensures:
 
 * Freedom to self-host
 * Freedom to modify
-* **Required contribution back** when used as a network service
+* **Corresponding source availability requirements** when used as a network service
 
 See [`LICENSE`](./LICENSE) for full text.
 
@@ -285,7 +179,7 @@ Contributions welcome once the core foundations are stable:
 * Recipe model
 * Barcode ingestion
 
-Contribution guidelines will be added soon.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -309,7 +203,7 @@ Contribution guidelines will be added soon.
 
 **Phase 4**
 
-* Web UI
+* Native companion apps (future)
 * Federation / sharing improvements
 
 ---
