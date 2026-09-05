@@ -67,6 +67,7 @@ export function UnitPicker({
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const restoringFocus = useRef(false);
 
   const [isOpen, setIsOpen] = useState(false);
   const [queryText, setQueryText] = useState("");
@@ -114,7 +115,9 @@ export function UnitPicker({
       setIsOpen(false);
       setMoreOpen(false);
       setQueryText("");
+      restoringFocus.current = true;
       inputRef.current?.focus();
+      restoringFocus.current = false;
       // Fire-and-forget habit tracking; never block the UI on it.
       trackUsage({ unitId: option.id, ingredientName }).catch(() => {});
     },
@@ -133,6 +136,7 @@ export function UnitPicker({
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (!isOpen && (event.key === "ArrowDown" || event.key === "Enter")) {
+      event.preventDefault();
       setIsOpen(true);
       return;
     }
@@ -201,6 +205,7 @@ export function UnitPicker({
           value={displayValue}
           placeholder={placeholder}
           onFocus={() => {
+            if (restoringFocus.current) return;
             setHighlighted(0);
             setIsOpen(true);
           }}
@@ -230,6 +235,7 @@ export function UnitPicker({
         <ul
           id={listboxId}
           role="listbox"
+          onPointerDown={event => event.preventDefault()}
           className="absolute z-30 mt-1 w-full max-h-72 overflow-auto rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg py-1"
         >
           {catalogEmpty && !trimmedQuery

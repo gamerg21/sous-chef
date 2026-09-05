@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe, RecipeIngredient, RecipeStep, RecipeVisibility, IngredientUnit } from './types'
 import { cx } from './utils'
@@ -38,7 +38,7 @@ export interface RecipeEditorViewProps {
   layout?: 'page' | 'modal'
   onBack?: () => void
   onCancel?: () => void
-  onSave?: (next: Recipe) => void
+  onSave?: (next: Recipe) => void | Promise<void>
 }
 
 type EditorTab = 'basics' | 'ingredients' | 'steps' | 'notes'
@@ -139,6 +139,8 @@ function fromDraft(base: Recipe | null | undefined, draft: RecipeEditorDraft): R
 
 export function RecipeEditorView(props: RecipeEditorViewProps) {
   const { recipe, pantrySnapshot = [], layout = 'page', onBack, onCancel, onSave } = props
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const isModal = layout === 'modal'
 
   const pantryNames = useMemo(() => pantrySnapshot.map((p) => p.name).sort((a, b) => a.localeCompare(b)), [pantrySnapshot])
@@ -179,7 +181,7 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
             </button>
           )}
           <h1 className={cx('mt-2 font-semibold text-stone-900 dark:text-stone-100', isModal ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl')}>
-            {recipe ? 'Edit recipe' : 'New recipe'}
+            {recipe?.id.startsWith('captured-') ? 'Review recipe' : recipe ? 'Edit recipe' : 'New recipe'}
           </h1>
           <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
             Start with a title, ingredients, and steps. You can add nutrition and match pantry items later.
@@ -196,14 +198,19 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
           </button>
           <button
             type="button"
-            onClick={() => onSave?.(fromDraft(recipe, draft))}
+            onClick={async () => {
+              if (savingRef.current) return
+              savingRef.current = true; setSaving(true)
+              try { await onSave?.(fromDraft(recipe, draft)) }
+              finally { savingRef.current = false; setSaving(false) }
+            }}
             className={cx(
               'inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
               titleEmpty ? 'bg-emerald-600/50 text-white cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'
             )}
-            disabled={titleEmpty}
+            disabled={titleEmpty || saving}
           >
-            Save
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

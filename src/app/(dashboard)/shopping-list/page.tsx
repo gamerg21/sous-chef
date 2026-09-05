@@ -15,6 +15,8 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { AlertModal } from "@/components/ui/alert-modal";
 import type { ShoppingItemValues } from "@/components/cooking/ShoppingItemForm";
 
+import { StockPurchasesModal } from "@/components/cooking/StockPurchasesModal";
+
 interface BarcodeLookupResponse {
   found: boolean;
   prefill: {
@@ -53,6 +55,9 @@ function toShoppingSource(
 }
 
 export default function ShoppingListPage() {
+  const storageLocations = useQuery(api.shoppingList.storageLocations, {});
+  const stockChecked = useMutation(api.shoppingList.stockChecked);
+  const [purchaseReview, setPurchaseReview] = useState<ShoppingListItem[] | null>(null);
   const shoppingListData = useQuery(api.shoppingList.get, {});
   const addItem = useMutation(api.shoppingList.addItem);
   const updateItem = useMutation(api.shoppingList.updateItem);
@@ -259,8 +264,18 @@ export default function ShoppingListPage() {
         onEditItem={handleEditItem}
         onRemoveItem={handleRemoveItem}
         onClearChecked={handleClearChecked}
+        onStockChecked={() => setPurchaseReview(items.filter(item => item.checked).slice(0, 100))}
         deletingItems={deletingItems}
       />
+      {purchaseReview && storageLocations && <StockPurchasesModal
+        items={purchaseReview}
+        locations={storageLocations}
+        onClose={() => setPurchaseReview(null)}
+        onSave={async purchases => {
+          const result = await stockChecked({ items: purchases.map(item => ({ ...item, id: item.id as Id<"shoppingListItems">, locationId: item.locationId as Id<"kitchenLocations"> })) });
+          setAlertModal({ isOpen: true, message: `${result.stocked} purchase(s) added to inventory.`, variant: "success" });
+        }}
+      />}
       <EditShoppingListItemModal
         isOpen={editingItem !== null}
         item={editingItem}

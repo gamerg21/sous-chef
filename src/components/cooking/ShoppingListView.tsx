@@ -13,6 +13,7 @@ export interface ShoppingListViewProps {
   onToggleItem?: (id: string) => void
   onEditItem?: (id: string) => void
   onRemoveItem?: (id: string) => void
+  onStockChecked?: () => void
   onClearChecked?: () => void
   deletingItems?: Set<string>
 }
@@ -109,6 +110,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
     onEditItem,
     onRemoveItem,
     onClearChecked,
+    onStockChecked,
     deletingItems = new Set(),
   } = props
 
@@ -191,7 +193,7 @@ export function ShoppingListView(props: ShoppingListViewProps) {
             <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 p-3 sm:p-4">
               <div className="text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Checked off</div>
               <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.checked}</div>
-              <div className="hidden sm:block mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ready to clear</div>
+              <div className="hidden sm:block mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ready to put away</div>
             </div>
             <button
               type="button"
@@ -214,6 +216,8 @@ export function ShoppingListView(props: ShoppingListViewProps) {
               <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Keeps the list tidy while you shop</div>
             </button>
           </div>
+
+          {derived.checked > 0 && onStockChecked && <button type="button" onClick={onStockChecked} className="min-h-11 w-full rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800">Put groceries away · {Math.min(derived.checked, 100)} {derived.checked === 1 ? 'purchase' : 'purchases'}</button>}
 
           {/* Controls */}
           <div className="relative">

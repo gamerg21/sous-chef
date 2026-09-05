@@ -9,6 +9,8 @@ import { RecipeEditorView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
 
+import { recipeUpdatePayload } from "@/lib/recipe-payload";
+
 export default function EditRecipePage() {
   const router = useRouter();
   const params = useParams();
@@ -40,7 +42,7 @@ export default function EditRecipePage() {
   const handleSave = useCallback(
     async (updatedRecipe: Recipe) => {
       try {
-        await updateRecipe({ ...updatedRecipe, id: recipeId });
+        await updateRecipe({ ...recipeUpdatePayload(updatedRecipe), id: recipeId });
         router.push(`/recipes/${recipeId}`);
       } catch (error) {
         console.error("Error updating recipe:", error);

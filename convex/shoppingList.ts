@@ -165,3 +165,44 @@ export const clearChecked = mutation({
     return { removed };
   },
 });
+
+/** Purchase review and stocking happen atomically. Consumed list IDs make retries safe. */
+export const stockChecked = mutation({
+  args: { items: v.array(v.object({ id: v.id('shoppingListItems'), quantity: v.number(), unit: v.string(), locationId: v.id('kitchenLocations'), expiresOn: v.optional(v.string()), expectedName: v.string(), expectedQuantity: v.optional(v.number()), expectedUnit: v.optional(v.string()) })) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!args.items.length || args.items.length > 100) throw new Error('Stock between 1 and 100 purchases at a time');
+    if (new Set(args.items.map(item => item.id)).size !== args.items.length) throw new Error('A purchase can only be stocked once');
+    let stocked = 0;
+    for (const purchase of args.items) {
+      validateItem(undefined, purchase.quantity);
+      if (!purchase.unit.trim() || purchase.unit.length > 80) throw new Error('Choose a unit for each purchase');
+      if (purchase.expiresOn && (!/^\d{4}-\d{2}-\d{2}$/.test(purchase.expiresOn) || new Date(purchase.expiresOn).toISOString().slice(0, 10) !== purchase.expiresOn)) throw new Error('Enter a valid expiry date');
+      const item = await ctx.db.get(purchase.id);
+      if (!item) continue; // Already stocked/removed, including a retried request.
+      const list = await ctx.db.get(item.shoppingListId);
+      if (!list) throw new Error('Shopping list not found');
+      await resolveHouseholdId(ctx, userId, list.householdId);
+      if (!item.checked || item.name !== purchase.expectedName || item.quantity !== purchase.expectedQuantity || item.unit !== purchase.expectedUnit) throw new Error('A purchase changed while you were reviewing it. Close and reopen the review.');
+      const location = await ctx.db.get(purchase.locationId);
+      if (!location || location.householdId !== list.householdId) throw new Error('Choose a storage location in this kitchen');
+      const food = await ctx.db.query('foodItems').withIndex('by_name', q => q.eq('name', item.name)).first();
+      const foodItemId = food?._id ?? await ctx.db.insert('foodItems', { name: item.name });
+      // Separate batches preserve each purchase's expiry and location.
+      await ctx.db.insert('inventoryItems', { householdId: list.householdId, foodItemId, locationId: purchase.locationId, quantity: purchase.quantity, unit: purchase.unit.trim(), expiresOn: purchase.expiresOn, category: item.category, notes: item.note });
+      await ctx.db.delete(item._id);
+      stocked++;
+    }
+    return { stocked };
+  },
+});
+
+export const storageLocations = query({
+  args: {},
+  handler: async ctx => {
+    const householdId = await resolveHouseholdId(ctx, await getAuthUserId(ctx));
+    if (!householdId) return [];
+    const locations = await ctx.db.query('kitchenLocations').withIndex('by_householdId', q => q.eq('householdId', householdId)).take(100);
+    return locations.map(location => ({ id: location._id, name: location.name }));
+  },
+});

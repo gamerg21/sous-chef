@@ -43,19 +43,19 @@ These are browser viewport checks, not physical iPhone/Android camera tests. Pop
 
 ## Validation
 
-- 52 automated tests pass, including authorization, kitchen bootstrap/switching, shopping edits/atomic clearing, unit conversion/cooking, and public runtime config/auth URL regressions.
+- 59 automated tests pass, including authorization, kitchen bootstrap/switching, shopping edits/atomic clearing, unit conversion/cooking, and public runtime config/auth URL regressions.
 - Type check and production Next.js build pass with build-time type checking enabled.
 - ESLint has no errors; the remaining warnings include existing generated-file, image, and React-hook warnings.
 - Production standalone process served a different runtime backend URL than the build configuration, with `Cache-Control: no-store`.
 - The same build with missing configuration returned `convexUrl: null` and `/api/health` returned 503. Health means web/config readiness, not backend health.
-- Development backend changes were pushed to the configured dev deployment. No production deployment, image publication, commit, or push was performed.
+- Development backend changes were pushed to the configured dev deployment. No production deployment, image publication, or remote push was performed. Checkpoint commit: `137674f`.
 - Docker is not installed on this machine. The container definition and standalone runtime were inspected/tested; an actual image build/Compose run is unverified.
 
 ## Remaining work, in order
 
-1. **Make cooking previews quantity-aware.** Current “What can I cook?” matching uses names, while actual deduction uses the unit catalog. Copy now tells users to check amounts. A shared backend planning result should drive recipe badges, precise shortages, and the confirmation screen; incompatible volume/weight needs an explicit “check manually” state rather than an implied conversion. This is the most important next domain improvement.
-2. **Complete the shopping-to-inventory loop.** Checking/clearing a purchase does not stock the kitchen. Add a reviewed “Put groceries away” flow with quantities, locations, and expiration dates, backed by one transaction.
-3. **Make recipe capture easier for normal households.** JSON import works, but URL/paste import and an optional small sample recipe would make an empty installation more useful. Sample data should be an explicit choice.
+1. **Completed: shared cooking plan.** Quantity-aware cards, shortages, unit conversion, oldest-expiry allocation, repeated ingredients, explicit manual checks, instructions, and actual deductions use the same calculation. Add-missing derives server-side shortages and avoids multiplying an unchanged request.
+2. **Completed: purchases to inventory.** Reviewed quantities, units, storage, and expiry create separate batches atomically. Repeated requests cannot stock the same purchase twice; changed or foreign purchases are rejected.
+3. **Completed: paste-to-draft capture.** Recipes with title/Ingredients/Instructions sections become editable drafts, preserving original text and attribution. Create/edit payloads now strip UI-only IDs, and editing can clear optional fields. Direct URL fetching remains unimplemented.
 4. **Ship one optional AI workflow.** Existing provider configuration/testing and encrypted key storage are infrastructure. A constrained “ideas from my pantry” workflow with structured recipe drafts would be a useful first feature. It needs provider/model decisions, failure/timeout handling, and end-to-end testing with an operator-supplied key.
 5. **Keep unavailable extensions out of the core journey.** Grocery/calendar integrations and a cross-instance community network remain scaffolding. Community sharing currently stays within a deployment. Avoid implying that enabling a listing installs a working integration.
 6. **Finish home-server release acceptance.** Fresh Docker checkout, trusted HTTPS from a real phone, barcode camera permission/device selection, verified email delivery, household invitations, and data/storage restore drill. Document and test the self-hosted Convex backend path on real infrastructure before calling it one-click.
@@ -64,3 +64,9 @@ These are browser viewport checks, not physical iPhone/Android camera tests. Pop
 ## Suggested next acceptance scenario
 
 On a fresh instance: create an account, add milk/eggs/rice, save a recipe, verify ingredient matching, cook once, check exact remaining quantities and shopping shortages, correct a shopping quantity, add a second household member, verify live updates and isolation, reset a password, then repeat on a phone. Automate this against a dedicated disposable test deployment so release tests never mutate a household's real food data.
+
+## Continuation acceptance
+
+- Live 390×844 purchase review stocked a temporary 2 l item in Fridge. A pasted recipe requiring 3 l correctly previewed 2 l deduction and 1 l shortage, then cooked successfully.
+- This exercise exposed and fixed unit-selection focus reopening and recipe create/edit payload validation failures.
+- New tests cover preview/mutation agreement, shortage deduplication, manual checks, purchase retry safety and household isolation, text capture, and actual recipe create/edit payloads.

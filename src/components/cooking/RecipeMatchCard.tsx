@@ -11,7 +11,7 @@ export interface RecipeMatchCardProps {
 }
 
 export function RecipeMatchCard({ recipe, pantrySnapshot, onCook, onAddMissingToList }: RecipeMatchCardProps) {
-  const cookability = useMemo(() => computeRecipeCookability(recipe.ingredients, pantrySnapshot), [recipe, pantrySnapshot])
+  const cookability = useMemo(() => computeRecipeCookability(recipe.ingredients, pantrySnapshot, recipe.plan), [recipe, pantrySnapshot])
   const bucket = bucketForMissingCount(cookability.missingCount)
   const canAddMissing = cookability.missingCount > 0
 
@@ -54,7 +54,7 @@ export function RecipeMatchCard({ recipe, pantrySnapshot, onCook, onAddMissingTo
       <div className="mt-3 rounded-md bg-stone-50 dark:bg-stone-900/40 border border-stone-200/60 dark:border-stone-800/60 p-3">
         {cookability.missingCount === 0 ? (
           <div className="text-sm text-emerald-700 dark:text-emerald-300">
-            All ingredient names match your inventory. Check amounts and units before cooking.
+            Your inventory covers the measured ingredients.
           </div>
         ) : (
           <div className="text-sm text-stone-700 dark:text-stone-300">

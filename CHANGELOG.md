@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Kitchen workflow completion
+
+- Review and stock checked purchases with quantities, units, locations, and expiry dates.
+- Calculate cooking readiness and shopping shortages from actual quantities and compatible units; explicitly review uncertain amounts.
+- Paste recipe text into an editable draft; fix saving and editing recipes with ingredients.
+- Show cooking instructions alongside exact inventory changes and prevent duplicate saves.
+
 ## [Unreleased]
 
 ### Security

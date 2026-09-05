@@ -67,6 +67,8 @@ export default function CookingPage() {
       : "skip"
   );
 
+  const selectedPlan = useQuery(api.cooking.preview, selectedRecipeId ? { recipeId: selectedRecipeId } : "skip");
+
   const shoppingListCount = useMemo(
     () =>
       (shoppingListData?.items || []).filter(
@@ -94,10 +96,10 @@ export default function CookingPage() {
   const handleAddMissingToShoppingList = useCallback(
     async (recipeId: string) => {
       try {
-        await addMissing({ recipeId: recipeId as Id<"recipes">, items: [] });
+        const result = await addMissing({ recipeId: recipeId as Id<"recipes"> });
         setAlertModal({
           isOpen: true,
-          message: "Missing ingredients added to shopping list!",
+          message: result.added ? "Missing quantities added to your shopping list." : result.manualChecks ? "No measured shortages to add. Some ingredients need a manual amount or unit check." : "Your shopping list already covers the measured shortages, or none are missing.",
           variant: "success",
         });
       } catch (error) {
@@ -113,7 +115,7 @@ export default function CookingPage() {
   );
 
   const handleConfirmCook = useCallback(
-    async (options: { addMissingToList: boolean }) => {
+    async (options: { addMissingToList: boolean; acknowledgeManualChecks: boolean }) => {
       if (!selectedRecipeId || cookingInFlight.current) return;
       cookingInFlight.current = true;
       setIsCooking(true);
@@ -121,6 +123,7 @@ export default function CookingPage() {
         await cookRecipe({
           recipeId: selectedRecipeId,
           addMissingToShoppingList: options.addMissingToList,
+          acknowledgeManualChecks: options.acknowledgeManualChecks,
         });
 
         setViewMode("list");
@@ -180,7 +183,7 @@ export default function CookingPage() {
     return (
       <>
         <CookRecipeView
-          recipe={selectedRecipe}
+          recipe={{ ...selectedRecipe, plan: selectedPlan }}
           pantrySnapshot={pantrySnapshot}
           onBack={handleBack}
           onConfirmCook={handleConfirmCook}

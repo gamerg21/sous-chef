@@ -20,8 +20,14 @@ export interface RecipeCookability {
 
 export function computeRecipeCookability(
   ingredients: RecipeIngredient[],
-  pantry: PantrySnapshotItem[]
+  pantry: PantrySnapshotItem[],
+  plan?: import("@/lib/cooking-plan").CookingPlan
 ): RecipeCookability {
+  if (plan) {
+    const missingLabels = plan.missingIngredients.map(item => [item.quantity, item.unit, item.name].filter(value => value != null && value !== '').join(' '));
+    const checkLabels = plan.checks.map(item => `${item.name}: check amount / units`);
+    return { missingCount: missingLabels.length + checkLabels.length, missingLabels: [...missingLabels, ...checkLabels], availableCount: plan.availableCount };
+  }
   const pantrySet = new Set(pantry.map((p) => normalizeLabel(p.name)))
 
   const missing: string[] = []

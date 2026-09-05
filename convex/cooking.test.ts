@@ -1,3 +1,5 @@
+import { recipeCreatePayload, recipeUpdatePayload } from "../src/lib/recipe-payload";
+import { captureRecipe } from "../src/lib/recipe-capture";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
@@ -133,6 +135,7 @@ describe("cookRecipe unit-aware deduction", () => {
 
     const result = await kitchen.asUser.mutation(api.cooking.cookRecipe, {
       recipeId,
+      acknowledgeManualChecks: true,
     });
     // The pantry has sugar; it is not reported missing, and the row is
     // untouched because cups→grams needs density we don't model.
@@ -194,4 +197,71 @@ test('repeated ingredient rows share remaining stock and report the shortfall', 
   ]);
   const shopping = await kitchen.asUser.query(api.shoppingList.get, {});
   expect(shopping.items.reduce((sum, item) => sum + (item.quantity ?? 0), 0)).toBe(350);
+});
+
+test('preview and deduction agree; add-missing derives shortages and does not duplicate them', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  await addInventory(t, kitchen, 'Milk', 1, 'l');
+  const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Milk', quantity: 1500, unit: 'ml' }]);
+  const preview = await kitchen.asUser.query(api.cooking.preview, { recipeId });
+  expect(preview.missingIngredients).toEqual([{ name: 'Milk', quantity: 500, unit: 'ml' }]);
+  expect(preview.deductions[0]).toMatchObject({ quantity: 1, remaining: 0 });
+  expect((await kitchen.asUser.query(api.cooking.whatCanICook, {})).recipes[0].plan).toEqual(preview);
+  expect((await kitchen.asUser.mutation(api.cooking.addMissingToShoppingList, { recipeId })).added).toBe(1);
+  expect((await kitchen.asUser.mutation(api.cooking.addMissingToShoppingList, { recipeId })).added).toBe(0);
+  const result = await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId, addMissingToShoppingList: true });
+  expect(result.missingIngredients).toEqual(preview.missingIngredients);
+  const shopping = await kitchen.asUser.query(api.shoppingList.get, {});
+  expect(shopping.items).toHaveLength(1);
+  expect(shopping.items[0].quantity).toBe(500);
+});
+
+test('incompatible units require acknowledgement, even when an incompatible batch precedes a usable batch', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const grams = await addInventory(t, kitchen, 'Sugar', 500, 'g');
+  await addInventory(t, kitchen, 'Sugar', 1, 'cup');
+  const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Sugar', quantity: 2, unit: 'cup' }]);
+  const preview = await kitchen.asUser.query(api.cooking.preview, { recipeId });
+  expect(preview.checks).toHaveLength(1);
+  expect(preview.deductions).toHaveLength(1);
+  await expect(kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId })).rejects.toThrow('Check the ingredient');
+  expect((await t.run(ctx => ctx.db.get(grams)))?.quantity).toBe(500);
+});
+
+test('purchase stocking preserves batches, consumes list items once, and rejects changed or foreign purchases atomically', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const other = await setupKitchen(t);
+  const original = await addInventory(t, kitchen, 'Milk', 1, 'l');
+  const { id } = await kitchen.asUser.mutation(api.shoppingList.addItem, { name: 'Milk', quantity: 2, unit: 'l' });
+  await kitchen.asUser.mutation(api.shoppingList.updateItem, { id, checked: true });
+  const purchase = { id, quantity: 2, unit: 'l', locationId: kitchen.locationId, expiresOn: '2026-10-10', expectedName: 'Milk', expectedQuantity: 2, expectedUnit: 'l' };
+  await expect(other.asUser.mutation(api.shoppingList.stockChecked, { items: [purchase] })).rejects.toThrow();
+  await expect(kitchen.asUser.mutation(api.shoppingList.stockChecked, { items: [{ ...purchase, locationId: other.locationId }] })).rejects.toThrow('storage location');
+  await expect(kitchen.asUser.mutation(api.shoppingList.stockChecked, { items: [{ ...purchase, expectedQuantity: 3 }] })).rejects.toThrow('purchase changed');
+  expect((await kitchen.asUser.mutation(api.shoppingList.stockChecked, { items: [purchase] })).stocked).toBe(1);
+  expect((await kitchen.asUser.mutation(api.shoppingList.stockChecked, { items: [purchase] })).stocked).toBe(0);
+  expect((await t.run(ctx => ctx.db.get(original)))?.quantity).toBe(1);
+  const inventory = await t.run(ctx => ctx.db.query('inventoryItems').withIndex('by_householdId', q => q.eq('householdId', kitchen.householdId)).collect());
+  expect(inventory).toHaveLength(2);
+  expect(inventory.find(item => item._id !== original)).toMatchObject({ quantity: 2, unit: 'l', expiresOn: '2026-10-10' });
+  expect((await kitchen.asUser.query(api.shoppingList.get, {})).items).toHaveLength(0);
+});
+
+
+test('editor payload creates and edits a complete recipe, including clearing optional fields', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const draft = captureRecipe('Pancakes\nFamily breakfast\nIngredients\n1 cup milk\nInstructions\nWarm the milk.');
+  draft.servings = 2;
+  const id = await kitchen.asUser.mutation(api.recipes.create, recipeCreatePayload(draft));
+  const saved = await kitchen.asUser.query(api.recipes.getById, { id });
+  expect(saved?.ingredients[0]).toMatchObject({ name: 'milk', quantity: 1, unit: 'cup' });
+  await kitchen.asUser.mutation(api.recipes.update, { id, ...recipeUpdatePayload({ ...draft, description: undefined, servings: undefined }) });
+  const updated = await kitchen.asUser.query(api.recipes.getById, { id });
+  expect(updated?.description).toBeUndefined();
+  expect(updated?.servings).toBeUndefined();
+  expect(updated?.steps[0].text).toBe('Warm the milk.');
 });

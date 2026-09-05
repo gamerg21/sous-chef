@@ -73,7 +73,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
 
     if (effectiveCookability !== 'all') {
       list = list.filter((r) => {
-        const { missingCount } = computeRecipeCookability(r.ingredients, pantrySnapshot)
+        const { missingCount } = computeRecipeCookability(r.ingredients, pantrySnapshot, r.plan)
         return bucketForMissingCount(missingCount) === effectiveCookability
       })
     }
@@ -92,8 +92,8 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
         missing: 2,
       }
       list = [...list].sort((a, b) => {
-        const ca = computeRecipeCookability(a.ingredients, pantrySnapshot)
-        const cb = computeRecipeCookability(b.ingredients, pantrySnapshot)
+        const ca = computeRecipeCookability(a.ingredients, pantrySnapshot, a.plan)
+        const cb = computeRecipeCookability(b.ingredients, pantrySnapshot, b.plan)
         const ba = bucketForMissingCount(ca.missingCount)
         const bb = bucketForMissingCount(cb.missingCount)
         const ds = bucketScore[ba] - bucketScore[bb]
@@ -108,7 +108,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
 
     const counts = { cookNow: 0, almost: 0, missing: 0 }
     for (const r of recipes) {
-      const { missingCount } = computeRecipeCookability(r.ingredients, pantrySnapshot)
+      const { missingCount } = computeRecipeCookability(r.ingredients, pantrySnapshot, r.plan)
       const bucket = bucketForMissingCount(missingCount)
       if (bucket === 'cook-now') counts.cookNow += 1
       else if (bucket === 'almost') counts.almost += 1
@@ -131,7 +131,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
       missing: [],
     }
     for (const recipe of recipes) {
-      const { missingCount } = computeRecipeCookability(recipe.ingredients, pantrySnapshot)
+      const { missingCount } = computeRecipeCookability(recipe.ingredients, pantrySnapshot, recipe.plan)
       byBucket[bucketForMissingCount(missingCount)].push(recipe)
     }
     const pool = byBucket['cook-now'].length

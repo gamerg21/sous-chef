@@ -1,3 +1,4 @@
+import type { CookingPlan } from "@/lib/cooking-plan"
 export type RecipeId = string
 
 export type IngredientUnit = string
@@ -35,6 +36,8 @@ export interface Recipe {
   proteinGrams?: number
   carbsGrams?: number
   fatGrams?: number
+  steps?: { id: string; text: string }[]
+  plan?: CookingPlan
   ingredients: RecipeIngredient[]
 }
 
