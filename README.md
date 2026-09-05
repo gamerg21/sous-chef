@@ -182,7 +182,10 @@ Contributions welcome once the core foundations are stable:
 * Recipe model
 * Barcode ingestion
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Agent guidance is in [AGENTS.md](AGENTS.md);
+all 39 installed Convex skills and their local adaptations are documented in
+[the skills guide](.agents/skills/README.md). Run `pnpm run check:docs` to verify
+local documentation links and skill installation integrity.
 
 ---
 

@@ -10,8 +10,8 @@ Sous Chef is an open-source kitchen management application built with Next.js an
 
 ### Prerequisites
 
-- Node.js 20 LTS or later
-- pnpm 10.x (`npm install -g pnpm`)
+- Node.js 22
+- The pinned pnpm version from `package.json` (`corepack enable`)
 - Convex account/deployment access
 - Git
 
@@ -28,31 +28,23 @@ Sous Chef is an open-source kitchen management application built with Next.js an
    pnpm install
    ```
 
-3. **Configure environment variables:**
-   - Copy the example env file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Fill in the required environment variables (`NEXT_PUBLIC_CONVEX_URL`, etc.).
-   - For full Convex setup details, see [docs/CONVEX_SETUP.md](./docs/CONVEX_SETUP.md).
+3. **Initialize the backend and authentication:**
+   Follow [the canonical first-run guide](docs/CONVEX_SETUP.md), including Auth
+   initialization and seeding units. Convex writes local configuration to
+   `.env.local`; preserve existing deployment configuration and signing keys.
 
-4. **Start Convex backend dev loop:**
-   ```bash
-   npx convex dev
-   ```
-
-5. **Start the development server:**
+4. **Start the app:**
    ```bash
    pnpm dev
    ```
+   This starts both Next.js and Convex. If a backend watcher is already running,
+   use `pnpm dev:frontend` instead. Open `http://localhost:3000`.
 
-   The app should now be running at `http://localhost:3000`
-
-6. **Seed the unit catalog** (required for the unit picker):
+5. **Check configuration:**
    ```bash
-   pnpm seed:units
+   pnpm run doctor
    ```
-   This loads the canonical units, aliases, and ingredient-unit profiles into your Convex deployment. It is idempotent and safe to re-run.
+   This checks configuration and reachability; verify signup and login in the app.
 
 ## Development Workflow
 
@@ -76,6 +68,9 @@ Run the linter to check for code quality issues:
 ```bash
 pnpm lint
 ```
+
+For agent-assisted changes, read [AGENTS.md](AGENTS.md) and the
+[installed skills guide](.agents/skills/README.md).
 
 ## Coding Standards
 
@@ -116,6 +111,8 @@ Ensure your changes pass all checks:
 pnpm test
 pnpm type-check
 pnpm lint
+pnpm build
+pnpm run check:docs
 ```
 
 ### Opening a Pull Request

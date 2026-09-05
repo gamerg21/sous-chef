@@ -1,3 +1,9 @@
+# Sous Chef agent instructions
+
+Read and follow [AGENTS.md](AGENTS.md) for project architecture, setup commands,
+validation, deployment boundaries, and the local Convex skill adaptations.
+The canonical skills are in `.agents/skills/`; `.claude/skills/` contains links.
+
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.
 
