@@ -17,7 +17,8 @@ in `package.json` (`corepack enable`).
 
 - `src/app/`: routes and server endpoints; `src/components/`: feature UI and shared primitives.
 - `src/lib/`: frontend utilities and domain helpers; `convex/`: backend functions,
-  schema, authentication, authorization, and storage; `tests/`: unit tests.
+  schema, authentication, authorization, and storage; `tests/`: unit tests;
+  `docker/`: the one-shot backend setup job used by the Compose files and `homelab.sh`.
 - Preserve household isolation, membership roles, unit conversion, and inventory
   deduction semantics. Reuse existing authorization helpers and generated APIs.
 - Preserve existing Convex Auth configuration and signing/encryption keys. Do not

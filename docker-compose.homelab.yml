@@ -1,0 +1,125 @@
+# Everything on your own hardware: Convex backend, one-shot setup job, web app.
+#
+#   ./homelab.sh up          first run and every update (builds from this checkout)
+#   ./homelab.sh admin-key   print the dashboard/CLI admin key
+#   ./homelab.sh backup      export data + uploaded files into ./backups
+#
+# Only SERVER_HOST is required in .env.homelab: the LAN IP or hostname phones will use.
+# The backend generates and persists its own instance secret; the keygen
+# sidecar derives the admin key from it, and the setup job configures the
+# backend with that key. No secret is typed by hand and none reaches the web app.
+name: sous-chef
+
+x-convex-image: &convex-image ghcr.io/get-convex/convex-backend:${CONVEX_BACKEND_TAG:-latest}
+
+services:
+  backend:
+    image: *convex-image
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${CONVEX_PORT:-3210}:3210"
+      - "${CONVEX_SITE_PORT:-3211}:3211"
+    volumes:
+      - convex-data:/convex/data
+    environment:
+      - INSTANCE_NAME=${INSTANCE_NAME:-sous-chef}
+      # Browser-reachable API and HTTP-action origins; override for a reverse proxy.
+      - CONVEX_CLOUD_ORIGIN=${CONVEX_PUBLIC_URL:-http://${SERVER_HOST:?Set SERVER_HOST in .env.homelab to this machine's LAN IP or hostname}:${CONVEX_PORT:-3210}}
+      - CONVEX_SITE_ORIGIN=${CONVEX_SITE_URL:-http://${SERVER_HOST}:${CONVEX_SITE_PORT:-3211}}
+      - DOCUMENT_RETENTION_DELAY=${DOCUMENT_RETENTION_DELAY:-172800}
+      - RUST_LOG=${RUST_LOG:-info}
+      # Boolean backend flags: only passed through when set (an empty value is rejected).
+      - DISABLE_BEACON
+      - DO_NOT_REQUIRE_SSL
+      - REDACT_LOGS_TO_CLIENT
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3210/version"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20s
+      retries: 20
+
+  # Derives the admin key from the backend's persisted credentials and hands it
+  # to the setup job through a private volume. Runs once per `up`.
+  keygen:
+    image: *convex-image
+    restart: "no"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - convex-data:/convex/data
+      - setup-secrets:/run/sous-chef
+    entrypoint: ["/bin/bash", "-c"]
+    # The volume is private to this stack and only the setup job mounts it. The
+    # file is world-readable inside that job so `backup` can run as your own
+    # user (uid of the host account) and still read the key.
+    command:
+      - 'umask 022 && ./generate_admin_key.sh > /run/sous-chef/admin_key.tmp && chmod 0444 /run/sous-chef/admin_key.tmp && mv -f /run/sous-chef/admin_key.tmp /run/sous-chef/admin_key'
+
+  # Deploys functions, sets SITE_URL, creates auth/encryption keys once, seeds
+  # units. Idempotent, so it also runs on every update.
+  setup:
+    image: ${SOUS_CHEF_SETUP_IMAGE:-sous-chef-setup:local}
+    build:
+      context: .
+      target: setup
+    restart: "no"
+    depends_on:
+      backend:
+        condition: service_healthy
+      keygen:
+        condition: service_completed_successfully
+    volumes:
+      - setup-secrets:/run/sous-chef:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    environment:
+      CONVEX_SELF_HOSTED_URL: http://backend:3210
+      CONVEX_SELF_HOSTED_ADMIN_KEY_FILE: /run/sous-chef/admin_key
+      SITE_URL: ${APP_URL:-http://${SERVER_HOST}:${APP_PORT:-3000}}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+
+  app:
+    image: ${SOUS_CHEF_IMAGE:-sous-chef:local}
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    environment:
+      # Public browser-reachable API URL, never an admin key.
+      CONVEX_URL: ${CONVEX_PUBLIC_URL:-http://${SERVER_HOST}:${CONVEX_PORT:-3210}}
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # Optional Convex dashboard: ./homelab.sh up --profile dashboard
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:${CONVEX_BACKEND_TAG:-latest}
+    profiles: ["dashboard"]
+    restart: unless-stopped
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${DASHBOARD_PORT:-6791}:6791"
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${CONVEX_PUBLIC_URL:-http://${SERVER_HOST}:${CONVEX_PORT:-3210}}
+
+volumes:
+  convex-data:
+  setup-secrets:

@@ -55,3 +55,7 @@ product-plan/
 
 # Private database / file snapshots
 /.backups/
+
+# Home server backups (./homelab.sh backup)
+backups/
+.env.homelab

@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Keep unfinished extensions out of the everyday journey: the extension catalog and third-party integrations left the main navigation, listings cannot be installed and integrations cannot be connected until an adapter exists, and placeholder reviews were removed.
 - AI provider settings moved to Settings → AI settings; the account menu now links to account preferences, household members, and AI settings. Old `/extensions/integrations` links redirect.
 - Community copy states that sharing stays within this instance.
+- One-command home server: `./homelab.sh up` runs the open-source Convex backend, a keygen sidecar, an idempotent setup job (function deploy, `SITE_URL`, Convex Auth keys, encryption key, units seed), and the web app. The same setup job configures a Convex Cloud deployment from a deploy key. Images for the app and the setup job publish to GitHub Container Registry for amd64 and arm64.
 
 ## [Unreleased]
 

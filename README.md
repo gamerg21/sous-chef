@@ -11,8 +11,12 @@ The long-term goal is to make Sous Chef the *“do-it-all” digital sous chef* 
 
 Sous Chef uses **Convex**, either hosted by Convex or on your own infrastructure. The web app is the current product; native companion apps and a managed paid service are future possibilities.
 
+**Home server, one command.** With Docker installed, `./homelab.sh up` starts the open-source Convex backend, configures it, and serves the app on your LAN. No Convex account, no keys to paste. See [Run Sous Chef at home](DEPLOYMENT.md).
+
+**Developing:**
+
 1. Follow [Convex setup](docs/CONVEX_SETUP.md) to initialize auth, deploy functions, and seed units.
-2. Run locally with `pnpm dev`, or follow [the home-server Docker guide](DEPLOYMENT.md).
+2. Run locally with `pnpm dev`.
 3. Create your account and add your first pantry items. No AI key or mail provider is needed for the core kitchen flows.
 
 Run `pnpm run doctor` to check local configuration and backend reachability. The app shows setup instructions when its backend URL is missing. Docker reads the URL at runtime, so one image can connect to any configured Convex instance.
@@ -137,9 +141,9 @@ sous-chef/
 
 ## Run and deploy
 
-- [First-run and Convex setup](docs/CONVEX_SETUP.md)
-- [Home-server deployment](DEPLOYMENT.md)
+- [Run Sous Chef at home](DEPLOYMENT.md): `./homelab.sh up` for everything on your hardware, or Convex Cloud plus a local web container
 - [Docker configuration reference](DOCKER.md)
+- [First-run and Convex setup for development](docs/CONVEX_SETUP.md)
 - [Implementation and UX review](docs/APP_REVIEW.md)
 
 Use Node.js 22 and the pinned pnpm version. The frontend uses Next.js and React; Convex owns backend data, auth, files, and realtime updates. See the setup guide for the full sequence, including auth keys and the units catalog.
@@ -220,4 +224,4 @@ Built **with** the community, **for** the community.
 
 ## Back up your kitchen
 
-Run `pnpm run backup --deployment dev` (or explicitly select `prod`, `local`, or a deployment name). The command exports tables and uploaded files into the git-ignored `.backups/` directory with private file permissions. Keep a separate secure copy of deployment environment values, particularly auth signing and encryption keys. See [backup and restore](docs/BACKUP.md) for a restore drill.
+On a home server, `./homelab.sh backup` exports into `./backups/`. For a development checkout, run `pnpm run backup --deployment dev` (or explicitly select `prod`, `local`, or a deployment name). The command exports tables and uploaded files into the git-ignored `.backups/` directory with private file permissions. Keep a separate secure copy of deployment environment values, particularly auth signing and encryption keys. See [backup and restore](docs/BACKUP.md) for a restore drill.

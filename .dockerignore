@@ -64,3 +64,9 @@ scripts
 # SSL certificates (local development)
 localhost*.pem
 
+
+# Home server working files
+backups
+.env.homelab.example
+homelab.sh
+.env.homelab
