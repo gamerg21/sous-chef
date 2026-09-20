@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="260" viewBox="0 0 220 130" role="img" aria-label="Tend steam plate mark">
+  <rect width="220" height="130" fill="#F7F2E9"/>
+  <path d="M84 66 C80 58 86 54 84 46 M104 66 C100 56 108 52 104 42 M124 66 C120 58 126 54 124 46" fill="none" stroke="#A8865A" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M58 76 L150 76 C150 83 144 88 134 88 L74 88 C64 88 58 83 58 76 Z" fill="#3B5A3F"/>
+  <path d="M82 76 L126 76 C126 80 122 82 116 82 L92 82 C86 82 82 80 82 76 Z" fill="#F7F2E9" opacity="0.25"/>
+  <ellipse cx="104" cy="94" rx="34" ry="3" fill="#3B5A3F" opacity="0.18"/>
+  <text x="104" y="124" text-anchor="middle" style="font-family:'Helvetica Neue', Arial, sans-serif; font-size:23px; font-weight:400; fill:#3B5A3F; letter-spacing:9px;">tend</text>
+</svg>

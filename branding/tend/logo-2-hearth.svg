@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="260" viewBox="0 0 220 130" role="img" aria-label="Tend hearth mark">
+  <rect width="220" height="130" fill="#2F4A33"/>
+  <circle cx="110" cy="52" r="38" fill="none" stroke="#E8DCC8" stroke-width="2.5"/>
+  <path d="M110 72 C96 64 94 50 102 40 C103 48 107 51 109 52 C106 42 110 34 118 30 C115 40 122 44 124 52 C126 61 120 68 110 72 Z" fill="#C4763B"/>
+  <text x="110" y="116" text-anchor="middle" style="font-family:Georgia, serif; font-size:26px; fill:#E8DCC8; letter-spacing:7px;">TEND</text>
+</svg>

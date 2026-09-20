@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="260" viewBox="0 0 220 130" role="img" aria-label="Tend sprout wordmark">
+  <rect width="220" height="130" fill="#F4EDE2"/>
+  <text x="86" y="92" text-anchor="middle" style="font-family:Georgia, 'Times New Roman', serif; font-size:58px; fill:#2F4A33; letter-spacing:1px;">tend</text>
+  <path d="M168 88 C168 70 168 58 168 50" fill="none" stroke="#2F4A33" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M168 62 C168 50 158 44 148 44 C150 56 158 62 168 62 Z" fill="#6B7C4D"/>
+  <path d="M168 52 C168 38 180 32 191 33 C189 46 179 52 168 52 Z" fill="#3B5A3F"/>
+</svg>
