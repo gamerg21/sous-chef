@@ -1,44 +1,4 @@
-# Web app at home, backend on Convex Cloud. For everything on your own
-# hardware use docker-compose.homelab.yml (./homelab.sh) instead.
-#
-# One-time backend setup with a production deploy key from the Convex dashboard
-# (the key is used only by this throwaway container, never by the web app):
-#   CONVEX_DEPLOY_KEY='prod:...' docker compose -f docker-compose.convex.yml --profile setup run --rm setup
-# Then start the web app:
-#   docker compose -f docker-compose.convex.yml up -d --build
-services:
-  setup:
-    image: ${SOUS_CHEF_SETUP_IMAGE:-sous-chef-setup:local}
-    build:
-      context: .
-      target: setup
-    profiles: ["setup"]
-    restart: "no"
-    volumes:
-      - ${BACKUP_DIR:-./backups}:/backups
-    environment:
-      CONVEX_DEPLOY_KEY: ${CONVEX_DEPLOY_KEY:-}
-      # Exact browser-facing app origin, e.g. http://192.168.1.20:3000
-      SITE_URL: ${SITE_URL:-}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-
-  app:
-    image: ${SOUS_CHEF_IMAGE:-sous-chef:local}
-    build:
-      context: .
-      target: runner
-    restart: unless-stopped
-    environment:
-      # Public browser-reachable API URL, NOT a deploy/admin key.
-      CONVEX_URL: ${CONVEX_URL:-${NEXT_PUBLIC_CONVEX_URL:?Set NEXT_PUBLIC_CONVEX_URL in .env}}
-      HOSTNAME: 0.0.0.0
-      PORT: 3000
-    ports:
-      - "${APP_PORT:-3000}:3000"
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      start_period: 30s
-      retries: 3
+# Compatibility filename. This now runs SQLite plus OPTIONAL remote community.
+# Set COMMUNITY_API_URL and COMMUNITY_CONVEX_URL in .env to enable sharing.
+include:
+  - docker-compose.yml

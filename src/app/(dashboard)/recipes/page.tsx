@@ -7,9 +7,9 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import { useQuery, useMutation, useConvex } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import { useQuery, useMutation, useKitchen } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { RecipeLibraryView } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -17,7 +17,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function RecipesPage() {
   const router = useRouter();
-  const convex = useConvex();
+  const convex = useKitchen();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const recipesData = useQuery(api.recipes.list, {});

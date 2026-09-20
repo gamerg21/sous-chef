@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import { useQuery, useMutation, useAction } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import {
   ShoppingListView,
   type ShoppingListItem,

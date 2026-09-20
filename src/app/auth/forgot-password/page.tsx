@@ -1,18 +1,16 @@
 "use client";
 
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useAuthActions } from "@/lib/kitchen/client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { api } from "../../../../convex/_generated/api";
+
 import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
 export default function ForgotPassword() {
-  const delivery = useQuery(api.auth.resetDelivery, {});
+  const [delivery, setDelivery] = useState<{mode:string}>();
+  useEffect(() => { void fetch('/api/auth').then(r=>r.json()).then(data=>setDelivery({mode:data.resetMode})); }, []);
   const { signIn } = useAuthActions();
-  const repairPasswordAccountByEmail = useMutation(
-    api.users.repairPasswordAccountByEmail,
-  );
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -37,7 +35,7 @@ export default function ForgotPassword() {
 
     try {
       const normalizedEmail = normalizeEmail(email);
-      await repairPasswordAccountByEmail({ email: normalizedEmail });
+
 
       const formData = new FormData();
       formData.set("email", normalizedEmail);
@@ -50,7 +48,7 @@ export default function ForgotPassword() {
       await signIn("password", formData);
       setMessage(
         delivery?.mode === 'operator'
-          ? "Recovery requested. This instance does not send email. Ask the instance owner to retrieve your reset link from the Convex function logs."
+          ? "Recovery requested. This instance does not send email. Ask the instance owner to reset your password using the local recovery command."
           : "If an account with that email exists, a password reset link has been sent.",
       );
     } catch (error) {
@@ -64,12 +62,12 @@ export default function ForgotPassword() {
         )
       ) {
         setMessage(
-          "Error: Password reset is not configured correctly. Check the auth environment and Convex logs.",
+          "Error: Password reset is not configured correctly. Check the auth environment and server logs.",
         );
       } else if (/InvalidAccountId|Invalid credentials/i.test(errorMessage)) {
         setMessage(
           delivery?.mode === 'operator'
-            ? "Recovery requested. This instance does not send email. Ask the instance owner to retrieve your reset link from the Convex function logs."
+            ? "Recovery requested. This instance does not send email. Ask the instance owner to reset your password using the local recovery command."
             : "If an account with that email exists, a password reset link has been sent.",
         );
       } else {
@@ -145,7 +143,7 @@ export default function ForgotPassword() {
         </div>
 
         <p className="text-center text-xs text-stone-500 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-          Local setups without email delivery can use the reset link printed in the Convex logs.
+          Without email delivery, the server operator can reset your password locally.
         </p>
       </div>
     </div>

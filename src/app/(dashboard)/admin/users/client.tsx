@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";

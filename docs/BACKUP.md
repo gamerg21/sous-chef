@@ -1,33 +1,54 @@
-# Back up and restore a home instance
+# Backup and recovery
 
-The web container does not contain your kitchen database. Convex holds tables, users, recipes, inventory, and uploaded photos. Recipe JSON export alone cannot restore an instance.
+## Create a consistent backup
 
-## Export a snapshot
-
-From the configured checkout with dependencies installed:
+Home server:
 
 ```sh
-pnpm run backup --deployment dev
+./homelab.sh backup
 ```
 
-Choose `prod`, `local`, or a specific deployment name explicitly when appropriate. There is no implicit production target. The wrapper runs the installed Convex CLI's export with `--include-file-storage` and writes a timestamped ZIP into `.backups/`. The directory is ignored by Git and the files use private permissions on systems that support them.
+This runs SQLite's online backup API inside the app and copies the result to
+`backups/TIMESTAMP/` on the host. It includes the database (including photos,
+accounts, sessions, and community connections), encryption key, and a manifest.
 
-Treat the archive as sensitive: it includes authentication records and encrypted provider credentials. Copy it to protected storage away from the home server. Keep at least one previous successful backup. A failed export is not a valid backup.
+Development checkout:
 
-Separately retain your Convex deployment environment configuration in a password manager or encrypted backup, especially `JWT_PRIVATE_KEY`, `JWKS`, `SECRETS_ENCRYPTION_KEY`, email credentials, and deployment access credentials. Snapshot export does not back these up. Preserve the application revision and deployment configuration too.
+```sh
+pnpm run backup
+# Optional destination, which must not already contain a backup:
+pnpm run backup ./backups/before-upgrade
+```
 
-## Rehearse recovery in a disposable deployment
+Backups are private. Keep an encrypted off-machine copy. Preserve any external
+`SECRETS_ENCRYPTION_KEY` override; the backup command writes its effective value
+into the protected backup directory. Runtime email settings and public URLs are
+not database records; preserve your environment configuration separately.
 
-1. Create a separate empty Convex deployment and deploy the same application revision/schema to it. Do not point the live frontend at it yet.
-2. Import the snapshot into that explicit deployment:
+## Verify a restore without overwriting the current kitchen
 
-   ```sh
-   pnpm exec convex import --deployment YOUR_DISPOSABLE_DEPLOYMENT .backups/YOUR_SNAPSHOT.zip
-   ```
+```sh
+SOUS_CHEF_DATA_DIR=/absolute/path/to/backups/TIMESTAMP \
+  node scripts/local-admin.mjs restore-copy /absolute/path/to/new-restored-data
+SOUS_CHEF_DATA_DIR=/absolute/path/to/new-restored-data pnpm dev
+```
 
-   Review the CLI prompt carefully. Do not use `--replace-all` or skip confirmations against your live kitchen.
-3. Restore the required environment configuration securely. Set `SITE_URL` and any `APP_BASE_URL` override to the recovery frontend's URL; preserve the encryption key needed to read stored secrets.
-4. Run a separate frontend configured with the recovery deployment URL. Verify login/recovery, household membership, inventory counts, recipe ingredients/steps, and uploaded photos. Reconnect clients after a restore; old sessions may need fresh sign-in.
-5. Verify an optional saved provider key can still be decrypted before relying on the backup for AI settings recovery.
+Use a separate port if another app is running. Sign in, inspect recipes/photos,
+and exercise a cooking/shopping operation. Check `PRAGMA integrity_check` if
+investigating corruption. A backup file existing is not proof of restoration.
 
-This repository includes the export wrapper, not an automatic restore or scheduled backup service. An actual snapshot/restore drill and storage-provider retention checks remain deployment acceptance tasks.
+For Docker recovery, stop the app, create a **new** volume or empty bind directory,
+copy `kitchen.sqlite` and `secrets.key` from the backup, set ownership to 1001:1001,
+and point the app at it. Do not copy old WAL/SHM files into the new directory.
+Retain the old volume until the restored kitchen is verified.
+
+## Recover a password
+
+```sh
+./homelab.sh reset-password person@example.com
+```
+
+For a checkout, pipe the new password from a hidden prompt into:
+`pnpm reset-password person@example.com`. Do not put passwords in arguments or
+shell history. This replaces the local password and revokes local sessions and
+reset links. It does not change the separate community account.

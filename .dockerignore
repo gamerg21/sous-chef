@@ -59,7 +59,6 @@ docker-compose*.yml
 .gitlab-ci.yml
 
 # Scripts (development only)
-scripts
 
 # SSL certificates (local development)
 localhost*.pem
@@ -70,3 +69,10 @@ backups
 .env.homelab.example
 homelab.sh
 .env.homelab
+
+# Private SQLite kitchens and migration archives
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.backups/

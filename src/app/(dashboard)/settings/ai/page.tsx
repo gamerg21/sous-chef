@@ -2,10 +2,10 @@
 
 import { ConvexError } from "convex/values";
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation, useAction } from "@/lib/kitchen/client";
 import { useRouter } from "next/navigation";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { IntegrationsSettingsView } from "@/components/community";
 import type { AiSettings, Integration } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";

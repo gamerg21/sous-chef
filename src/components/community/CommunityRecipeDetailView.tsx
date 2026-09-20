@@ -105,14 +105,14 @@ export function CommunityRecipeDetailView(props: CommunityRecipeDetailViewProps)
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:pt-1">
-              <button
+              {onLike && <button
                 type="button"
-                onClick={() => onLike?.(recipe.id)}
+                onClick={() => onLike(recipe.id)}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
               >
                 <Heart className="w-4 h-4" strokeWidth={1.75} />
                 Like
-              </button>
+              </button>}
               <button
                 type="button"
                 onClick={() => onSaveToLibrary?.(recipe.id)}
@@ -121,14 +121,14 @@ export function CommunityRecipeDetailView(props: CommunityRecipeDetailViewProps)
                 <BookmarkPlus className="w-4 h-4" strokeWidth={1.75} />
                 Save to Library
               </button>
-              <button
+              {onShare && <button
                 type="button"
-                onClick={() => onShare?.(recipe.id)}
+                onClick={() => onShare(recipe.id)}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
               >
                 <Share2 className="w-4 h-4" strokeWidth={1.75} />
                 Share
-              </button>
+              </button>}
             </div>
           </div>
 

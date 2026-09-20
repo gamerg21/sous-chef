@@ -1,3 +1,2 @@
-// Use useConvex() inside React components. The provider owns the runtime-configured
-// client; a second module-level client would bypass portable instance configuration.
-export { useConvex } from 'convex/react';
+// Compatibility import for older UI modules; kitchen traffic is local HTTP.
+export { useKitchen } from './kitchen/client';

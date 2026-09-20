@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublishRecipeView } from "@/components/community";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -13,10 +14,12 @@ export default function PublishRecipePage() {
   const searchParams = useSearchParams();
   const recipeId = (searchParams.get("recipeId") || "") as Id<"recipes">;
 
+  const connection = useQuery(api.community.connection, {});
   const recipe = useQuery(
     api.recipes.getById,
     recipeId ? { id: recipeId } : "skip"
   );
+  const updateRecipe = useMutation(api.recipes.update);
   const publishRecipe = useMutation(api.community.publishRecipe);
   const unpublishRecipe = useMutation(api.community.unpublishRecipe);
 
@@ -41,6 +44,7 @@ export default function PublishRecipePage() {
       }
 
       try {
+        await updateRecipe({id:recipeId,title:data.title,description:data.description,tags:data.tags});
         await publishRecipe({ recipeId, visibility: data.visibility });
 
         setAlertModal({
@@ -53,16 +57,16 @@ export default function PublishRecipePage() {
         console.error("Error publishing recipe:", error);
         setAlertModal({
           isOpen: true,
-          message: "Failed to publish recipe. Please try again.",
+          message: error instanceof Error ? error.message : "Failed to publish recipe. Please try again.",
           variant: "error",
         });
       }
     },
-    [publishRecipe, recipeId, router]
+    [publishRecipe, updateRecipe, recipeId, router]
   );
 
   const isPublished =
-    recipeData?.visibility === "public" || recipeData?.visibility === "unlisted";
+    recipeData?.publicationVisibility === "public" || recipeData?.publicationVisibility === "unlisted";
 
   const handleUnpublish = useCallback(async () => {
     if (!recipeId) return;
@@ -125,11 +129,12 @@ export default function PublishRecipePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {!connection?.connected && <p className="mb-4">To publish, <Link href="/community/connect" className="underline">connect your community account</Link>.</p>}
       {isPublished && (
         <div className="max-w-2xl mx-auto mb-4 flex items-center justify-between gap-3 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3">
           <p className="text-sm text-emerald-800 dark:text-emerald-300">
-            This recipe is currently shared with other households on this instance
-            {recipeData?.visibility === "unlisted" ? " (unlisted)" : ""}.
+            This recipe is currently shared with the connected recipe community
+            {recipeData?.publicationVisibility === "unlisted" ? " (unlisted)" : ""}.
           </p>
           <button
             type="button"

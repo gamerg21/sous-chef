@@ -59,3 +59,10 @@ product-plan/
 # Home server backups (./homelab.sh backup)
 backups/
 .env.homelab
+
+# Private SQLite kitchens and migration archives
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.backups/

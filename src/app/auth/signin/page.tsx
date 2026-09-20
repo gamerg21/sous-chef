@@ -1,18 +1,14 @@
 "use client";
 
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useAuthActions } from "@/lib/kitchen/client";
+import { useKitchenAuth } from "@/lib/kitchen/client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api } from "../../../../convex/_generated/api";
 
 export default function SignIn() {
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAuthenticated, isLoading: authLoading } = useKitchenAuth();
   const { signIn } = useAuthActions();
-  const repairPasswordAccountByEmail = useMutation(
-    api.users.repairPasswordAccountByEmail,
-  );
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +40,6 @@ export default function SignIn() {
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      await repairPasswordAccountByEmail({ email: normalizedEmail });
 
       const formData = new FormData();
       formData.set("email", normalizedEmail);

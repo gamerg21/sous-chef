@@ -1,83 +1,82 @@
 # Run Sous Chef at home
 
-Sous Chef is a web app backed by Convex. You can run **everything on your own hardware** with one command, or run only the web app at home and keep the backend on Convex Cloud. Both use the same application and the same one-shot setup job.
+## New installation
 
-## Option A: everything on your server (recommended)
+1. Install Docker with Compose v2.
+2. Clone this repository and run `./homelab.sh up`.
+3. Open `http://YOUR-SERVER:3000` and create an account.
 
-Requirements: a Linux box, NAS, Raspberry Pi 4/5, or mini PC with Docker Engine and Compose v2 installed, on the same network as your phones. No Convex account is needed.
+The helper creates `.env.homelab` if absent. It does not overwrite existing
+settings. The app initializes SQLite and the units catalog itself. The first
+registered local user is the instance administrator. Other users can register
+and be added to a household by its owner/admin.
 
-```sh
-git clone https://github.com/gamerg21/sous-chef.git
-cd sous-chef
-./homelab.sh up
+Set `SOUS_CHEF_ALLOW_SIGNUP=false` after creating the accounts you need to close
+registration. The first account remains creatable on an empty database.
+
+Only port 3000 is required. Phones access the web server, never the SQLite file.
+There is no local Convex container, dashboard, keygen sidecar, or setup job.
+The named `kitchen-data` volume contains the database, photos, and encryption key.
+
+## Configuration
+
+Edit `.env.homelab`, then run `./homelab.sh up`:
+
+```dotenv
+APP_PORT=3000
+APP_URL=https://kitchen.example.com
+SOUS_CHEF_ALLOW_SIGNUP=true
+# Optional shared community:
+# COMMUNITY_API_URL=https://your-deployment.convex.site
+# COMMUNITY_CONVEX_URL=https://your-deployment.convex.cloud
 ```
 
-The first run creates `.env.homelab`, fills `SERVER_HOST` with the machine's detected LAN address, builds the images, starts everything, and prints the URLs. Open `http://SERVER_HOST:3000`, create the first account, and you are the first household. If the detected address is not the one other devices use, edit `SERVER_HOST` in `.env.homelab` and run `./homelab.sh up` again.
+`APP_URL` must match the browser-facing origin behind a proxy. For plain LAN
+access without a proxy it can remain unset. Use HTTPS when exposing the app
+outside your LAN; camera scanning also requires a trusted secure context.
+See [HTTPS setup](HTTPS_SETUP.md).
 
-What the command does, in order:
+Optional `RESEND_API_KEY` and `SMTP_FROM` enable reset emails; email also needs
+`APP_URL`. Without email, use `./homelab.sh reset-password EMAIL` on the server.
+The command prompts for the new password without displaying it.
 
-1. Starts the open-source Convex backend with a persistent data volume. The backend generates and stores its own instance secret; you never handle it.
-2. Runs a keygen sidecar that derives the admin key from that secret and passes it to the setup job through a private volume.
-3. Runs the setup job: deploys this checkout's Convex functions, sets `SITE_URL`, creates the Convex Auth signing keys and the secrets encryption key if they do not exist yet, copies optional email settings, and seeds the units catalog. Rerunning it is safe; existing keys are never overwritten.
-4. Starts the web app, which receives the public backend URL at runtime and never sees an admin key.
-
-Everyday commands:
+## Operate
 
 ```sh
-./homelab.sh update                 # git pull, rebuild, restart; setup reruns idempotently
-./homelab.sh status                 # container health
-./homelab.sh logs app               # or backend, setup
-./homelab.sh backup                 # export data + uploaded files into ./backups
-./homelab.sh admin-key              # Convex dashboard/CLI admin key (keep private)
-./homelab.sh up --profile dashboard # also run the Convex dashboard on port 6791
-./homelab.sh down                   # stop containers; data volumes remain
+./homelab.sh status
+./homelab.sh logs
+./homelab.sh backup
+./homelab.sh down
+# After reviewing and pulling the release you want:
+./homelab.sh update
 ```
 
-Ports: 3000 (app), 3210 (Convex API), 3211 (Convex HTTP actions, used by sign-in), 6791 (optional dashboard). All are configurable in `.env.homelab`. Browsers and phones must reach 3000, 3210, and 3211 at `SERVER_HOST`.
+`update` rebuilds this checkout and restarts the app; it does not pull or merge
+Git branches. Back up before upgrading. Never run `docker compose down -v`
+unless you intend to delete the kitchen volume.
 
-Prebuilt images: set `SOUS_CHEF_IMAGE` and `SOUS_CHEF_SETUP_IMAGE` in `.env.homelab` to pinned tags published by the [Docker workflow](.github/workflows/docker-build.yml) (`ghcr.io/gamerg21/sous-chef` and `ghcr.io/gamerg21/sous-chef-setup`) to skip building on a slow machine. Pin `CONVEX_BACKEND_TAG` to a [backend release](https://github.com/get-convex/convex-backend/releases) once things work, so upgrades happen when you choose. Upgrade the backend and dashboard together and take a backup first.
+Direct Compose is also supported:
 
-## Option B: Convex Cloud backend, web app at home
+```sh
+cp .env.example .env
+# Review .env before starting.
+docker compose up -d --build
+```
 
-Use this when you would rather not run a database at home. Convex's free tier comfortably fits a household.
+To use a published image, set `SOUS_CHEF_IMAGE` to an explicit release tag, then
+run `docker compose pull app && docker compose up -d --no-build app`.
+Image publication is separate from a source checkout; use a tag that exists.
 
-1. Create a project at [dashboard.convex.dev](https://dashboard.convex.dev) and generate a **production deploy key** (Settings → Deploy keys). Note the deployment URL, `https://<name>.convex.cloud`.
-2. In this checkout:
+## Existing Convex installations
 
-   ```sh
-   cp .env.example .env
-   # Set NEXT_PUBLIC_CONVEX_URL to the deployment URL and SITE_URL to http://SERVER_HOST:3000
-   CONVEX_DEPLOY_KEY='prod:...' docker compose -f docker-compose.convex.yml --profile setup run --rm setup
-   docker compose -f docker-compose.convex.yml up -d --build
-   ```
+Do not reuse the old frontend against a community-only Convex deployment.
+First export the old kitchen, migrate it into SQLite, and verify the new app.
+Follow [SQLite migration](docs/SQLITE_MIGRATION.md). Old Convex volumes are not
+removed automatically. Preserve them and their keys until restoration is verified.
 
-   The setup job performs the same steps as Option A against your cloud deployment. The deploy key is used only by that one-off container; never put it in the web container's environment.
+## Hosting the demo
 
-3. Open `http://SERVER_HOST:3000`.
-
-For updates: pull, rerun the setup job (it redeploys functions), then `up -d --build`.
-
-## Use it from your phone with HTTPS
-
-Everything works over plain HTTP on your LAN except camera barcode scanning, which browsers only allow in a secure context. Put Caddy, nginx, or Traefik in front and give each origin a name:
-
-| Origin | Forwards to | `.env.homelab` value |
-| --- | --- | --- |
-| `https://kitchen.example.com` | `http://localhost:3000` | `APP_URL` |
-| `https://convex.kitchen.example.com` | `http://localhost:3210` | `CONVEX_PUBLIC_URL` |
-| `https://convex-site.kitchen.example.com` | `http://localhost:3211` | `CONVEX_SITE_URL` |
-
-Set those three values in `.env.homelab` and run `./homelab.sh up` again: the backend restarts with the new origins and the setup job updates `SITE_URL`. A real domain with a DNS-challenge certificate keeps everything inside your network. A private CA works too, but every phone must trust it. Self-signed warnings are not an onboarding strategy.
-
-## Backups and keys
-
-`./homelab.sh backup` exports every table and uploaded file into `BACKUP_DIR` (default `./backups`), running the job as your user so the files are yours. The export does not contain the Convex Auth signing keys, the secrets encryption key, or the backend's instance secret. Those live in the `convex-data` volume and the backend's environment; keep `./homelab.sh admin-key` output and a copy of the volume somewhere safe. Losing the encryption key makes stored AI provider keys unreadable; losing the signing keys signs everyone out. See [backup and restore](docs/BACKUP.md).
-
-## Troubleshooting
-
-- **Setup screen in the browser:** the web app has no valid backend URL. Check `SERVER_HOST` in `.env.homelab` and recreate with `./homelab.sh up`.
-- **Sign-in fails but the app loads:** the browser cannot reach port 3211, or `SITE_URL` differs from the address in the browser. `./homelab.sh logs setup` shows the configured values.
-- **Setup job exits early:** `./homelab.sh logs setup` explains which step failed. The backend must answer `http://SERVER_HOST:3210/version`.
-- **Phone cannot connect:** phones use `SERVER_HOST`, never `localhost`. Check the firewall for ports 3000, 3210, and 3211.
-
-Container health reports web/config readiness, not backend/auth/email health.
+Run a separate instance with `SOUS_CHEF_DEMO=true`, persistent storage, and its
+own `APP_URL`. Each visitor gets a private sample kitchen. Configure the same
+community URLs used by local installations to connect the demo to recipe
+sharing. See [community operations](docs/COMMUNITY.md) before public launch.

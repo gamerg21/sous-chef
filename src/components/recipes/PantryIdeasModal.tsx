@@ -2,8 +2,8 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { ConvexError } from 'convex/values'
-import { useAction, useQuery } from 'convex/react'
-import { api } from '../../../convex/_generated/api'
+import { useAction, useQuery } from "@/lib/kitchen/client"
+import { api } from "@/lib/kitchen/api"
 import { Modal } from '../ui/modal'
 import type { Recipe } from './types'
 

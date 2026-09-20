@@ -1,48 +1,41 @@
 # Working on Sous Chef
 
-Sous Chef is a self-hostable kitchen app: Next.js App Router, React 19, TypeScript,
-Tailwind CSS, and Convex with Convex Auth. Use Node.js 22 and the exact pnpm version
-in `package.json` (`corepack enable`).
+Sous Chef is a self-hostable kitchen app: Next.js, React 19, TypeScript,
+Tailwind, and local SQLite. Convex runs only the optional recipe community.
+Use Node.js 22.18+ and the exact pnpm version in package.json via Corepack.
 
 ## Start here
 
-- Read [README.md](README.md) for implemented features and planned work.
-- Use [docs/CONVEX_SETUP.md](docs/CONVEX_SETUP.md) for first-run setup and auth.
-- Use [DEPLOYMENT.md](DEPLOYMENT.md) and [DOCKER.md](DOCKER.md) for deployment.
-- Before applying any installed Convex skill, read
-  [.agents/skills/README.md](.agents/skills/README.md). Its repository-specific
-  adaptations take precedence over generic skill procedures and remote catalogs.
+Read [README.md](README.md), [DEPLOYMENT.md](DEPLOYMENT.md), [DOCKER.md](DOCKER.md),
+and [community operations](docs/COMMUNITY.md). Existing data migration is covered
+in [SQLITE_MIGRATION.md](docs/SQLITE_MIGRATION.md). Before using a Convex skill,
+read [.agents/skills/README.md](.agents/skills/README.md).
 
-## Code and data boundaries
+## Boundaries
 
-- `src/app/`: routes and server endpoints; `src/components/`: feature UI and shared primitives.
-- `src/lib/`: frontend utilities and domain helpers; `convex/`: backend functions,
-  schema, authentication, authorization, and storage; `tests/`: unit tests;
-  `docker/`: the one-shot backend setup job used by the Compose files and `homelab.sh`.
-- Preserve household isolation, membership roles, unit conversion, and inventory
-  deduction semantics. Reuse existing authorization helpers and generated APIs.
-- Preserve existing Convex Auth configuration and signing/encryption keys. Do not
-  replace auth providers or scaffold over this existing app during setup.
-- Next.js uses standalone production output and `/api/config` for runtime backend
-  configuration. Keep server routes and runtime configuration working; this is not
-  a static-export app.
-- Reuse existing UI primitives. For UI changes, inspect the affected screen and
-  verify the requested viewport and interaction; a build alone is not visual proof.
+- Private domain functions, auth, schema, and storage: `src/server/kitchen/`.
+- UI/routes: `src/app/`, `src/components/`; HTTP hooks: `src/lib/kitchen/`.
+- `convex/` contains community accounts/publications only. Never move private
+  kitchen state there or require community connectivity for local startup.
+- Preserve household membership/roles, unit conversion, and atomic inventory
+  deduction. Reuse the typed local API and validators.
+- SQLite schema descriptors use indexed JSON records. Treat changes as persistent
+  schema migrations; never drop data to make a build pass.
+- Keep Convex Auth providers and signing keys intact for community accounts.
+- Preserve standalone Next.js output and runtime `/api/config`; no static export.
+- Reuse UI primitives and verify affected interactions in a browser.
+- Preserve unrelated work, environments, databases, backups, and branding assets.
 
-## Commands and verification
+## Verification
 
-- `pnpm dev` starts both Next.js and the Convex watcher. If Convex is already
-  running, use `pnpm dev:frontend`; do not start a duplicate watcher.
-- `pnpm run doctor` checks configuration/reachability, not login or email delivery.
-- Run checks appropriate to the change: `pnpm test`, `pnpm type-check`,
-  `pnpm lint`, and `pnpm build`. Vitest covers `tests/` and `convex/**/*.test.ts`.
-- For documentation/skill changes, run `pnpm run check:docs` and
-  `git diff --check`; application tests are needed only if behavior changes.
-- Identify the intended deployment before backend commands. Backend pushes,
-  frontend deployment, and end-to-end acceptance are separate verification steps.
-  Do not deploy simply to validate a documentation change.
-- Follow the user's authorized scope. Preserve unrelated working-tree changes;
-  never overwrite existing secrets or commit local environments and backups.
+`pnpm dev` starts only Next.js. `pnpm dev:backend` is community-only and must
+identify its deployment first. Run appropriate `pnpm test`, `pnpm type-check`,
+`pnpm lint`, and `pnpm build`. Vitest covers `tests/` (including SQLite integration)
+and `convex/**/*.test.ts`. Documentation changes need `pnpm check:docs` and
+`git diff --check`. Doctor checks configuration, not login or email delivery.
+
+Backend deployment, frontend deployment, and end-to-end acceptance are separate.
+Do not deploy a community backend merely to test local kitchen/docs changes.
 
 ## Installed skills
 

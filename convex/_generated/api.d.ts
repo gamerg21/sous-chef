@@ -8,29 +8,12 @@
  * @module
  */
 
-import type * as admin from "../admin.js";
-import type * as aiProviders from "../aiProviders.js";
 import type * as auth from "../auth.js";
-import type * as authRepair from "../authRepair.js";
-import type * as barcodes from "../barcodes.js";
-import type * as community from "../community.js";
-import type * as cooking from "../cooking.js";
-import type * as extensions from "../extensions.js";
 import type * as helpers from "../helpers.js";
-import type * as households from "../households.js";
 import type * as http from "../http.js";
-import type * as integrations from "../integrations.js";
-import type * as inventory from "../inventory.js";
-import type * as lib_recipeAi from "../lib/recipeAi.js";
-import type * as preferences from "../preferences.js";
+import type * as hub from "../hub.js";
+import type * as hubHttp from "../hubHttp.js";
 import type * as rateLimit from "../rateLimit.js";
-import type * as recipeIdeas from "../recipeIdeas.js";
-import type * as recipes from "../recipes.js";
-import type * as secrets from "../secrets.js";
-import type * as shoppingList from "../shoppingList.js";
-import type * as storage from "../storage.js";
-import type * as units from "../units.js";
-import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -39,29 +22,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  admin: typeof admin;
-  aiProviders: typeof aiProviders;
   auth: typeof auth;
-  authRepair: typeof authRepair;
-  barcodes: typeof barcodes;
-  community: typeof community;
-  cooking: typeof cooking;
-  extensions: typeof extensions;
   helpers: typeof helpers;
-  households: typeof households;
   http: typeof http;
-  integrations: typeof integrations;
-  inventory: typeof inventory;
-  "lib/recipeAi": typeof lib_recipeAi;
-  preferences: typeof preferences;
+  hub: typeof hub;
+  hubHttp: typeof hubHttp;
   rateLimit: typeof rateLimit;
-  recipeIdeas: typeof recipeIdeas;
-  recipes: typeof recipes;
-  secrets: typeof secrets;
-  shoppingList: typeof shoppingList;
-  storage: typeof storage;
-  units: typeof units;
-  users: typeof users;
 }>;
 
 /**

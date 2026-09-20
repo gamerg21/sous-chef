@@ -1,3 +1,5 @@
+> Historical design/review record. Backend paths and setup commands below may describe the pre-SQLite architecture. Follow the current README and deployment guides for operation.
+
 # Sous Chef implementation and UX review
 
 Reviewed September 5, 2026. Scope: home users, Convex-backed instances, desktop and mobile web. The checkout already contained substantial uncommitted development; this pass builds on those changes.

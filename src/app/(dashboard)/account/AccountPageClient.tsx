@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
 import { useRouter } from "next/navigation";
 import { User, Settings, Save, Loader2 } from "lucide-react";
 

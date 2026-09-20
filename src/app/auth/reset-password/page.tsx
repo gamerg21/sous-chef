@@ -1,11 +1,10 @@
 "use client";
 
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useAuthActions } from "@/lib/kitchen/client";
+import { useKitchenAuth } from "@/lib/kitchen/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { api } from "../../../../convex/_generated/api";
 import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
 function ResetPasswordFallback() {
@@ -22,10 +21,7 @@ function ResetPasswordFallback() {
 
 function ResetPasswordContent() {
   const { signIn } = useAuthActions();
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const repairPasswordAccountByEmail = useMutation(
-    api.users.repairPasswordAccountByEmail,
-  );
+  const { isAuthenticated, isLoading: authLoading } = useKitchenAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -94,7 +90,7 @@ function ResetPasswordContent() {
     }
 
     try {
-      await repairPasswordAccountByEmail({ email: normalizedEmail });
+
 
       const result = await signIn("password", {
         email: normalizedEmail,

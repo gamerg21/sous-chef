@@ -1,3 +1,5 @@
+> Historical design/review record. Backend paths and setup commands below may describe the pre-SQLite architecture. Follow the current README and deployment guides for operation.
+
 # Unit Picker UX + Data Model — Build Instructions (Sous Chef)
 
 ## Goal

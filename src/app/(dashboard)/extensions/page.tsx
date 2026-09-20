@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/kitchen/client";
 import Link from "next/link";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@/lib/kitchen/api";
 import { useRouter } from "next/navigation";
 import { ExtensionCard } from "@/components/community";
 import type { ExtensionListing } from "@/components/community/types";

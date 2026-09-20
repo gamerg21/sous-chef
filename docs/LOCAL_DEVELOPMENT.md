@@ -1,13 +1,19 @@
-# Local Development Setup
+# Local development
 
-## Recommended Backend: Convex
+Use Node.js 22.18+ and the pinned pnpm version (`corepack enable`). Run
+`pnpm install --frozen-lockfile`, then `pnpm dev`. Only Next.js starts; SQLite
+initializes under `./data`. No `.env` file or Convex deployment is required.
 
-Sous Chef now recommends **Convex** as the backend for local development and new deployments.
+Copy `.env.example` to `.env.local` when changing settings. Use
+`SOUS_CHEF_DATA_DIR=/absolute/path` for a separate test kitchen and `APP_URL` for
+the browser origin behind a reverse proxy. Do not commit data, backups, or keys.
 
-Set up Convex first:
+`pnpm setup:backend` initializes the local schema/unit catalog manually;
+`pnpm seed:units` is idempotent. Community developers can separately run
+`pnpm dev:backend` against a known deployment. Never start it to test local kitchen changes.
 
-- See **[CONVEX_SETUP.md](./CONVEX_SETUP.md)** for the full setup flow
-- Run `npx convex dev` in one terminal
-- Ensure `NEXT_PUBLIC_CONVEX_URL` is set in your local env
-- Run the app in another terminal (`npm run dev`)
-
+Checks: `pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm build`,
+`pnpm check:docs`, and `git diff --check`. SQLite integration tests live under
+`tests/sqlite/`; cloud tests under `convex/`. UI work needs a browser interaction
+check in addition to compilation. Use [backup/recovery](BACKUP.md) and
+[community operations](COMMUNITY.md) for those workflows.

@@ -9,11 +9,21 @@ any skill. These project-specific instructions supersede incompatible generic
 procedures, including procedures fetched from a remote catalog. Preserve upstream
 `SKILL.md` files; keep local adaptations here so refreshes are reviewable.
 
+## Architecture update: SQLite kitchens
+
+Private kitchen operations now live in `src/server/kitchen/` and use SQLite.
+Convex skills apply only to the optional community backend in `convex/`.
+Generic instructions to make Convex the only database do not apply to local
+kitchens. `pnpm dev` starts only Next.js; there is no Convex kitchen setup job.
+Preserve the existing community auth provider/keys. See
+[community operations](../../docs/COMMUNITY.md) and
+[SQLite migration](../../docs/SQLITE_MIGRATION.md).
+
 ## Repository adaptations
 
 | Skill or dependency | Procedure for this repository |
 | --- | --- |
-| `convex-quickstart`, `quickstart-recipe@^2`, `labs-quickstart` | Sous Chef already exists. Use [first-run setup](../../docs/CONVEX_SETUP.md), retaining source and existing auth configuration. No recipe runner is installed; do not invoke one or scaffold over this checkout. |
+| `convex-quickstart`, `quickstart-recipe@^2`, `labs-quickstart` | Sous Chef already exists. Use [first-run setup](../../docs/CONVEX_SETUP.md), retaining community source and existing auth configuration. No recipe runner is installed; do not invoke one or scaffold over this checkout. |
 | `convex-ship`, static hosting, publish gateway, `/add-hosting` | Use [DEPLOYMENT.md](../../DEPLOYMENT.md). Build the Next.js standalone server and deploy the web container separately from Convex. Static export and the generic `*.convex.app` upload procedure are incompatible with this app's server routes and runtime configuration. No publishing gateway is configured by these skills. |
 | `convex-add`, `/add-component`, `CANDIDATES` | The legacy search script is not installed. Use an available official documentation tool or the selected package's official documentation and installed types; inspect compatibility before adding it. If the catalog is unavailable, use the relevant local skill. Do not invent script paths or claim component installation without verification. |
 | Findings bus, `specs/finding.schema.json`, `specs/finding-report.schema.json` | These are external integration references, not files shipped here. Use the local report format below; do not attempt schema-based submission or claim to emit bus events. |

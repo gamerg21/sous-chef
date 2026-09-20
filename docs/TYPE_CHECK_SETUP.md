@@ -1,49 +1,17 @@
-# Type Check Setup
+# Type checks and tests
 
-This project now has comprehensive type checking in place to catch TypeScript errors before they reach production builds.
+Use Node.js 22.18+ and the exact pnpm version in package.json.
 
-## Available Commands
+- `pnpm type-check`: application, local server, and test TypeScript.
+- `pnpm test`: unit tests, real SQLite integration tests, and Convex community tests.
+- `pnpm lint`: application/style checks.
+- `pnpm build`: Next.js standalone production output.
+- `pnpm check:docs`: links and installed skill integrity.
 
-### `npm run type-check`
-Runs TypeScript type checking without building. This is fast and catches all type errors.
+Convex community deployments additionally run their own TypeScript check.
+The local model/runtime files under `src/server/kitchen/_generated/` are
+hand-maintained compatibility types for the ported domain code; do not run Convex
+codegen there. The actual generated community bindings live in `convex/_generated/`.
 
-### `npm run type-check:watch`
-Runs type checking in watch mode, automatically re-checking when files change.
-
-### `npm run build`
-Automatically runs `type-check` before building (via `prebuild` script).
-
-## Pre-commit Hook
-
-A Git pre-commit hook is set up using Husky that automatically runs type checking before each commit. If type errors are found, the commit will be blocked.
-
-To bypass the hook (not recommended):
-```bash
-git commit --no-verify
-```
-
-## CI/CD Integration
-
-A GitHub Actions workflow (`.github/workflows/type-check.yml`) automatically runs type checking on:
-- Push to main/master/develop branches
-- Pull requests to main/master/develop branches
-
-This ensures type errors are caught before code is merged.
-
-## Docker Build
-
-The Dockerfile now runs `type-check` before building, so Docker builds will fail fast if there are type errors, saving build time.
-
-## Fixing Type Errors
-
-When you see type errors:
-
-1. **Local Development**: Run `npm run type-check` to see all errors at once
-2. **Before Committing**: The pre-commit hook will catch errors automatically
-3. **In CI/CD**: GitHub Actions will report errors in the PR checks
-4. **In Docker**: Build will fail early with a clear error message
-
-## Current Status
-
-There are currently some existing type errors in the codebase. These should be fixed gradually, but new errors will now be caught immediately by the type checking infrastructure.
-
+Tests do not prove deployment or browser acceptance. See the architecture and
+operation boundaries in [AGENTS.md](../AGENTS.md).

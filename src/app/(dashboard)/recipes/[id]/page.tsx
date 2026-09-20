@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { RecipeDetailView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";
@@ -69,7 +69,7 @@ export default function RecipeDetailPage() {
   const handleUploadPhoto = useCallback(
     async (id: string, file: File) => {
       try {
-        const postUrl = await generateUploadUrl();
+        const postUrl = await generateUploadUrl({});
         const uploadResponse = await fetch(postUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
@@ -148,6 +148,7 @@ export default function RecipeDetailPage() {
         onBack={handleBack}
         onCook={handleCook}
         onEdit={handleEdit}
+        onPublish={id=>router.push(`/community/publish?recipeId=${encodeURIComponent(id)}`)}
         onToggleFavorite={handleToggleFavorite}
         onUploadPhoto={handleUploadPhoto}
         onRemovePhoto={handleRemovePhoto}

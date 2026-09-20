@@ -10,7 +10,7 @@ export default function LegacyResetPasswordLink() {
             Reset Link Expired
           </h1>
           <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            This link uses the old reset format from before the Convex auth migration. Request a new password reset email to continue.
+            This link uses the old reset format from an older account system. Request a new password reset email to continue.
           </p>
         </div>
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CommunityHubView } from "@/components/community";
 import type { CommunityRecipeListing } from "@/components/community/types";
@@ -63,7 +64,7 @@ export default function CommunityPage() {
   );
 
   const handlePublishRecipe = useCallback(() => {
-    router.push("/community/publish");
+    router.push("/recipes");
   }, [router]);
 
   if (communityData === undefined) {
@@ -76,6 +77,8 @@ export default function CommunityPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="mb-5 flex flex-wrap gap-4"><Link className="underline" href="/community/connect">Connect community account</Link><Link className="underline" href="/explore">Public recipe downloads</Link></div>
+      {!communityData.available && <p role="status" className="mb-5">Community sharing is not connected or is temporarily unavailable. Your local recipes are ready to use.</p>}
       <CommunityHubView
         featuredRecipes={featuredRecipes}
         onOpenRecipe={handleOpenRecipe}

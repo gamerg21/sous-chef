@@ -8,10 +8,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
 import { ChevronDown } from "lucide-react";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { Modal } from "./modal";
 import { cx } from "../cooking/utils";
 

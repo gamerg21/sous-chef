@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { generateRecipeWithProvider, parseAiRecipe } from '../convex/lib/recipeAi'
+import { generateRecipeWithProvider, parseAiRecipe } from '../src/server/kitchen/lib/recipeAi'
 const draft = { title: 'Warm milk', servings: 2, totalTimeMinutes: 5, ingredients: [{ name: 'Milk', quantity: 500, unit: 'ml' }], steps: [{ text: 'Warm gently.' }] }
 afterEach(() => vi.unstubAllGlobals())
 

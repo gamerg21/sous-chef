@@ -1,3 +1,12 @@
+## Unreleased — SQLite kitchens and optional community
+
+- Private kitchens now run on local SQLite with local sessions, photos, and encrypted keys.
+- One-container self-hosting; no Convex account or setup service required.
+- Optional separate Convex community with recipe snapshots, search, imports, and public downloads.
+- Isolated demo kitchens and a public recipe browser.
+- Offline Convex export migration, consistent backups, and operator recovery.
+- Updated Docker, deployment, development, and contributor documentation.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

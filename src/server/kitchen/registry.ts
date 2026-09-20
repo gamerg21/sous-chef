@@ -1,0 +1,18 @@
+import * as rateLimit from './rateLimit';
+import * as inventory from './inventory';
+import * as recipes from './recipes';
+import * as cooking from './cooking';
+import * as shoppingList from './shoppingList';
+import * as units from './units';
+import * as households from './households';
+import * as preferences from './preferences';
+import * as users from './users';
+import * as admin from './admin';
+import * as storage from './storage';
+import * as barcodes from './barcodes';
+import * as aiProviders from './aiProviders';
+import * as recipeIdeas from './recipeIdeas';
+import * as extensions from './extensions';
+import * as integrations from './integrations';
+import * as community from './community';
+export const modules = { rateLimit, inventory, recipes, cooking, shoppingList, units, households, preferences, users, admin, storage, barcodes, aiProviders, recipeIdeas, extensions, integrations, community };

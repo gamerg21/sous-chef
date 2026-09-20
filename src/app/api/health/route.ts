@@ -1,12 +1,4 @@
-import { getPublicRuntimeConfig } from '@/lib/runtime-config';
-
-export const dynamic = 'force-dynamic';
-
-// Web process/config readiness, not a claim about backend reachability.
-export function GET() {
-  const configured = Boolean(getPublicRuntimeConfig(process.env).convexUrl);
-  return Response.json({ status: configured ? 'ready' : 'setup-required' }, {
-    status: configured ? 200 : 503,
-    headers: { 'Cache-Control': 'no-store' },
-  });
-}
+import { getDatabase } from '@/server/kitchen/database';
+export const dynamic='force-dynamic';
+export const runtime='nodejs';
+export async function GET() {try{await getDatabase().transaction(async()=>{getDatabase().sql.prepare('SELECT 1').get();},false);return Response.json({status:'ready',backend:'sqlite'},{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({status:'unavailable'},{status:503});}}

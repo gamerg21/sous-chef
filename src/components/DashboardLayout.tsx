@@ -1,13 +1,13 @@
 "use client";
 
-import { useConvexAuth, useQuery, useMutation } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useKitchenAuth, useQuery, useMutation } from "@/lib/kitchen/client";
+import { useAuthActions } from "@/lib/kitchen/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api } from "../../convex/_generated/api";
+import { api } from "@/lib/kitchen/api";
 import { DashboardPrewarm } from "./DashboardPrewarm";
 import AppShell from "./shell/AppShell";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ const navigationItems = [
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { isAuthenticated, isLoading, demo } = useKitchenAuth();
   const { signOut } = useAuthActions();
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
@@ -134,6 +134,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
       onLogout={handleLogout}
     >
+      {demo && <p className="bg-amber-50 p-3 text-amber-950">Temporary demo kitchen · expires after 24 hours. Export recipes you want to keep.</p>}
       <DashboardPrewarm
         enabled={authReady && isAuthenticated}
         routes={[

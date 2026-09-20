@@ -1,7 +1,3 @@
-"use client";
-
-import { ConvexClientProvider } from "./ConvexClientProvider";
-
-export function Providers({ children }: { children: React.ReactNode }) {
-  return <ConvexClientProvider>{children}</ConvexClientProvider>;
-}
+'use client';
+import { KitchenProvider } from '@/lib/kitchen/client';
+export function Providers({children}:{children:React.ReactNode}) {return <KitchenProvider>{children}</KitchenProvider>;}

@@ -1,13 +1,14 @@
-# Optional pantry recipe drafts
+# Optional AI recipe drafts
 
-Open the account menu and choose **AI settings**. Select OpenAI, Anthropic, or Google AI, enter the exact model ID available to your account, and save a provider key. New keys require `SECRETS_ENCRYPTION_KEY` on the Convex deployment. The web container needs no provider credentials. Selecting a provider changes the household's active provider; all household members use that configuration.
+The kitchen works without AI. In AI settings choose OpenAI, Anthropic, or Google,
+enter your own API key and exact model ID, then choose Recipes → New recipe →
+Idea from pantry. Review the draft before saving.
 
-Open **Recipes → New recipe → Idea from pantry**. The explicit Generate action sends inventory names, quantities, units, and your preferences to the selected provider. Its pricing and data policies apply. The result opens in the recipe editor for review and is saved only when you press Save. It can replace the current unsaved draft. Check dietary requirements and preparation instructions yourself.
+Requests send pantry ingredient names, quantities, units, and stated preferences
+to the selected provider. The provider may bill your account. Requests have a
+bounded timeout and local household rate limits. Provider keys are encrypted in
+SQLite using the generated `data/secrets.key` (or an explicit
+`SECRETS_ENCRYPTION_KEY`). Back up the key with the database.
 
-The implementation makes one request without automatic retries, allows three requests per household per minute, accepts at most 100 pantry batches, limits preferences to 1,000 characters, caps response size and output tokens, and times out after 45 seconds. Invalid, truncated, or refused responses cannot become saved recipes. A connection test checks credentials; it does not guarantee that the selected model is enabled or has available credits.
-
-The adapters follow the official [OpenAI Chat Completions reference](https://developers.openai.com/api/reference/resources/chat), [Anthropic Messages reference](https://platform.claude.com/docs/en/api/http/messages/create), and [Google GenerateContent reference](https://ai.google.dev/api/generate-content). Use a text model supporting the corresponding API and JSON output mode where requested. Model availability changes, so the application uses your chosen model ID rather than a hard-coded recommendation.
-
-Provider responses and error bodies are not logged. New saved keys are encrypted; old plaintext credentials remain readable for migration and should be re-saved after encryption is configured. Snapshot backups do not include the deployment encryption key, so keep that key separately.
-
-Automated checks use mocked provider responses and cover all three formats, incomplete/invalid drafts, timeouts, credential-error redaction, household isolation, and rate limits. A successful real generation with an operator-supplied key remains a release acceptance check. This feature is a one-shot recipe draft; it does not implement a conversational assistant, meal calendar, or autonomous actions.
+AI credentials never go to the recipe community. Demo identities cannot configure
+or invoke AI. Conversational assistants and automatic meal planning are not implemented.

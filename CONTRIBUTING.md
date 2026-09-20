@@ -1,172 +1,22 @@
-# Contributing to Sous Chef
+# Contributing
 
-Thank you for your interest in contributing to Sous Chef! We're excited to have you as part of our community. This document provides guidelines and instructions for contributing to the project.
+Use Node.js 22.18+, Corepack, and the exact pnpm version in `package.json`.
+Run `pnpm install --frozen-lockfile` and `pnpm dev`; no backend account is needed.
+Read [README](README.md), [local development](docs/LOCAL_DEVELOPMENT.md), and
+[AGENTS](AGENTS.md) before changing code.
 
-## Welcome
+- `src/app/` and `src/components/`: Next.js UI and HTTP routes.
+- `src/server/kitchen/`: SQLite schema, transactions, auth, files, and domain operations.
+- `src/lib/kitchen/`: typed local HTTP client and React hooks.
+- `src/lib/community-contract.ts`: versioned public recipe format.
+- `convex/`: optional community backend only.
+- `tests/sqlite/`: real SQLite domain/security regression tests.
 
-Sous Chef is an open-source kitchen management application built with Next.js and TypeScript. Whether you're fixing bugs, adding features, or improving documentation, your contributions are valuable and appreciated.
+Preserve household authorization and unit-aware cooking transactions. Do not make
+local startup depend on the community. Add a schema migration/version when
+changing persistent structures; never silently discard data. Preserve existing
+Convex authentication keys when working on the community service.
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 22
-- The pinned pnpm version from `package.json` (`corepack enable`)
-- Convex account/deployment access
-- Git
-
-### Setting Up Your Development Environment
-
-1. **Fork and clone the repository:**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/sous-chef.git
-   cd sous-chef
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
-
-3. **Initialize the backend and authentication:**
-   Follow [the canonical first-run guide](docs/CONVEX_SETUP.md), including Auth
-   initialization and seeding units. Convex writes local configuration to
-   `.env.local`; preserve existing deployment configuration and signing keys.
-
-4. **Start the app:**
-   ```bash
-   pnpm dev
-   ```
-   This starts both Next.js and Convex. If a backend watcher is already running,
-   use `pnpm dev:frontend` instead. Open `http://localhost:3000`.
-
-5. **Check configuration:**
-   ```bash
-   pnpm run doctor
-   ```
-   This checks configuration and reachability; verify signup and login in the app.
-
-## Development Workflow
-
-### Running Tests
-
-Execute the test suite with:
-```bash
-pnpm test
-```
-
-### Type Checking
-
-Ensure TypeScript compilation is error-free:
-```bash
-pnpm type-check
-```
-
-### Linting and Formatting
-
-Run the linter to check for code quality issues:
-```bash
-pnpm lint
-```
-
-For agent-assisted changes, read [AGENTS.md](AGENTS.md) and the
-[installed skills guide](.agents/skills/README.md).
-
-## Coding Standards
-
-- **TypeScript Strict Mode:** All code must pass TypeScript strict mode compilation
-- **Follow Existing Patterns:** Review existing code to understand and maintain consistent patterns
-- **Convex-first Data Access:** Use generated Convex APIs (`api.*`) for backend calls
-- **Component Structure:** Keep components focused and modular
-- **Type Safety:** Avoid using `any` types; use proper TypeScript types
-- **Comments:** Add comments for complex logic, but keep them concise
-- **Testing:** Write tests for new features and bug fixes
-
-## Submitting Changes
-
-### Creating a Branch
-
-Create a descriptive branch for your changes:
-```bash
-git checkout -b feature/add-user-preferences
-# or
-git checkout -b fix/meal-calculation-bug
-```
-
-### Making Commits
-
-Write clear, descriptive commit messages:
-```bash
-git commit -m "feat: add meal preference storage
-
-- Implement user preference model
-- Add API endpoints for managing preferences
-- Include preference selection in meal planning"
-```
-
-### Before Submitting a Pull Request
-
-Ensure your changes pass all checks:
-```bash
-pnpm test
-pnpm type-check
-pnpm lint
-pnpm build
-pnpm run check:docs
-```
-
-### Opening a Pull Request
-
-1. Push your branch to your fork
-2. Open a pull request against the `main` branch of the main repository
-3. Fill out the PR template completely
-4. Link any related issues
-5. Request review from maintainers
-
-**PR Guidelines:**
-- Keep PRs focused on a single feature or bug fix
-- Include tests for new functionality
-- Update documentation if needed
-- Respond to review feedback promptly
-
-## Reporting Issues
-
-### Bug Reports
-
-When reporting a bug, please include:
-- A clear, descriptive title
-- Steps to reproduce the issue
-- Expected behavior
-- Actual behavior
-- Screenshots or error logs if applicable
-- Your environment (OS, browser, Node.js version, etc.)
-
-### Feature Requests
-
-For feature requests, include:
-- A clear description of the feature
-- Use cases and motivations
-- Potential implementation approach (if you have ideas)
-
-## Code of Conduct
-
-This project adheres to the Contributor Covenant Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
-
-## License and Legal
-
-Sous Chef is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. By contributing to this project, you agree that:
-
-- Your contributions will be licensed under the AGPL-3.0 license
-- If you distribute software that uses this code, you must make the source code available
-- This applies to software running on servers and accessible over a network
-
-For more information, see the [LICENSE](LICENSE) file.
-
-## Questions?
-
-If you have questions or need help:
-- Check the existing issues and discussions
-- Ask in GitHub Discussions
-- Contact the maintainers
-
-Thank you for helping make Sous Chef better!
+Run `pnpm test`, `pnpm type-check`, `pnpm lint`, and `pnpm build` for behavior
+changes. Run `pnpm check:docs` and `git diff --check` for documentation. Verify
+UI interactions in a browser and keep deployment, build, and acceptance evidence separate.

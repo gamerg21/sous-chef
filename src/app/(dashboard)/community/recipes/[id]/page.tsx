@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../../../convex/_generated/api";
-import type { Id } from "../../../../../../convex/_generated/dataModel";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { CommunityRecipeDetailView } from "@/components/community";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -15,7 +15,7 @@ export default function CommunityRecipeDetailPage() {
 
   const recipe = useQuery(api.community.getRecipe, id ? { id } : "skip");
   const saveRecipe = useMutation(api.community.saveRecipe);
-  const likeRecipe = useMutation(api.community.likeRecipe);
+
 
   const recipeData = useMemo(() => recipe || null, [recipe]);
   const [alertModal, setAlertModal] = useState<{
@@ -45,22 +45,6 @@ export default function CommunityRecipeDetailPage() {
     [saveRecipe]
   );
 
-  const handleLike = useCallback(
-    async (recipeId: string) => {
-      try {
-        await likeRecipe({ recipeId: recipeId as Id<"recipes"> });
-      } catch (error) {
-        console.error("Error toggling like:", error);
-        setAlertModal({
-          isOpen: true,
-          message: "Failed to toggle like. Please try again.",
-          variant: "error",
-        });
-      }
-    },
-    [likeRecipe]
-  );
-
   if (recipe === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -82,7 +66,6 @@ export default function CommunityRecipeDetailPage() {
       <CommunityRecipeDetailView
         recipe={recipeData}
         onSaveToLibrary={handleSaveRecipe}
-        onLike={handleLike}
         onBack={() => router.back()}
       />
       <AlertModal

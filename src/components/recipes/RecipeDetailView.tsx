@@ -10,6 +10,7 @@ export interface RecipeDetailViewProps {
   pantrySnapshot?: PantrySnapshotItem[]
   onBack?: () => void
   onCook?: (id: string) => void
+  onPublish?: (id:string) => void
   onEdit?: (id: string) => void
   onToggleFavorite?: (id: string) => void
   onUploadPhoto?: (id: string, file: File) => void
@@ -17,7 +18,7 @@ export interface RecipeDetailViewProps {
 }
 
 export function RecipeDetailView(props: RecipeDetailViewProps) {
-  const { recipe, pantrySnapshot = [], onBack, onCook, onEdit, onToggleFavorite, onUploadPhoto, onRemovePhoto } = props
+  const { recipe, pantrySnapshot = [], onBack, onCook, onEdit, onPublish, onToggleFavorite, onUploadPhoto, onRemovePhoto } = props
   const fileRef = useRef<HTMLInputElement | null>(null)
   const hasNutrition =
     typeof recipe.caloriesKcal === 'number' ||
@@ -140,6 +141,7 @@ export function RecipeDetailView(props: RecipeDetailViewProps) {
                 <Pencil className="w-4 h-4" strokeWidth={1.75} />
                 Edit
               </button>
+              {onPublish && <button type="button" onClick={()=>onPublish(recipe.id)} className="rounded-md border border-stone-200 px-3 py-2 text-sm font-medium dark:border-stone-800">Share with community</button>}
               <button
                 type="button"
                 onClick={() => onToggleFavorite?.(recipe.id)}

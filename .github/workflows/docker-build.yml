@@ -1,10 +1,6 @@
 name: Publish Docker images
 
-# Publishes two images to GitHub Container Registry, no secrets required:
-#   ghcr.io/<owner>/sous-chef        the web app (Dockerfile target "runner")
-#   ghcr.io/<owner>/sous-chef-setup  the one-shot backend setup job (target "setup")
-# Home servers can then set SOUS_CHEF_IMAGE / SOUS_CHEF_SETUP_IMAGE in .env
-# instead of building the checkout. Pull requests only build.
+# Publishes the standalone SQLite app image for amd64 and arm64.
 
 on:
   push:
@@ -33,8 +29,6 @@ jobs:
         include:
           - target: runner
             suffix: ''
-          - target: setup
-            suffix: '-setup'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

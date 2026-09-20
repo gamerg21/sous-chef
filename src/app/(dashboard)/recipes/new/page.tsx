@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
+import { useQuery, useMutation } from "@/lib/kitchen/client";
+import { api } from "@/lib/kitchen/api";
 import { useRouter } from "next/navigation";
 import { RecipeEditorView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";

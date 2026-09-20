@@ -1,13 +1,13 @@
 "use client";
 
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth } from "convex/react";
+import { useAuthActions } from "@/lib/kitchen/client";
+import { useKitchenAuth } from "@/lib/kitchen/client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SignUp() {
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAuthenticated, isLoading: authLoading } = useKitchenAuth();
   const { signIn } = useAuthActions();
   const router = useRouter();
   const [email, setEmail] = useState("");
