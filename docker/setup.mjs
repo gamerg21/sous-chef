@@ -26,14 +26,14 @@ const fail = (message) => {
   process.exit(1);
 };
 
-function convex(env, args, { capture = false, allowFailure = false } = {}) {
+function convex(env, args, { capture = false } = {}) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     env,
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
     encoding: "utf8",
   });
   if (result.error) fail(`Could not start the Convex CLI: ${result.error.message}`);
-  if (result.status !== 0 && !allowFailure) {
+  if (result.status !== 0) {
     if (capture && result.stderr) console.error(result.stderr);
     fail(`convex ${args[0]} failed (exit ${result.status}).`);
   }
@@ -41,8 +41,10 @@ function convex(env, args, { capture = false, allowFailure = false } = {}) {
 }
 
 function getVariable(env, name) {
-  const result = convex(env, ["env", "get", name], { capture: true, allowFailure: true });
-  return result.status === 0 ? (result.stdout ?? "").trim() : "";
+  const result = convex(env, ["env", "get", name], { capture: true });
+  // The installed CLI exits successfully with empty stdout for an absent value.
+  // Any failed read must abort instead of authorizing replacement of a secret.
+  return (result.stdout ?? "").trim();
 }
 
 function setVariable(env, name, value, { secret = false } = {}) {
@@ -82,6 +84,15 @@ async function configure() {
     log("Configuring the Convex Cloud deployment selected by CONVEX_DEPLOY_KEY.");
   }
 
+  // Read every existing key before making changes. A partial signing pair must
+  // be restored by the operator; silently generating a new pair would rotate it.
+  const privateKey = getVariable(env, "JWT_PRIVATE_KEY");
+  const jwks = getVariable(env, "JWKS");
+  const encryptionKey = getVariable(env, "SECRETS_ENCRYPTION_KEY");
+  if (Boolean(privateKey) !== Boolean(jwks)) {
+    fail("Incomplete Convex Auth signing keys. Restore the matching JWT_PRIVATE_KEY and JWKS from backup before rerunning setup. Existing keys were not changed.");
+  }
+
   log("Deploying Convex functions…");
   convex(env, ["deploy", "-y", "--typecheck", "disable", "--codegen", "disable"]);
 
@@ -94,7 +105,7 @@ async function configure() {
     setVariable(env, "APP_BASE_URL", siteUrl);
   }
 
-  if (getVariable(env, "JWT_PRIVATE_KEY") || getVariable(env, "JWKS")) {
+  if (privateKey && jwks) {
     log("Convex Auth signing keys already exist; keeping them.");
   } else {
     log("Generating Convex Auth signing keys…");
@@ -103,7 +114,7 @@ async function configure() {
     setVariable(env, "JWKS", keys.JWKS, { secret: true });
   }
 
-  if (getVariable(env, "SECRETS_ENCRYPTION_KEY")) {
+  if (encryptionKey) {
     log("SECRETS_ENCRYPTION_KEY already exists; keeping it.");
   } else {
     setVariable(env, "SECRETS_ENCRYPTION_KEY", generateEncryptionKey(), { secret: true });
