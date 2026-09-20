@@ -2,7 +2,18 @@
 
 ## Create a consistent backup
 
-Home server:
+Prebuilt image (`docker run` installation):
+
+```sh
+docker exec sous-chef node scripts/local-admin.mjs backup /backups/before-upgrade
+docker cp sous-chef:/backups/before-upgrade ./sous-chef-backup
+```
+
+Use a new destination name for each backup. For image-only Compose, replace
+`docker exec sous-chef` with `docker compose exec -T app`, and use
+`docker compose cp app:/backups/before-upgrade ./sous-chef-backup`.
+
+Source-based home server:
 
 ```sh
 ./homelab.sh backup

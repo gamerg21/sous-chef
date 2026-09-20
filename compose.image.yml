@@ -1,0 +1,28 @@
+name: sous-chef
+services:
+  app:
+    image: ${SOUS_CHEF_IMAGE:-ghcr.io/gamerg21/sous-chef:latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - kitchen-data:/data
+    environment:
+      SOUS_CHEF_DATA_DIR: /data
+      APP_URL: ${APP_URL:-}
+      SOUS_CHEF_ALLOW_SIGNUP: ${SOUS_CHEF_ALLOW_SIGNUP:-true}
+      SOUS_CHEF_DEMO: ${SOUS_CHEF_DEMO:-false}
+      COMMUNITY_API_URL: ${COMMUNITY_API_URL:-}
+      COMMUNITY_CONVEX_URL: ${COMMUNITY_CONVEX_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+volumes:
+  kitchen-data:

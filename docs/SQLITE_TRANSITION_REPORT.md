@@ -42,8 +42,9 @@ until the migrated installation has been accepted. No credentials belong in Git.
 
 ## Remaining deployment work
 
-Docker configuration was validated, but an image/container smoke test could not
-run because the Docker daemon was unavailable. Email delivery was not tested.
+The Docker image was subsequently built and started locally. Its health check,
+persistent SQLite data across restart, and in-container backup passed.
+Email delivery was not tested.
 The public web demo has not been deployed; it needs a domain and a host with a
 persistent disk. Community moderation, comments, likes, and paginated feeds remain
 future work as described in [community setup](COMMUNITY.md).

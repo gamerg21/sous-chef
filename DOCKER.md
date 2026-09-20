@@ -1,5 +1,52 @@
 # Docker reference
 
+## Install the published image
+
+```sh
+docker run -d --name sous-chef --restart unless-stopped \
+  -p 3000:3000 -v sous-chef-data:/data \
+  ghcr.io/gamerg21/sous-chef:latest
+```
+
+Open `http://localhost:3000` and create your local account. On a remote server,
+use its hostname/IP. The same image supports Linux amd64 and arm64 (including
+Apple Silicon through Docker Desktop and 64-bit Raspberry Pi).
+
+For a hosted server behind an HTTPS reverse proxy, add
+`-e APP_URL=https://kitchen.example.com` before the image name. Keep the proxy
+on the same host and use `-p 127.0.0.1:3000:3000` to bind only to loopback.
+Use a persistent disk; ephemeral/serverless filesystems cannot retain SQLite.
+
+### Compose without cloning
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/gamerg21/sous-chef/main/compose.image.yml -o compose.yml
+docker compose up -d
+```
+
+This Compose file only pulls the published image. Optional settings go in a
+local `.env` beside it. To update after making a backup:
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+For a container created with `docker run`, keep the same named volume:
+
+```sh
+docker pull ghcr.io/gamerg21/sous-chef:latest
+docker stop sous-chef
+docker rm sous-chef
+# Repeat the original docker run command, including any environment settings.
+```
+
+Removing the container preserves the named volume. See [backup instructions](docs/BACKUP.md)
+before updating. `latest` tracks main; pin an image digest for reproducible
+installs. Release tags are published when a matching `vX.Y.Z` Git tag is pushed.
+
+## Build from source
+
 The Dockerfile builds one `runner` image: Next.js standalone, Node.js 22.18,
 non-root UID/GID 1001, port 3000, and SQLite. There is no setup image.
 

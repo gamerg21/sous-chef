@@ -2,9 +2,24 @@
 
 ## New installation
 
-1. Install Docker with Compose v2.
-2. Clone this repository and run `./homelab.sh up`.
-3. Open `http://YOUR-SERVER:3000` and create an account.
+1. Install Docker.
+2. Run the published image:
+
+   ```sh
+   docker run -d --name sous-chef --restart unless-stopped \
+     -p 3000:3000 -v sous-chef-data:/data \
+     ghcr.io/gamerg21/sous-chef:latest
+   ```
+
+3. Open `http://localhost:3000` (or `http://YOUR-SERVER:3000`) and create an account.
+
+See [Docker instructions](DOCKER.md) for image-only Compose, updates, and hosted
+servers. No source checkout is required.
+
+## Source checkout alternative
+
+Clone this repository and run `./homelab.sh up` to build locally. The helper and
+`.env.homelab` commands below apply to this source-based installation.
 
 The helper creates `.env.homelab` if absent. It does not overwrite existing
 settings. The app initializes SQLite and the units catalog itself. The first

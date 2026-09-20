@@ -6,13 +6,15 @@ connect to a shared recipe community backed by Convex.
 
 ## Run at home
 
-With Docker and Compose installed:
+With Docker installed, run the prebuilt image (no repository clone or build):
 
 ```sh
-./homelab.sh up
+docker run -d --name sous-chef --restart unless-stopped \
+  -p 3000:3000 -v sous-chef-data:/data \
+  ghcr.io/gamerg21/sous-chef:latest
 ```
 
-Open `http://YOUR-SERVER:3000` and create your local account. The first account is
+Open `http://localhost:3000` on that computer, or `http://YOUR-SERVER:3000` and create your local account. The first account is
 the instance administrator. No Convex account, database service, email service,
 or AI key is required. One app container stores its SQLite database, photos, and
 generated encryption key in a persistent volume.
