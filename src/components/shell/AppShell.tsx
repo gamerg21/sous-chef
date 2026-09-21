@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useCallback, useMemo, useState } from 'react'
+import { BrandLogo } from '@/components/BrandLogo'
 import { Menu } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import MainNav, { type NavigationItem } from './MainNav'
@@ -256,6 +257,7 @@ function AppShellInternal({
           >
             <Menu className="w-5 h-5" strokeWidth={1.75} />
           </button>
+          <BrandLogo size={40} decorative />
           <div className="min-w-0">
             <div className="text-sm font-semibold" style={{ fontFamily: headingFont }}>
               {brand?.name || 'Sous Chef'}
@@ -317,7 +319,8 @@ function AppShellInternal({
         <aside className={cx('hidden lg:block w-64 shrink-0 border-r h-dvh', neutral.panelBorder, neutral.panelBg)}>
           <div className="h-full flex flex-col overflow-hidden">
             <div className={cx('px-5 py-5 border-b', neutral.panelBorder)}>
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <BrandLogo size={44} decorative />
                 <div className="min-w-0">
                   <div className="text-base font-semibold" style={{ fontFamily: headingFont }}>
                     {brand?.name || 'Sous Chef'}

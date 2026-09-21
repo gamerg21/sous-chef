@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "@/components/BrandLogo";
 
 import { useAuthActions } from "@/lib/kitchen/client";
 import { useKitchenAuth } from "@/lib/kitchen/client";
@@ -88,6 +89,7 @@ export default function SignUp() {
     <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
         <div>
+          <div className="mb-5 flex justify-center"><BrandLogo size={72} /></div>
           <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
             Create your account
           </h1>

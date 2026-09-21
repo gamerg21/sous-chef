@@ -1,4 +1,6 @@
-# Sous Chef 🍳
+<p align="center"><img src="public/icons/icon-512.png" width="120" height="120" alt="Sous Chef logo" /></p>
+
+# Sous Chef
 
 Sous Chef is an **AGPL-3.0 open-source, self-hostable kitchen assistant**. Keep
 pantry stock, recipes, cooking, and shopping lists on your own server. Optionally
