@@ -5,7 +5,7 @@ import { checkOrigin, readJson, failure } from '@/server/kitchen/http';
 import { randomBytes } from 'node:crypto';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-export async function GET() {const user=await session((await cookies()).get(COOKIE)?.value);return Response.json({authenticated:!!user,demo:!!user?.demoExpiresAt,resetMode:process.env.RESEND_API_KEY?'email':'operator'},{headers:{'Cache-Control':'no-store'}});}
+export async function GET() {const user=await session((await cookies()).get(COOKIE)?.value);return Response.json({authenticated:!!user,demo:!!user?.demoExpiresAt,demoMode:process.env.SOUS_CHEF_DEMO==='true',resetMode:process.env.RESEND_API_KEY?'email':'operator'},{headers:{'Cache-Control':'no-store'}});}
 export async function POST(request:Request) {
   try {checkOrigin(request);const body=await readJson(request,8192);const jar=await cookies();const database=getDatabase();
     if(body.flow==='signOut') {const token=jar.get(COOKIE)?.value;if(token)await database.transaction(async()=>{database.sql.prepare('DELETE FROM sessions WHERE token_hash=?').run(digest(token));});jar.delete(COOKIE);return Response.json({signingIn:false});}

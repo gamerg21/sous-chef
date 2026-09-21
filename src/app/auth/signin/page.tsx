@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SignIn() {
-  const { isAuthenticated, isLoading: authLoading } = useKitchenAuth();
+  const { isAuthenticated, isLoading: authLoading, demoMode } = useKitchenAuth();
   const { signIn } = useAuthActions();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -16,10 +16,11 @@ export default function SignIn() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (demoMode && !isAuthenticated) { router.replace("/demo"); return; }
     if (isAuthenticated) {
       router.push("/inventory");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, demoMode, router]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

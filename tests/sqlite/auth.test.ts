@@ -51,3 +51,28 @@ test('editing local visibility preserves community publication state and unpubli
  await execute('community:markUnpublished',{recipeId},user._id,true,db);
  expect(await execute('recipes:getById',{id:recipeId},user._id,false,db)).toMatchObject({visibility:'household',publicationVisibility:'private'});
 });
+
+test('sample kitchen supports real cooking and shortage workflows without affecting another visitor', async () => {
+ vi.stubEnv('SOUS_CHEF_DEMO','true');
+ const db=make();
+ const first=(await session((await authenticate({flow:'demo'},db)).token,db))!;
+ const second=(await session((await authenticate({flow:'demo'},db)).token,db))!;
+ const recipes=await db.transaction(tx=>tx.query('recipes').collect());
+ const kitchen=(await execute<{id:string}[]>('households:list',{},first._id,false,db))[0];
+ const pasta=recipes.find(recipe=>recipe.householdId===kitchen.id && recipe.title==='Weeknight tomato pasta')!;
+ const lemon=recipes.find(recipe=>recipe.householdId===kitchen.id && recipe.title==='Lemon & spinach pasta')!;
+ const ready=await execute<{canCook:boolean;missingIngredients:unknown[]}>('cooking:preview',{recipeId:pasta._id},first._id,false,db);
+ expect(ready.missingIngredients).toHaveLength(0);
+ const missing=await execute<{missingIngredients:{name:string}[]}>('cooking:preview',{recipeId:lemon._id},first._id,false,db);
+ expect(missing.missingIngredients.map(item=>item.name)).toEqual(['Parmesan']);
+ await expect(execute('cooking:preview',{recipeId:pasta._id},second._id,false,db)).rejects.toThrow('Permission denied');
+ await expect(authenticate({flow:'signUp',email:'demo@example.com',password:'Password123!'},db)).rejects.toThrow('Use the demo kitchen');
+ const snapshot=await db.transaction(tx=>tx.query('appAdmins').collect());
+ expect(snapshot).toHaveLength(0);
+ const before=await db.transaction(tx=>tx.query('inventoryItems').collect());
+ await execute('cooking:cookRecipe',{recipeId:pasta._id},first._id,false,db);
+ const after=await db.transaction(tx=>tx.query('inventoryItems').collect());
+ const pastaIngredient=await db.transaction(tx=>tx.query('recipeIngredients').withIndex('by_recipeId',q=>q.eq('recipeId',pasta._id)).first());
+ expect(after.find(item=>item.householdId===kitchen.id && item.foodItemId===pastaIngredient!.foodItemId)?.quantity).toBe(300);
+ expect(after.filter(item=>item.householdId!==kitchen.id)).toEqual(before.filter(item=>item.householdId!==kitchen.id));
+});

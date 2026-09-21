@@ -1,3 +1,4 @@
+import { seedDemoKitchen } from './demo-seed';
 import { cleanupExpiredDemos } from '../../../scripts/demo-cleanup-lib.mjs';
 import { randomBytes, createHash, scryptSync, timingSafeEqual } from 'node:crypto';
 import { getDatabase, type KitchenDatabase } from './database';
@@ -46,15 +47,7 @@ export async function authenticate(body:Record<string,unknown>,database=getDatab
       if(passwordHash)database.sql.prepare('INSERT INTO credentials VALUES(?,?)').run(userId,passwordHash);
       if(flow!=='demo' && (await db.query('users').take(2)).length===1)await db.insert('appAdmins',{userId});
       const householdId=await createDefaultHousehold(context(database,userId,db),userId);
-      if(flow==='demo') {
-        const location=await db.query('kitchenLocations').withIndex('by_householdId',q=>q.eq('householdId',householdId)).filter(q=>q.eq(q.field('name'),'Pantry')).first();
-        for(const [name,quantity,unit] of [['Pasta',500,'g'],['Tomatoes',4,'each'],['Olive oil',250,'ml']] as const) {
-          const foodItemId=await db.insert('foodItems',{name});await db.insert('inventoryItems',{householdId,foodItemId,locationId:location!._id,quantity,unit});
-        }
-        const recipeId=await db.insert('recipes',{householdId,title:'Weeknight tomato pasta',description:'A simple recipe to explore your demo kitchen.',servings:2,totalTimeMinutes:20,visibility:'private',favorited:false});
-        for(const [order,name,quantity,unit] of [[0,'Pasta',200,'g'],[1,'Tomatoes',2,'each'],[2,'Olive oil',15,'ml']] as const)await db.insert('recipeIngredients',{recipeId,order,name,quantity,unit});
-        await db.insert('recipeSteps',{recipeId,order:0,text:'Cook the pasta. Simmer chopped tomatoes in olive oil, then combine and serve.'});
-      }
+      if(flow==='demo') await seedDemoKitchen(context(database,userId,db),householdId);
     } else {
       if(!user) {scryptSync(password.slice(0,128),'dummy-salt',64);throw new Error('Invalid email or password');}
       userId=user._id;
