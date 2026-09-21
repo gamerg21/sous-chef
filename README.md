@@ -1,5 +1,7 @@
 # Sous Chef 🍳
 
+[Website](https://sous-chef-website.vercel.app) · [Try the live demo](https://souschef-demo.onrender.com/demo) · [Self-hosting guide](DEPLOYMENT.md)
+
 Sous Chef is an **AGPL-3.0 open-source, self-hostable kitchen assistant**. Keep
 pantry stock, recipes, cooking, and shopping lists on your own server. Optionally
 connect to a shared recipe community backed by Convex.
