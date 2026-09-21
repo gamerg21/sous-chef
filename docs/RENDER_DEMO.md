@@ -12,15 +12,20 @@ Create a Render web service from this repository and the branch containing
 - `SOUS_CHEF_DEMO=true` and `SOUS_CHEF_ALLOW_SIGNUP=false`.
 - A writable `/data` directory inside the container, without a paid disk.
 - `/api/health` as the health check.
-- `APP_URL` from Render's `RENDER_EXTERNAL_URL` at startup, so secure cookies
-  and origin checks use the assigned HTTPS address.
+- `APP_URL` set explicitly to the assigned HTTPS origin, so secure cookies
+  and origin checks use the correct address.
 - A 384 MB Node heap limit at runtime, leaving the build unrestricted.
 - Manual deployments, so unrelated pushes do not restart demo sessions.
 
 Request a service name containing `souschef`, such as `souschef-demo`.
 Render assigns an `onrender.com` address; use the actual address shown in the
 service dashboard rather than assuming a name is available. If configuring
-manually, copy the Docker command and environment values from `render.yaml`.
+manually, copy the Docker command and environment values from `render.yaml`,
+and set `APP_URL` to your assigned origin (without `/demo`).
+
+The hosted demo is https://souschef-demo.onrender.com/demo, deployed from
+`codex/render-demo`. The marketing site links to this address through its
+production `DEMO_URL` setting.
 
 ## Visitor experience
 

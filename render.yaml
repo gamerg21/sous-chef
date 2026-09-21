@@ -7,10 +7,12 @@ services:
     region: virginia
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: /bin/sh -c 'export APP_URL="$RENDER_EXTERNAL_URL"; exec node --max-old-space-size=384 server.js'
+    dockerCommand: node --max-old-space-size=384 server.js
     healthCheckPath: /api/health
     autoDeployTrigger: 'off'
     envVars:
+      - key: APP_URL
+        sync: false # Set to the HTTPS origin assigned by Render.
       - key: SOUS_CHEF_DEMO
         value: 'true'
       - key: SOUS_CHEF_ALLOW_SIGNUP
