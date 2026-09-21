@@ -1,4 +1,6 @@
-# Sous Chef 🍳
+<p align="center"><img src="public/icons/icon-512.png" width="120" height="120" alt="Sous Chef logo" /></p>
+
+# Sous Chef
 
 [Website](https://sous-chef-website.vercel.app) · [Try the live demo](https://souschef-demo.onrender.com/demo) · [Self-hosting guide](DEPLOYMENT.md)
 

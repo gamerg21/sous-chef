@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "@/components/BrandLogo";
 
 import { useAuthActions } from "@/lib/kitchen/client";
 import { useKitchenAuth } from "@/lib/kitchen/client";
@@ -133,7 +134,8 @@ function ResetPasswordContent() {
       <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
         <div className="w-full max-w-md space-y-8 rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
           <div>
-            <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
+            <div className="mb-5 flex justify-center"><BrandLogo size={72} /></div>
+          <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
               Invalid Reset Link
             </h1>
             <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
