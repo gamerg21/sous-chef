@@ -29,14 +29,16 @@ production `DEMO_URL` setting.
 
 ## Visitor experience
 
-`/` opens `/demo`. Starting a demo requires no account registration and creates
+`/` opens `/demo`, which automatically opens an existing kitchen or creates a
+new one, then replaces the loading page with `/inventory`. No second landing
+page, button click, or account registration is required. A new demo creates
 nine inventory items, three recipes, and a shopping list in a separate household.
 One recipe is immediately cookable; another is missing Parmesan so visitors can
 try shortage previews. Normal kitchen screens and APIs handle all interactions.
 
 The banner explains that sessions expire within 24 hours and can end earlier
 when the service restarts. Returning visitors can continue an active session.
-Expired sessions are routed back to the demo entry page to start again. AI and
+Expired sessions are routed through `/demo` to automatically start again. AI and
 instance-admin operations stay unavailable to demo identities. Community sharing
 is not configured by this deployment.
 
