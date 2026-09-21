@@ -55,8 +55,8 @@ library's Import command, including publication attribution and embedded photos.
 
 ## Hosted demo
 
-Run the same app with `SOUS_CHEF_DEMO=true` on a persistent disk. `/` becomes the
-public landing page; `/demo` creates a private sample household with a 24-hour
+Run the same app with `SOUS_CHEF_DEMO=true` on a persistent disk. `/` redirects to
+the demo entry page at `/demo`, which creates a private sample household with a 24-hour
 session. Publishing requires a separate community account. AI and instance admin
 operations are disabled for demo identities.
 

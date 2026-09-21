@@ -94,9 +94,10 @@ Set `COMMUNITY_API_URL` to the service's `https://…convex.site` origin and
 Community → Connect community account. Local and community accounts are separate.
 No deploy/admin key is distributed to installations.
 
-Set `SOUS_CHEF_DEMO=true` on a separately hosted app to show the demo landing
-page at `/`. The marketing page is also available at `/welcome` on all instances;
-normal local instances still open directly into the kitchen at `/`.
+Set `SOUS_CHEF_DEMO=true` on a separately hosted app to open the demo entry
+page at `/demo` when visiting `/`. Normal local instances still open directly
+into the kitchen at `/`. Marketing lives in a separate website codebase;
+the kitchen app does not serve `/welcome`.
 Each demo expires after 24 hours; run the cleanup command described in
 [community operations](docs/COMMUNITY.md). Demo mode disables AI/provider
 settings and instance administration. Hosting requires a persistent disk and
