@@ -111,3 +111,9 @@ remaining public-launch work. See [contributing](CONTRIBUTING.md) and
 
 Sous Chef is licensed under [GNU AGPL-3.0](LICENSE). The optional Convex service
 has its own dependencies and licensing; using it is not required to run your kitchen.
+
+## App updates
+
+Settings → System & Updates shows the installed version and newer stable releases.
+See [managed updates](docs/UPDATES.md) for one-button Docker updates, portable Linux
+packages, backups, and recovery.

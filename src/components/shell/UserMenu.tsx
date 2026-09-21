@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronUp, LogOut, Sparkles, User as UserIcon, Users } from 'lucide-react'
+import { ChevronUp, Download, LogOut, Sparkles, User as UserIcon, Users } from 'lucide-react'
 
 export type ShellUser = { name: string; avatarUrl?: string }
 
@@ -27,6 +27,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 const menuLinks = [
   { href: '/account', label: 'Account & preferences', icon: UserIcon },
   { href: '/settings/household-users', label: 'Household members', icon: Users },
+  { href: '/settings/system', label: 'System & Updates', icon: Download },
   { href: '/settings/ai', label: 'AI settings', icon: Sparkles },
 ] as const
 

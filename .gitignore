@@ -66,3 +66,6 @@ data/
 *.sqlite-wal
 *.sqlite-shm
 .backups/
+
+# Portable release packaging
+/dist/

@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "data/**",
     "out/**",
     "build/**",
+    "dist/**",
     "next-env.d.ts",
     // Server file uses CommonJS, exclude from TypeScript rules
     "server.js",

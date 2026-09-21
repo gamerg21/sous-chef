@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/kitchen/api";
 import { DashboardPrewarm } from "./DashboardPrewarm";
+import { UpdateNotice } from "./SystemUpdates";
 import AppShell from "./shell/AppShell";
 import type { Id } from "@/server/kitchen/_generated/dataModel";
 
@@ -147,6 +148,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         ]}
       />
       {switchError && <p role="alert" className="bg-red-50 p-4 text-red-800">Couldn’t switch kitchens. Please try again.</p>}
+      {!demo && <UpdateNotice />}
       {children}
     </AppShell>
   );

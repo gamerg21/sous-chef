@@ -4,10 +4,14 @@ COPY package.json pnpm-lock.yaml ./
 ENV HUSKY=0
 RUN corepack enable && pnpm install --frozen-lockfile
 FROM deps AS builder
+ARG SOUS_CHEF_BUILD_REVISION=local
+ENV SOUS_CHEF_BUILD_REVISION=$SOUS_CHEF_BUILD_REVISION
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 FROM node:22.18-alpine AS runner
+ARG SOUS_CHEF_BUILD_REVISION=local
+ENV SOUS_CHEF_BUILD_REVISION=$SOUS_CHEF_BUILD_REVISION
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 SOUS_CHEF_DATA_DIR=/data
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs && mkdir /data /backups && chown nextjs:nodejs /data /backups

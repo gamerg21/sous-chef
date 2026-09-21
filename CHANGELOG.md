@@ -1,4 +1,4 @@
-## Unreleased — SQLite kitchens and optional community
+## 0.8.0 — SQLite kitchens and optional community (not yet published)
 
 - Private kitchens now run on local SQLite with local sessions, photos, and encrypted keys.
 - One-container self-hosting; no Convex account or setup service required.
@@ -6,6 +6,9 @@
 - Isolated demo kitchens and a public recipe browser.
 - Offline Convex export migration, consistent backups, and operator recovery.
 - Updated Docker, deployment, development, and contributor documentation.
+- System & Updates settings with installed version/build, stable-release checks, release notes, and administrator notifications.
+- Opt-in managed Docker updates and portable Linux packages with backup, restart verification, and database-aware rollback.
+- Release packaging excludes private kitchen data and local environment files.
 
 # Changelog
 
