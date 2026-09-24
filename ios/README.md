@@ -136,6 +136,23 @@ xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 18 
 Spoken phrases still need checking by voice on a device with Siri, since
 automated tests can't exercise speech recognition.
 
+## Share sheet
+
+`ShareExtension/` puts Sous Chef in the share sheet, so a recipe page in
+Safari (or any app that shares a link) is two taps away: Share, then Sous Chef.
+Shared recipe text works too, and text that's only a link imports the page.
+
+The extension doesn't import anything itself. It drops the link or text into
+`Shared/SharedRecipeInbox.swift`, an App Group (`group.com.georgevina.souschef`)
+that both targets are signed with, and closes. The next time Sous Chef becomes
+active it switches to Recipes and runs each shared item through the usual
+import sheet and recipe editor, so nothing is saved without review and the
+extension needs neither the kitchen store nor Apple Intelligence. A page that's
+already saved opens instead of importing again.
+
+Share extensions can't open their app, so the confirmation asks the cook to
+open Sous Chef to finish.
+
 ## Companion server sync
 
 `Server/CompanionServer.swift` talks to an existing Sous Chef server through the

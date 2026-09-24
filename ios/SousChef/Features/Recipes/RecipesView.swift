@@ -10,11 +10,20 @@ struct RecipesView: View {
     @State private var filter: Filter = .all
     @State private var creating: RecipeDraftSession?
     @State private var importMode: RecipeImportView.Mode?
+    @State private var sharedImport: SharedImport?
+    @State private var sharedDraft: RecipeDraft?
     @State private var path = NavigationPath()
     private let navigator = AppNavigator.shared
 
     enum Filter: Hashable {
         case all, favorites, ready, tag(String)
+    }
+
+    /// Something shared from another app, on its way through import and review.
+    struct SharedImport: Identifiable {
+        let id = UUID()
+        var mode: RecipeImportView.Mode
+        var content: String
     }
 
     private var tags: [String] {
@@ -99,10 +108,19 @@ struct RecipesView: View {
                 navigator.recipeToOpen = nil
                 if let recipe = recipes.first(where: { $0.uuid == id }) { path = NavigationPath([recipe]) }
             }
+            // Recipes shared from other apps, one at a time, once nothing
+            // else is being added.
+            .task(id: navigator.sharedRecipes.first) { importNextShared() }
             .refreshable { await kitchen.server.syncNow() }
-            .sheet(item: $creating) { session in
+            .sheet(item: $creating, onDismiss: importNextShared) { session in
                 RecipeEditorView(draft: session.draft, recipe: nil) { saved in
                     path.append(saved)
+                }
+            }
+            .sheet(item: $sharedImport, onDismiss: reviewSharedDraft) { shared in
+                RecipeImportView(mode: shared.mode, shared: shared.content) { draft in
+                    sharedDraft = draft
+                    sharedImport = nil
                 }
             }
             .sheet(item: $importMode) { mode in
@@ -114,6 +132,33 @@ struct RecipesView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Opens the editor once the import sheet is gone, or moves on if the
+    /// import was cancelled.
+    private func reviewSharedDraft() {
+        if let draft = sharedDraft {
+            sharedDraft = nil
+            creating = RecipeDraftSession(draft: draft)
+        } else {
+            importNextShared()
+        }
+    }
+
+    private func importNextShared() {
+        guard creating == nil, importMode == nil, sharedImport == nil, !navigator.sharedRecipes.isEmpty else { return }
+        switch navigator.sharedRecipes.removeFirst() {
+        case .link(let url):
+            // A page that's already saved opens instead of importing twice.
+            if let existing = kitchen.recipe(importedFrom: url) {
+                path = NavigationPath([existing])
+                importNextShared()
+            } else {
+                sharedImport = SharedImport(mode: .link, content: url.absoluteString)
+            }
+        case .text(let text):
+            sharedImport = SharedImport(mode: .text, content: text)
         }
     }
 

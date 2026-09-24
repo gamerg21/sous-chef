@@ -11,6 +11,9 @@ struct RecipeImportView: View {
     }
 
     let mode: Mode
+    /// A link or recipe text shared from another app; the import starts
+    /// as soon as the sheet appears.
+    var shared: String?
     let onDraft: (RecipeDraft) -> Void
 
     @Environment(Kitchen.self) private var kitchen
@@ -67,7 +70,12 @@ struct RecipeImportView: View {
         }
         .interactiveDismissDisabled(working)
         .onAppear {
-            if mode == .link, let pasted = UIPasteboard.general.string, pasted.hasPrefix("http") { link = pasted }
+            if let shared {
+                if mode == .link { link = shared } else { text = shared }
+                start()
+            } else if mode == .link, let pasted = UIPasteboard.general.string, pasted.hasPrefix("http") {
+                link = pasted
+            }
         }
     }
 

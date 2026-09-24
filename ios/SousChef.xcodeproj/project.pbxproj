@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5C0000000000000000000065 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000060 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		5C0000000000000000000035 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,7 +25,28 @@
 			remoteGlobalIDString = 5C0000000000000000000020;
 			remoteInfo = SousChef;
 		};
+		5C0000000000000000000067 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5C0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5C0000000000000000000070;
+			remoteInfo = ShareExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5C0000000000000000000066 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5C0000000000000000000065 /* ShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		5C0000000000000000000004 /* SousChef.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SousChef.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -29,6 +54,9 @@
 		5C0000000000000000000006 /* SousChefUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SousChefUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C0000000000000000000012 /* SousChef.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SousChef.entitlements; sourceTree = "<group>"; };
 		5C0000000000000000000013 /* SousChef-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SousChef-Info.plist"; sourceTree = "<group>"; };
+		5C0000000000000000000060 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C0000000000000000000061 /* ShareExtension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
+		5C0000000000000000000062 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,6 +73,16 @@
 		5C0000000000000000000014 /* SousChefUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SousChefUITests;
+			sourceTree = "<group>";
+		};
+		5C0000000000000000000063 /* ShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
+		5C0000000000000000000064 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -71,6 +109,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5C0000000000000000000072 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -82,6 +127,10 @@
 				5C0000000000000000000014 /* SousChefUITests */,
 				5C0000000000000000000012 /* SousChef.entitlements */,
 				5C0000000000000000000013 /* SousChef-Info.plist */,
+				5C0000000000000000000063 /* ShareExtension */,
+				5C0000000000000000000064 /* Shared */,
+				5C0000000000000000000061 /* ShareExtension-Info.plist */,
+				5C0000000000000000000062 /* ShareExtension.entitlements */,
 				5C0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -92,6 +141,7 @@
 				5C0000000000000000000004 /* SousChef.app */,
 				5C0000000000000000000005 /* SousChefTests.xctest */,
 				5C0000000000000000000006 /* SousChefUITests.xctest */,
+				5C0000000000000000000060 /* ShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -106,13 +156,16 @@
 				5C0000000000000000000021 /* Sources */,
 				5C0000000000000000000022 /* Frameworks */,
 				5C0000000000000000000023 /* Resources */,
+				5C0000000000000000000066 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5C0000000000000000000068 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				5C0000000000000000000010 /* SousChef */,
+				5C0000000000000000000064 /* Shared */,
 			);
 			name = SousChef;
 			productName = SousChef;
@@ -161,6 +214,27 @@
 			productReference = 5C0000000000000000000006 /* SousChefUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		5C0000000000000000000070 /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5C0000000000000000000074 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				5C0000000000000000000071 /* Sources */,
+				5C0000000000000000000072 /* Frameworks */,
+				5C0000000000000000000073 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5C0000000000000000000063 /* ShareExtension */,
+				5C0000000000000000000064 /* Shared */,
+			);
+			name = ShareExtension;
+			productName = ShareExtension;
+			productReference = 5C0000000000000000000060 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -182,6 +256,9 @@
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 5C0000000000000000000020;
 					};
+					5C0000000000000000000070 = {
+						CreatedOnToolsVersion = 27.0;
+					};
 				};
 			};
 			buildConfigurationList = 5C0000000000000000000040 /* Build configuration list for PBXProject "SousChef" */;
@@ -201,6 +278,7 @@
 				5C0000000000000000000020 /* SousChef */,
 				5C0000000000000000000030 /* SousChefTests */,
 				5C0000000000000000000050 /* SousChefUITests */,
+				5C0000000000000000000070 /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -221,6 +299,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		5C0000000000000000000053 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5C0000000000000000000073 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -251,6 +336,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5C0000000000000000000071 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -263,6 +355,11 @@
 			isa = PBXTargetDependency;
 			target = 5C0000000000000000000020 /* SousChef */;
 			targetProxy = 5C0000000000000000000055 /* PBXContainerItemProxy */;
+		};
+		5C0000000000000000000068 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5C0000000000000000000070 /* ShareExtension */;
+			targetProxy = 5C0000000000000000000067 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -331,7 +428,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SousChef.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = X423ZKYPDN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -369,7 +466,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SousChef.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = X423ZKYPDN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -478,6 +575,64 @@
 			};
 			name = Release;
 		};
+		5C0000000000000000000075 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = X423ZKYPDN;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ShareExtension-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Sous Chef";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.georgevina.souschef.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5C0000000000000000000076 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = X423ZKYPDN;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ShareExtension-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Sous Chef";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.georgevina.souschef.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -513,6 +668,15 @@
 			buildConfigurations = (
 				5C0000000000000000000057 /* Debug */,
 				5C0000000000000000000058 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5C0000000000000000000074 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5C0000000000000000000075 /* Debug */,
+				5C0000000000000000000076 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

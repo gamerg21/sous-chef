@@ -213,4 +213,14 @@ struct KitchenAssistantTests {
         draft.title = "Rice"
         #expect(Kitchen.readyToSave(draft)?.title == "Rice")
     }
+
+    @Test func sharesImportTheLinkOrTheRecipeText() {
+        let page = URL(string: "https://www.bbcgoodfood.com/recipes/easy-pancakes")!
+        #expect(SharedRecipeInbox.item(url: page, text: "Easy pancakes") == .link(page))
+        #expect(SharedRecipeInbox.item(url: nil, text: "Easy pancakes \(page.absoluteString)") == .link(page))
+        let recipe = "Pancakes\nIngredients\n100 g flour\n2 eggs\nSteps\nWhisk and fry."
+        #expect(SharedRecipeInbox.item(url: nil, text: recipe) == .text(recipe))
+        #expect(SharedRecipeInbox.item(url: URL(fileURLWithPath: "/tmp/a.txt"), text: nil) == nil)
+        #expect(SharedRecipeInbox.item(url: nil, text: "  ") == nil)
+    }
 }

@@ -50,6 +50,9 @@ The iOS app's version (`MARKETING_VERSION`) and build number
 - Before each TestFlight or App Store upload, increment the build number in the
   project file and commit it with the upload, so the next upload continues from it.
 - When the version changes (for example 1.0.1 to 1.0.2), reset the build number to 1.
+- The ShareExtension target carries the same `MARKETING_VERSION` and
+  `CURRENT_PROJECT_VERSION` as the app; change both targets together or the
+  upload is rejected.
 - App Store Connect rejects a build number that isn't higher than the last one
   uploaded for that version. If an upload is rejected or you don't know the last
   number, ask the maintainer instead of guessing.

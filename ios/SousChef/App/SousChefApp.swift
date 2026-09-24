@@ -18,9 +18,11 @@ struct SousChefApp: App {
                 .tint(.brand)
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
                 .task { await account.checkCredentialState() }
+                .task { AppNavigator.shared.receiveSharedRecipes() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                AppNavigator.shared.receiveSharedRecipes()
                 Task { await kitchen.server.syncNow() }
                 Task { await account.checkCredentialState() }
             }
@@ -45,10 +47,21 @@ final class AppNavigator {
     /// A recipe to open straight into Cook mode, taken by its `RecipeDetailView`.
     var recipeToCook: UUID?
 
+    /// Links and text shared from other apps, imported one at a time by `RecipesView`.
+    var sharedRecipes: [SharedRecipeInbox.Item] = []
+
     func open(recipe id: UUID, cooking: Bool = false) {
         tab = .recipes
         recipeToCook = cooking ? id : nil
         recipeToOpen = id
+    }
+
+    /// Takes whatever the share extension left and switches to Recipes to import it.
+    func receiveSharedRecipes() {
+        let items = SharedRecipeInbox.take().filter { !sharedRecipes.contains($0) }
+        guard !items.isEmpty else { return }
+        sharedRecipes += items
+        tab = .recipes
     }
 }
 

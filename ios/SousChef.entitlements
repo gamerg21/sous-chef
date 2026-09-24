@@ -8,6 +8,10 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.georgevina.souschef</string>
+	</array>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.com.georgevina.souschef</string>

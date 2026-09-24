@@ -163,13 +163,7 @@ extension Kitchen {
     /// perhaps with the page title ("Million Dollar Soup https://…"). Recipe
     /// text that merely cites its source stays text.
     nonisolated static func recipeLink(in text: String) -> URL? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.components(separatedBy: .newlines).count <= 2,
-              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
-        let links = detector.matches(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed))
-            .compactMap(\.url)
-            .filter { ["http", "https"].contains($0.scheme?.lowercased() ?? "") }
-        return links.count == 1 ? links[0] : nil
+        SharedRecipeInbox.link(in: text)
     }
 
     /// The same page whatever the "www.", trailing slash or tracking
