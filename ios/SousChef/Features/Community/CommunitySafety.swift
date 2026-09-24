@@ -105,7 +105,7 @@ struct ReportRecipeSheet: View {
 
     private var origin: String {
         if kitchen.server.isConnected { return "\(kitchen.server.address) (via companion server)" }
-        return CommunityService.directURL
+        return CommunityService.communityURL?.absoluteString ?? ""
     }
 
     var body: some View {

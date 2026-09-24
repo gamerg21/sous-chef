@@ -83,12 +83,26 @@ enum OpenFoodFacts {
 }
 
 /// Browses the optional Sous Chef recipe community. Through a connected
-/// server it uses the server's community connection; otherwise it reads a
+/// server it uses the server's community connection; otherwise it reads the
 /// community's public `/api/v1/recipes` endpoint directly.
 enum CommunityService {
+    /// Custom community address from Settings; overrides the built-in one.
     static var directURL: String {
         get { UserDefaults.standard.string(forKey: "community.url") ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: "community.url") }
+    }
+
+    /// Built-in community, from `SousChefCommunityURL` in SousChef-Info.plist.
+    static let defaultURL: URL? = httpsURL(Bundle.main.object(forInfoDictionaryKey: "SousChefCommunityURL") as? String)
+
+    /// The community used without a connected server: the custom address, else the built-in one.
+    static var communityURL: URL? { httpsURL(directURL) ?? defaultURL }
+
+    static var isConfigured: Bool { communityURL != nil }
+
+    static func httpsURL(_ value: String?) -> URL? {
+        guard let value = value?.nilIfEmpty, let url = URL(string: value), url.scheme == "https", url.host() != nil else { return nil }
+        return url
     }
 
     static func list(search: String, server: CompanionServer) async throws -> [DTO.CommunityRecipe] {
@@ -96,7 +110,7 @@ enum CommunityService {
             let result = try await client.call("community:listRecipes", ["search": search, "limit": 50], as: DTO.CommunityList.self)
             if result.available != false { return result.recipes }
         }
-        guard let base = URL(string: directURL), base.scheme == "https" else { return [] }
+        guard let base = communityURL else { return [] }
         var components = URLComponents(url: base.appending(path: "api/v1/recipes"), resolvingAgainstBaseURL: false)
         components?.queryItems = [URLQueryItem(name: "search", value: search), URLQueryItem(name: "limit", value: "50")]
         guard let url = components?.url else { return [] }
@@ -104,6 +118,4 @@ enum CommunityService {
         struct Page: Decodable { let recipes: [DTO.CommunityPublication] }
         return try JSONDecoder().decode(Page.self, from: data).recipes.map(\.recipe)
     }
-
-    static var isConfigured: Bool { URL(string: directURL)?.scheme == "https" }
 }

@@ -12,7 +12,7 @@ companion to a self-hosted Sous Chef server.
 | Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
 | Cook | Cooking | Recipes ranked by what you have, cook mode with timers, and pantry deduction. |
 | Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
-| Community | Community | Browse, save and (with a server) publish community recipes. |
+| Community | Community | Browse and save community recipes; publish with Sign in with Apple or through a server. |
 
 Settings (the toolbar button on every tab) covers iCloud, the companion server,
 Apple Intelligence, Open Food Facts, and recipe import/export in the same JSON
@@ -43,6 +43,8 @@ Launch arguments: `-seedSample` fills an empty kitchen with sample data, and
 The target uses team `X423ZKYPDN` and bundle ID `com.georgevina.souschef`. The first
 signed device build registers these capabilities for the App ID:
 
+- **Sign in with Apple** (`com.apple.developer.applesignin`), for the optional
+  community account.
 - **iCloud (CloudKit)** with container `iCloud.com.georgevina.souschef`, plus push
   notifications and the remote-notification background mode for CloudKit changes.
 
@@ -111,6 +113,29 @@ With iCloud on and several devices connected to the same server, each device
 syncs with both. Brief duplicates are possible if two devices create the same
 item before either syncs.
 
+## Community account
+
+Browsing, saving and reporting community recipes need no account. Publishing
+without a connected server uses a community account from Sign in with Apple
+(`Server/CommunityAccount.swift`, `Features/Community/CommunityAccountViews.swift`).
+
+- The community address defaults to `SousChefCommunityURL` in
+  `SousChef-Info.plist` (currently the dev community,
+  `https://graceful-hummingbird-993.convex.site`); switch it to the production
+  community before release. A custom address in Settings overrides it, and a
+  connected server uses its own community connection.
+- The system button asks only for the name scope, with a SHA-256 nonce the
+  server checks. The server returns a 90-day publisher token, kept in the Keychain
+  with the account's name and Apple user ID.
+- The app checks the Apple ID credential state at launch and when it becomes
+  active, and listens for credential revocation; a revoked or missing credential
+  signs out locally.
+- Settings → Community account shows the name, an optional display name editor,
+  Sign out, and Delete community account, which removes the account and its
+  recipes on the server and revokes the Apple sign-in.
+- Unsigned simulator builds lack the entitlement: sign-in shows an error
+  instead of crashing.
+
 ## App Review notes
 
 - **AI:** only Apple's Foundation Models framework runs in the app. The optional
@@ -132,5 +157,12 @@ item before either syncs.
   also requires accepting the guidelines. Reports are reviewed within 24 hours;
   Settings links the guidelines and the contact address. Code:
   `Domain/CommunityModeration.swift`, `Features/Community/CommunitySafety.swift`.
+- **Sign in with Apple (4.8, 5.1.1(v)):** sign-in is only needed to publish
+  recipes; browsing, saving and reporting work without an account. The app uses
+  the system Sign in with Apple button, requests only the name, and never asks for
+  a name or email afterwards (the name comes from Apple, or "Community cook"). A
+  display name can optionally be changed in Settings. Settings → Community account
+  → **Delete community account** deletes the account and everything it published
+  on the server and revokes the Apple tokens through Apple's REST API.
 - **Privacy:** barcode lookups send only the barcode to Open Food Facts. Kitchen
   data stays on the device, in the person's iCloud, or on their own server.

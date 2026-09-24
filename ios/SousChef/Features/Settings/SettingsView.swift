@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @Environment(Kitchen.self) private var kitchen
     @Environment(CommunityModeration.self) private var moderation
+    @Environment(CommunityAccount.self) private var account
     @Environment(\.dismiss) private var dismiss
     @AppStorage("icloud.enabled") private var iCloudEnabled = true
     @State private var connecting = false
@@ -102,16 +103,18 @@ struct SettingsView: View {
                 Section {
                     Toggle(isOn: $offEnabled) { Label("Open Food Facts lookups", systemImage: "barcode") }
                         .onChange(of: offEnabled) { _, value in OpenFoodFacts.enabled = value }
-                    TextField("Community address (https://…convex.site)", text: $communityURL)
+                    TextField("Custom community address (optional)", text: $communityURL)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .onSubmit { CommunityService.directURL = communityURL.trimmingCharacters(in: .whitespaces) }
+                        .onSubmit(saveCommunityURL)
                 } header: {
                     Eyebrow("Services")
                 } footer: {
-                    Text("Barcode lookups send only the barcode to Open Food Facts. The community address is only needed without a connected server.")
+                    Text("Barcode lookups send only the barcode to Open Food Facts. Leave the community address empty to use the Sous Chef recipe community; a connected server uses its own.")
                 }
+
+                CommunityAccountSection()
 
                 Section {
                     NavigationLink { CommunityModerationSettingsView() } label: {
@@ -164,6 +167,12 @@ struct SettingsView: View {
             }
             .task { await server.refreshHouseholds() }
         }
+    }
+
+    private func saveCommunityURL() {
+        CommunityService.directURL = communityURL.trimmingCharacters(in: .whitespaces)
+        // A community account belongs to one community.
+        if let session = account.session, session.origin != CommunityService.communityURL?.absoluteString { account.signOut() }
     }
 
     private var iCloudStatus: String {

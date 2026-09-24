@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Testing
 @testable import SousChef
@@ -345,5 +346,107 @@ struct CommunityModerationTests {
         #expect(report.body.contains("Note: Links to a shop"))
         let url = try #require(report.mailtoURL)
         #expect(url.absoluteString.hasPrefix("mailto:george@georgevina.com?subject="))
+    }
+}
+
+final class MemorySecretStore: SecretStore {
+    var items: [String: Data] = [:]
+    func read(_ account: String) -> Data? { items[account] }
+    func write(_ data: Data, account: String) { items[account] = data }
+    func delete(_ account: String) { items[account] = nil }
+}
+
+struct CommunityAccountTests {
+    private func isolatedDefaults() -> UserDefaults {
+        let name = "CommunityAccountTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
+    private let session = CommunitySession(token: "token-1", userID: "user_1", name: "Ada", appleUserID: "000123.abc", origin: "https://example.convex.site")
+
+    @Test func noncesAreRandomAndHashedAsHex() {
+        let nonce = AppleNonce.random()
+        #expect(nonce.count == 32)
+        #expect(nonce != AppleNonce.random())
+        #expect(nonce.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" })
+        #expect(AppleNonce.sha256("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
+
+    @Test func buildsTheAppleSessionRequest() throws {
+        let request = try CommunityAPI.sessionRequest(URL(string: "https://example.convex.site")!, identityToken: "id.token.sig",
+                                                      authorizationCode: "code", rawNonce: "raw", fullName: nil)
+        #expect(request.url?.absoluteString == "https://example.convex.site/api/v1/apple/session")
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+        let httpBody = try #require(request.httpBody)
+        let body = try #require(JSONSerialization.jsonObject(with: httpBody) as? [String: Any])
+        #expect(body["identityToken"] as? String == "id.token.sig")
+        #expect(body["authorizationCode"] as? String == "code")
+        #expect(body["nonce"] as? String == "raw")
+        #expect(body["fullName"] == nil)
+    }
+
+    @Test func buildsThePublishPayload() throws {
+        let snapshot = CommunitySnapshot(title: "  Tomato soup ", summary: " ", tags: ["quick", " "], servings: 4, totalTimeMinutes: 0,
+                                         sourceURL: "javascript:alert(1)", photo: nil,
+                                         ingredients: [Ingredient(name: "Tomatoes", quantity: 800, unit: "g", note: "ripe"), Ingredient(name: "  ")],
+                                         steps: [RecipeStep(text: "Simmer."), RecipeStep(text: "")])
+        let id = UUID()
+        let payload = PublishPayload(id: nil, sourceKey: PublishPayload.sourceKey(for: id), snapshot: snapshot, visibility: "public")
+        #expect(payload.sourceKey == PublishPayload.sourceKey(for: id))
+        #expect(payload.sourceKey.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil)
+
+        let request = try CommunityAPI.request(URL(string: "https://example.convex.site")!, "api/v1/publish", token: "secret", body: payload)
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
+        let data = try #require(request.httpBody)
+        #expect(String(decoding: data, as: UTF8.self).contains("null") == false)
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(json["id"] == nil)
+        #expect(json["visibility"] as? String == "public")
+        let body = try #require(json["snapshot"] as? [String: Any])
+        #expect(body["version"] as? Int == 1)
+        #expect(body["title"] as? String == "Tomato soup")
+        #expect(body["description"] == nil)
+        #expect(body["tags"] as? [String] == ["quick"])
+        #expect(body["servings"] as? Int == 4)
+        #expect(body["totalTimeMinutes"] == nil)
+        #expect(body["sourceUrl"] == nil)
+        let ingredients = try #require(body["ingredients"] as? [[String: Any]])
+        #expect(ingredients.count == 1)
+        #expect(ingredients[0]["name"] as? String == "Tomatoes")
+        #expect(ingredients[0]["note"] as? String == "ripe")
+        #expect(ingredients[0]["id"] == nil)
+        #expect((body["steps"] as? [[String: Any]])?.count == 1)
+    }
+
+    @Test func persistsTheSessionAndForgetsItOnSignOut() {
+        let store = MemorySecretStore()
+        let defaults = isolatedDefaults()
+        let account = CommunityAccount(store: store, defaults: defaults, observeRevocation: false)
+        #expect(account.isSignedIn == false)
+        account.save(session)
+
+        let relaunched = CommunityAccount(store: store, defaults: defaults, observeRevocation: false)
+        #expect(relaunched.session == session)
+
+        relaunched.signOut()
+        #expect(relaunched.isSignedIn == false)
+        #expect(store.items.isEmpty)
+        #expect(CommunityAccount(store: store, defaults: defaults, observeRevocation: false).session == nil)
+    }
+
+    @Test func freshInstallIgnoresLeftoverKeychainSession() throws {
+        let store = MemorySecretStore()
+        store.write(try JSONEncoder().encode(session), account: "community.session")
+        let account = CommunityAccount(store: store, defaults: isolatedDefaults(), observeRevocation: false)
+        #expect(account.session == nil)
+        #expect(store.items.isEmpty)
+    }
+
+    @Test func cancellingSignInShowsNoError() {
+        #expect(CommunitySignInButton.message(for: ASAuthorizationError(.canceled)) == nil)
+        #expect(CommunitySignInButton.message(for: ASAuthorizationError(.unknown)) != nil)
     }
 }

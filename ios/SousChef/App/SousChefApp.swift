@@ -5,6 +5,7 @@ import SwiftUI
 struct SousChefApp: App {
     @State private var kitchen = Kitchen(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
     @State private var moderation = CommunityModeration.shared
+    @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -12,12 +13,17 @@ struct SousChefApp: App {
             RootView()
                 .environment(kitchen)
                 .environment(moderation)
+                .environment(account)
                 .modelContainer(kitchen.container)
                 .tint(.brand)
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
+                .task { await account.checkCredentialState() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await kitchen.server.syncNow() } }
+            if phase == .active {
+                Task { await kitchen.server.syncNow() }
+                Task { await account.checkCredentialState() }
+            }
         }
     }
 }

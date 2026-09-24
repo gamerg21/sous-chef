@@ -238,7 +238,7 @@ struct RecipeDetailView: View {
                     Button { chatting = true } label: { Label("Ask Sous Chef", systemImage: "apple.intelligence") }
                 }
                 ShareLink(item: shareText, subject: Text(recipe.title)) { Label("Share", systemImage: "square.and.arrow.up") }
-                if kitchen.server.isConnected {
+                if kitchen.server.isConnected || CommunityService.isConfigured {
                     Button { publishing = true } label: { Label("Publish to community", systemImage: "person.2.badge.plus") }
                 }
                 Divider()

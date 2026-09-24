@@ -1,18 +1,27 @@
 import { v } from 'convex/values';
-import { action, internalMutation, internalQuery, mutation, query } from './_generated/server';
+import { action, internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server';
+import type { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { getAuthUserId } from './helpers';
 import { snapshotValidator, parseSnapshot } from '../src/lib/community-contract';
 import { checkAndRecordRateLimit } from './rateLimit';
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
+const TOKEN_LIFETIME_MS=90*86400000;
+const MAX_TOKENS=20;
+/** A new random publisher token; only its hash is stored. */
+export const newPublisherToken=()=>Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
+/** Stores a publisher token hash. `replaceOldest` retires the oldest token at the limit instead of refusing. */
+export async function storePublisherToken(ctx:MutationCtx,userId:Id<'users'>,hash:string,{replaceOldest=false}:{replaceOldest?:boolean}={}){
+  const now=Date.now();const old=await ctx.db.query('hubTokens').withIndex('by_userId',q=>q.eq('userId',userId)).take(100);
+  const active=[];for(const token of old){if(token.expires<=now)await ctx.db.delete(token._id);else active.push(token);}
+  if(active.length>=MAX_TOKENS){if(!replaceOldest)throw new Error('Revoke older community connections first');for(const token of active.slice(0,active.length-MAX_TOKENS+1))await ctx.db.delete(token._id);}
+  await ctx.db.insert('hubTokens',{userId,hash,expires:now+TOKEN_LIFETIME_MS});
+}
 export const storeToken=internalMutation({args:{hash:v.string()},returns:v.null(),handler:async(ctx,{hash})=>{
-  const userId=await getAuthUserId(ctx);
-  const old=await ctx.db.query('hubTokens').withIndex('by_userId',q=>q.eq('userId',userId)).take(100);
-  if(old.length>=20)throw new Error('Revoke older community connections first');
-  await ctx.db.insert('hubTokens',{userId,hash,expires:Date.now()+90*86400000});return null;
+  await storePublisherToken(ctx,await getAuthUserId(ctx),hash);return null;
 }});
 export const issueToken=action({args:{},returns:v.string(),handler:async ctx=>{
-  const token=Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const token=newPublisherToken();
   await ctx.runMutation(internal.hub.storeToken,{hash:await hash(token)});return token;
 }});
 export const revokeTokens=mutation({args:{},returns:v.null(),handler:async ctx=>{const userId=await getAuthUserId(ctx);const tokens=await ctx.db.query('hubTokens').withIndex('by_userId',q=>q.eq('userId',userId)).take(100);for(const token of tokens)await ctx.db.delete(token._id);return null;}});

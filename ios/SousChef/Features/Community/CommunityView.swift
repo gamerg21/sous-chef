@@ -229,16 +229,22 @@ struct CommunityRecipeView: View {
     }
 }
 
-/// Publishing runs through the connected server, which holds the community account.
+/// With a connected server, publishing runs through the server's community
+/// connection. Otherwise it goes straight to the community with the person's
+/// Sign in with Apple account.
 struct PublishRecipeSheet: View {
     let recipe: Recipe
     @Environment(Kitchen.self) private var kitchen
     @Environment(CommunityModeration.self) private var moderation
+    @Environment(CommunityAccount.self) private var account
     @Environment(\.dismiss) private var dismiss
     @State private var state: (configured: Bool, connected: Bool)?
     @State private var visibility = "public"
     @State private var working = false
     @State private var message: String?
+    @State private var signInError: String?
+
+    private var viaServer: Bool { kitchen.server.isConnected }
 
     var body: some View {
         NavigationStack {
@@ -249,33 +255,32 @@ struct PublishRecipeSheet: View {
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
-                } else if let state {
-                    if !state.configured {
-                        Text("Your Sous Chef server isn't linked to a recipe community. Set COMMUNITY_API_URL on the server to enable it.")
-                    } else if !state.connected {
-                        Text("Connect your community account on the web app (Community → Connect), then come back to publish.")
+                } else if viaServer {
+                    if let state {
+                        if !state.configured {
+                            Text("Your Sous Chef server isn't linked to a recipe community. Set COMMUNITY_API_URL on the server to enable it.")
+                        } else if !state.connected {
+                            Text("Connect your community account on the web app (Community → Connect), then come back to publish.")
+                        } else {
+                            publishControls(canUnpublish: true)
+                        }
                     } else {
-                        Section {
-                            Picker("Visibility", selection: $visibility) {
-                                Text("Public").tag("public")
-                                Text("Unlisted").tag("unlisted")
-                            }
-                            .pickerStyle(.segmented)
-                        } footer: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Publishing shares the title, photo, ingredients and steps. Private notes and pantry links stay in your kitchen.")
-                                Text("Everything you publish must follow the [community guidelines](https://sous-chef-website.vercel.app/community-guidelines/).")
-                            }
-                        }
-                        Section {
-                            Button("Publish \(recipe.title)") { Task { await publish() } }
-                                .disabled(working)
-                            Button("Unpublish", role: .destructive) { Task { await unpublish() } }
-                                .disabled(working)
-                        }
+                        ProgressView()
                     }
+                } else if !CommunityService.isConfigured {
+                    Text("Add a community address in Settings to publish recipes.")
+                } else if let session = account.session {
+                    publishControls(canUnpublish: account.publicationID(for: recipe) != nil, author: session.name)
                 } else {
-                    ProgressView()
+                    Section {
+                        CommunitySignInButton(error: $signInError)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        if let signInError { Text(signInError).font(.footnote).foregroundStyle(.orange) }
+                    } header: {
+                        Eyebrow("Community account")
+                    } footer: {
+                        Text("Sign in to publish recipes. Browsing doesn't need an account.")
+                    }
                 }
                 if let message { Text(message).foregroundStyle(.secondary) }
             }
@@ -283,6 +288,7 @@ struct PublishRecipeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } } }
             .task {
+                guard viaServer else { return }
                 struct Connection: Decodable { let configured: Bool; let connected: Bool }
                 if let result = try? await kitchen.server.client?.call("community:connection", as: Connection.self) {
                     state = (result.configured, result.connected)
@@ -294,10 +300,44 @@ struct PublishRecipeSheet: View {
         .presentationDetents(moderation.hasAcceptedGuidelines ? [.medium, .large] : [.large])
     }
 
+    @ViewBuilder
+    private func publishControls(canUnpublish: Bool, author: String? = nil) -> some View {
+        Section {
+            Picker("Visibility", selection: $visibility) {
+                Text("Public").tag("public")
+                Text("Unlisted").tag("unlisted")
+            }
+            .pickerStyle(.segmented)
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                if let author { Text("Published as \(author).") }
+                Text("Publishing shares the title, photo, ingredients and steps. Private notes and pantry links stay in your kitchen.")
+                Text("Everything you publish must follow the [community guidelines](https://sous-chef-website.vercel.app/community-guidelines/).")
+            }
+        }
+        Section {
+            Button("Publish \(recipe.title)") { Task { await publish() } }
+                .disabled(working)
+            if canUnpublish {
+                Button("Unpublish", role: .destructive) { Task { await unpublish() } }
+                    .disabled(working)
+            }
+        }
+    }
+
     private func publish() async {
         guard moderation.hasAcceptedGuidelines else { return }
         working = true
         defer { working = false }
+        guard viaServer else {
+            do {
+                try await account.publish(recipe, visibility: visibility)
+                message = "Published."
+            } catch {
+                message = error.localizedDescription
+            }
+            return
+        }
         await kitchen.server.syncNow()
         guard let id = recipe.serverID, let client = kitchen.server.client else {
             message = "Sync this recipe to your server first."
@@ -314,9 +354,13 @@ struct PublishRecipeSheet: View {
     private func unpublish() async {
         working = true
         defer { working = false }
-        guard let id = recipe.serverID, let client = kitchen.server.client else { return }
         do {
-            _ = try await client.call("community:unpublishRecipe", ["recipeId": id])
+            if viaServer {
+                guard let id = recipe.serverID, let client = kitchen.server.client else { return }
+                _ = try await client.call("community:unpublishRecipe", ["recipeId": id])
+            } else {
+                try await account.unpublish(recipe)
+            }
             message = "Removed from the community."
         } catch {
             message = error.localizedDescription
