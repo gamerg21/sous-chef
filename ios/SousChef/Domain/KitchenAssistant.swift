@@ -156,4 +156,47 @@ extension Kitchen {
         guard items.count > limit else { return ListFormatter.localizedString(byJoining: items) }
         return ListFormatter.localizedString(byJoining: Array(items.prefix(limit)) + ["\(items.count - limit) more"])
     }
+
+    // MARK: Saving recipes
+
+    /// The link to import when text handed to Siri is really just a link,
+    /// perhaps with the page title ("Million Dollar Soup https://…"). Recipe
+    /// text that merely cites its source stays text.
+    nonisolated static func recipeLink(in text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.components(separatedBy: .newlines).count <= 2,
+              let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
+        let links = detector.matches(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed))
+            .compactMap(\.url)
+            .filter { ["http", "https"].contains($0.scheme?.lowercased() ?? "") }
+        return links.count == 1 ? links[0] : nil
+    }
+
+    /// The same page whatever the "www.", trailing slash or tracking
+    /// parameters, so saving a link twice doesn't duplicate the recipe.
+    nonisolated static func pageKey(_ url: URL) -> String {
+        guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url.absoluteString }
+        let host = (parts.host ?? "").lowercased().replacingOccurrences(of: #"^www\."#, with: "", options: .regularExpression)
+        var path = parts.path
+        while path.hasSuffix("/") { path.removeLast() }
+        parts.queryItems = parts.queryItems?.filter { !$0.name.lowercased().hasPrefix("utm_") && !["fbclid", "gclid"].contains($0.name.lowercased()) }
+        let query = (parts.queryItems ?? []).isEmpty ? "" : "?" + (parts.percentEncodedQuery ?? "")
+        return host + path + query
+    }
+
+    /// A saved recipe imported from the same page.
+    func recipe(importedFrom url: URL) -> Recipe? {
+        let key = Self.pageKey(url)
+        return fetch(Recipe.self).first { $0.sourceURL.flatMap(URL.init(string:)).map(Self.pageKey) == key }
+    }
+
+    /// A recipe read from a page or pasted text, ready to save without the
+    /// editor: nil when no ingredients were found, and titled if the source
+    /// had no title.
+    nonisolated static func readyToSave(_ draft: RecipeDraft) -> RecipeDraft? {
+        guard draft.ingredients.contains(where: { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }) else { return nil }
+        var draft = draft
+        if draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { draft.title = "Untitled Recipe" }
+        return draft
+    }
 }

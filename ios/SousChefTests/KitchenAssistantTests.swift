@@ -182,4 +182,35 @@ struct KitchenAssistantTests {
         ingredient.mappingText = "Yellow onion"
         #expect(ingredient.pantryName == "Yellow onion")
     }
+
+    @Test func findsALinkOnlyWhenTheTextIsJustALink() {
+        let link = "https://www.allrecipes.com/recipe/284447/million-dollar-soup/"
+        #expect(Kitchen.recipeLink(in: link)?.absoluteString == link)
+        #expect(Kitchen.recipeLink(in: "Million Dollar Soup\n\(link)")?.absoluteString == link)
+        #expect(Kitchen.recipeLink(in: "Soup\nIngredients\n2 potatoes\nSteps\nSimmer.\nFrom \(link)") == nil)
+        #expect(Kitchen.recipeLink(in: "\(link) and https://example.com/other") == nil)
+        #expect(Kitchen.recipeLink(in: "2 cups flour") == nil)
+    }
+
+    @Test func recognizesARecipeAlreadyImportedFromThePage() {
+        let kitchen = Kitchen(inMemory: true)
+        var draft = RecipeDraft(title: "Million Dollar Soup")
+        draft.ingredients = [Ingredient(name: "Potatoes", quantity: 2, unit: "each")]
+        draft.sourceURL = "https://www.allrecipes.com/recipe/284447/million-dollar-soup/"
+        let saved = kitchen.save(draft)
+
+        let shared = URL(string: "https://allrecipes.com/recipe/284447/million-dollar-soup?utm_source=share")!
+        #expect(kitchen.recipe(importedFrom: shared)?.uuid == saved.uuid)
+        #expect(kitchen.recipe(importedFrom: URL(string: "https://allrecipes.com/recipe/1/other-soup/")!) == nil)
+        #expect(Kitchen.pageKey(URL(string: "https://example.com/recipe?id=4")!) != Kitchen.pageKey(URL(string: "https://example.com/recipe?id=5")!))
+    }
+
+    @Test func savesImportsOnlyWhenIngredientsWereFound() {
+        #expect(Kitchen.readyToSave(RecipeDraft(title: "Nothing here")) == nil)
+        var draft = RecipeDraft()
+        draft.ingredients = [Ingredient(name: "Rice", quantity: 1, unit: "cup")]
+        #expect(Kitchen.readyToSave(draft)?.title == "Untitled Recipe")
+        draft.title = "Rice"
+        #expect(Kitchen.readyToSave(draft)?.title == "Rice")
+    }
 }

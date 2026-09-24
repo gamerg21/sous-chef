@@ -111,4 +111,23 @@ final class SiriIntentsTests: XCTestCase {
         XCTAssertTrue(app.buttons["nextStep"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Spinach Pasta"].exists)
     }
+
+    func testSavesRecipeTextAndFindsItByName() async throws {
+        let text = """
+        Lemon Rice
+        Ingredients
+        1 cup rice
+        2 cups water
+        1 lemon
+        Steps
+        Simmer the rice in the water for 15 minutes.
+        Stir in the lemon juice.
+        """
+        let result = try await definitions.intents["SaveRecipeFromTextIntent"].makeIntent(text: text).run()
+        let saved: AnyAppEntity = try result.value
+        let title: String = try saved.title
+        XCTAssertFalse(title.isEmpty)
+        let found = try await definitions.entities["RecipeEntity"].entities(matching: title)
+        XCTAssertEqual(found.count, 1)
+    }
 }

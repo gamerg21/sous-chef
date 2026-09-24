@@ -1,7 +1,8 @@
 import AppIntents
 
 /// Spoken phrases that work with Siri as soon as the app is installed.
-/// Apple allows ten; the rest of the intents appear in Shortcuts.
+/// Apple allows ten; the rest of the intents, including Start Cooking and
+/// Save Recipe from Text, appear in Shortcuts.
 nonisolated struct SousChefShortcuts: AppShortcutsProvider {
     static let shortcutTileColor: ShortcutTileColor = .orange
 
@@ -55,10 +56,12 @@ nonisolated struct SousChefShortcuts: AppShortcutsProvider {
             "Shop for \(\.$recipe) in \(.applicationName)",
         ], shortTitle: "Shop for a Recipe", systemImageName: "list.bullet.clipboard")
 
-        AppShortcut(intent: StartCookingIntent(), phrases: [
-            "Start cooking \(\.$recipe) in \(.applicationName)",
-            "Cook \(\.$recipe) with \(.applicationName)",
-        ], shortTitle: "Start Cooking", systemImageName: "flame")
+        AppShortcut(intent: SaveRecipeFromLinkIntent(), phrases: [
+            "Save this recipe to \(.applicationName)",
+            "Add this recipe to \(.applicationName)",
+            "Save a recipe to \(.applicationName)",
+            "Import a recipe into \(.applicationName)",
+        ], shortTitle: "Save Recipe", systemImageName: "square.and.arrow.down")
 
         AppShortcut(intent: OpenRecipeIntent(), phrases: [
             "Open \(\.$target) in \(.applicationName)",

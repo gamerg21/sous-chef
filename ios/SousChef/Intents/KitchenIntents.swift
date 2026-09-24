@@ -10,11 +10,15 @@ import SwiftUI
 nonisolated enum KitchenIntentError: Error, CustomLocalizedStringResourceConvertible {
     case recipeMissing
     case aiUnavailable(String)
+    case importFailed(String)
+    case noRecipeInText
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .recipeMissing: "That recipe isn't in your kitchen anymore."
         case .aiUnavailable(let reason): "Sous Chef can't create recipes right now. \(reason)"
+        case .importFailed(let reason): "\(reason)"
+        case .noRecipeInText: "Sous Chef couldn't find any ingredients in that. Include the ingredient list and the steps."
         }
     }
 }
@@ -166,6 +170,82 @@ struct NewRecipeIdeaIntent: AppIntent {
         let saved = kitchen.save(draft)
         return .result(value: RecipeEntity(saved), dialog: "Saved \(saved.title) to your recipes.")
     }
+}
+
+/// Imports a recipe from a web page, such as one Siri found in a search or
+/// the page open in Safari. The URL parameter is what lets Siri hand over a
+/// link it already has.
+struct SaveRecipeFromLinkIntent: AppIntent {
+    static let title: LocalizedStringResource = "Save Recipe from Link"
+    static let description = IntentDescription("Imports the recipe on a web page and saves it to your recipes.")
+    static let supportedModes: IntentModes = .background
+
+    @Parameter(title: "Link", requestValueDialog: "What's the link to the recipe?")
+    var link: URL
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Save the recipe at \(\.$link)")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<RecipeEntity> & ProvidesDialog {
+        let saved = try await saveRecipe(at: link)
+        return .result(value: saved.entity, dialog: "\(saved.dialog)")
+    }
+}
+
+/// Turns recipe text into a saved recipe: something copied, dictated, or
+/// passed along from another app. Text that's only a link imports the page.
+struct SaveRecipeFromTextIntent: AppIntent {
+    static let title: LocalizedStringResource = "Save Recipe from Text"
+    static let description = IntentDescription("Reads recipe text, like a copied or dictated recipe, and saves it to your recipes.")
+    static let supportedModes: IntentModes = .background
+
+    @Parameter(title: "Recipe Text", inputOptions: String.IntentInputOptions(multiline: true), requestValueDialog: "What's the recipe?")
+    var text: String
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Save \(\.$text) as a recipe")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<RecipeEntity> & ProvidesDialog {
+        if let link = Kitchen.recipeLink(in: text) {
+            let saved = try await saveRecipe(at: link)
+            return .result(value: saved.entity, dialog: "\(saved.dialog)")
+        }
+        let draft = await RecipeTextReader.read(text, ai: Kitchen.shared.ai)
+        let saved = try await saveImported(draft)
+        return .result(value: saved.entity, dialog: "\(saved.dialog)")
+    }
+}
+
+@MainActor
+private func saveRecipe(at link: URL) async throws -> (entity: RecipeEntity, dialog: String) {
+    let kitchen = Kitchen.shared
+    if let existing = kitchen.recipe(importedFrom: link) {
+        return (RecipeEntity(existing), "\(existing.title) is already in your recipes.")
+    }
+    do {
+        return try await saveImported(try await RecipeImporter.importRecipe(from: link.absoluteString, ai: kitchen.ai))
+    } catch let error as KitchenIntentError {
+        throw error
+    } catch {
+        throw KitchenIntentError.importFailed(error.localizedDescription)
+    }
+}
+
+/// Saves straight away, since the cook asked to save it, and refreshes the
+/// index so Siri can find the new recipe by name right after.
+@MainActor
+private func saveImported(_ draft: RecipeDraft) async throws -> (entity: RecipeEntity, dialog: String) {
+    guard let draft = Kitchen.readyToSave(draft) else { throw KitchenIntentError.noRecipeInText }
+    let kitchen = Kitchen.shared
+    let saved = kitchen.save(draft)
+    await KitchenIndex.refresh(kitchen)
+    let ingredients = saved.ingredients.count == 1 ? "1 ingredient" : "\(saved.ingredients.count) ingredients"
+    let check = draft.warnings.isEmpty ? "" : " Sous Chef had to guess at parts of it, so check it before cooking."
+    return (RecipeEntity(saved), "Saved \(saved.title) to your recipes with \(ingredients).\(check)")
 }
 
 /// A plain intent rather than `OpenIntent`: the system allows one open

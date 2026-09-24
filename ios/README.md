@@ -111,10 +111,14 @@ installed:
 | "I ran out of something in Sous Chef" | Empties the pantry item and adds it to the list; asks before acting on a close name match |
 | "Give me a new recipe idea in Sous Chef" | Apple Intelligence drafts a pantry-first recipe and saves it if you say yes |
 | "Shop for Pesto Pasta in Sous Chef" | Adds the recipe's missing ingredients to the list |
-| "Start cooking Pesto Pasta in Sous Chef" | Opens Cook mode |
+| "Save this recipe to Sous Chef" | Imports a recipe link, such as one Siri found or the page open in Safari, and saves it; a link already saved isn't duplicated |
 | "Open Pesto Pasta in Sous Chef" | Opens the recipe |
 
-"Check off" an item is available in Shortcuts. On iOS 27, recipes also adopt
+"Check off" an item, Start Cooking, and Save Recipe from Text (copied or
+dictated recipe text; text that's only a link imports the page) are available in
+Shortcuts. The save actions take a link or text parameter, which is what lets
+Siri pass along a recipe it found or content from the screen; whether it chains
+those steps is up to Siri. On iOS 27, recipes also adopt
 the `.system.open` schema, so Apple Intelligence can open them without an
 exact phrase. Recipes are indexed in Spotlight (Siri searches that index to
 find them), share as plain text, and the recipe screen tells Siri which recipe
