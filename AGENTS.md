@@ -37,6 +37,25 @@ and `convex/**/*.test.ts`. Documentation changes need `pnpm check:docs` and
 Backend deployment, frontend deployment, and end-to-end acceptance are separate.
 Do not deploy a community backend merely to test local kitchen/docs changes.
 
+## iOS versions and build numbers
+
+The iOS app's version (`MARKETING_VERSION`) and build number
+(`CURRENT_PROJECT_VERSION`) live in the SousChef target of
+`ios/SousChef.xcodeproj/project.pbxproj`, and that file is the source of truth.
+
+- Build numbers are plain integers that go up by one for every upload: 1, 2, 3.
+  Never use dates, timestamps, or command-line overrides such as
+  `CURRENT_PROJECT_VERSION=…`, and don't let Xcode's export options manage the
+  number (`manageAppVersionAndBuildNumber` stays `false`).
+- Before each TestFlight or App Store upload, increment the build number in the
+  project file and commit it with the upload, so the next upload continues from it.
+- When the version changes (for example 1.0.1 to 1.0.2), reset the build number to 1.
+- App Store Connect rejects a build number that isn't higher than the last one
+  uploaded for that version. If an upload is rejected or you don't know the last
+  number, ask the maintainer instead of guessing.
+- App Intent titles, descriptions and phrases can't mention Apple trademarks
+  such as "Apple" or "Siri"; uploads fail with ITMS-90626.
+
 ## Installed skills
 
 The canonical skill files live in `.agents/skills/`; `.claude/skills/` links to
