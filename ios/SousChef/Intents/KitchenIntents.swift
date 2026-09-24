@@ -146,7 +146,7 @@ struct SuggestRecipeIntent: AppIntent {
 
 struct NewRecipeIdeaIntent: AppIntent {
     static let title: LocalizedStringResource = "Create a Recipe Idea"
-    static let description = IntentDescription("Asks Apple Intelligence for a new recipe built around your pantry, then saves it if you like it.")
+    static let description = IntentDescription("Drafts a new recipe built around your pantry, then saves it if you like it.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(title: "Request", description: "Anything to steer the idea, like \"something spicy\" or \"ready in 20 minutes\".")
