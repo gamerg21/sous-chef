@@ -90,6 +90,48 @@ in the label text.
 Brands are stored on the device and in iCloud. The server keeps brands only on
 barcode records, so a connected server doesn't receive hand-entered brands.
 
+## Siri and Shortcuts
+
+`Intents/` exposes the kitchen through App Intents, so the same actions work
+in Siri, Shortcuts, Spotlight and the Action button. Everything runs on the
+device against the local store; no API key is involved.
+
+Apple's app schema domains don't include food, recipes or grocery lists, so
+these are custom intents. Siri reaches them through the App Shortcut phrases in
+`SousChefShortcuts.swift` (Apple allows ten), which work as soon as the app is
+installed:
+
+| Say | Intent |
+| --- | --- |
+| "What can I make with Sous Chef" | Ranks saved recipes by pantry coverage, favoring food that expires soon |
+| "What's in my fridge in Sous Chef" | Lists what's on hand, optionally by location |
+| "What's expiring in Sous Chef" | Food expiring in the next few days |
+| "Add to my Sous Chef shopping list" | Siri asks what; "milk, eggs and bread" becomes three items |
+| "What's on my Sous Chef shopping list" | Reads the open items |
+| "I ran out of something in Sous Chef" | Empties the pantry item and adds it to the list; asks before acting on a close name match |
+| "Give me a new recipe idea in Sous Chef" | Apple Intelligence drafts a pantry-first recipe and saves it if you say yes |
+| "Shop for Pesto Pasta in Sous Chef" | Adds the recipe's missing ingredients to the list |
+| "Start cooking Pesto Pasta in Sous Chef" | Opens Cook mode |
+| "Open Pesto Pasta in Sous Chef" | Opens the recipe |
+
+"Check off" an item is available in Shortcuts. On iOS 27, recipes also adopt
+the `.system.open` schema, so Apple Intelligence can open them without an
+exact phrase. Recipes are indexed in Spotlight (Siri searches that index to
+find them), share as plain text, and the recipe screen tells Siri which recipe
+"this recipe" means. The answers themselves live in
+`Domain/KitchenAssistant.swift` and are unit tested.
+
+`SousChefUITests` runs every intent out of process through Apple's App Intents
+Testing framework (iOS 27 simulator), against a kitchen seeded by the
+debug-only `ResetKitchenForTestsIntent`:
+
+```sh
+xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SousChefUITests test
+```
+
+Spoken phrases still need checking by voice on a device with Siri, since
+automated tests can't exercise speech recognition.
+
 ## Companion server sync
 
 `Server/CompanionServer.swift` talks to an existing Sous Chef server through the

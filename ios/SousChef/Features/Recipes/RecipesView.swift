@@ -11,6 +11,7 @@ struct RecipesView: View {
     @State private var creating: RecipeDraftSession?
     @State private var importMode: RecipeImportView.Mode?
     @State private var path = NavigationPath()
+    private let navigator = AppNavigator.shared
 
     enum Filter: Hashable {
         case all, favorites, ready, tag(String)
@@ -69,10 +70,18 @@ struct RecipesView: View {
             }
             .navigationTitle("Recipes")
             .searchable(text: $search, prompt: "Recipes, tags or ingredients")
-            .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
+            // A fresh view per recipe, so opening one from Siri over another
+            // doesn't carry over its servings or cook state.
+            .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0).id($0.uuid) }
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 ToolbarItem(placement: .topBarTrailing) { addMenu }
+            }
+            // Siri and Shortcuts open recipes through the navigator.
+            .task(id: navigator.recipeToOpen) {
+                guard let id = navigator.recipeToOpen else { return }
+                navigator.recipeToOpen = nil
+                if let recipe = recipes.first(where: { $0.uuid == id }) { path = NavigationPath([recipe]) }
             }
             .refreshable { await kitchen.server.syncNow() }
             .sheet(item: $creating) { session in

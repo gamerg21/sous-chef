@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct SousChefApp: App {
-    @State private var kitchen = Kitchen(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
+    @State private var kitchen = Kitchen.shared
     @State private var moderation = CommunityModeration.shared
     @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -24,6 +24,7 @@ struct SousChefApp: App {
                 Task { await kitchen.server.syncNow() }
                 Task { await account.checkCredentialState() }
             }
+            if phase != .inactive { Task { await KitchenIndex.refresh(kitchen) } }
         }
     }
 }
@@ -32,16 +33,34 @@ enum AppTab: String, Hashable {
     case pantry, recipes, cook, shopping, community
 }
 
+/// Where Siri and Shortcuts send the person when an intent opens the app.
+@Observable
+final class AppNavigator {
+    static let shared = AppNavigator()
+
+    /// `-startTab recipes` opens a tab directly, for screenshots.
+    var tab: AppTab = UserDefaults.standard.string(forKey: "startTab").flatMap(AppTab.init(rawValue:)) ?? .pantry
+    /// A recipe to push on the Recipes tab, taken by `RecipesView`.
+    var recipeToOpen: UUID?
+    /// A recipe to open straight into Cook mode, taken by its `RecipeDetailView`.
+    var recipeToCook: UUID?
+
+    func open(recipe id: UUID, cooking: Bool = false) {
+        tab = .recipes
+        recipeToCook = cooking ? id : nil
+        recipeToOpen = id
+    }
+}
+
 struct RootView: View {
     @Environment(Kitchen.self) private var kitchen
-    /// `-startTab recipes` opens a tab directly, for screenshots.
-    @State private var tab: AppTab = UserDefaults.standard.string(forKey: "startTab").flatMap(AppTab.init(rawValue:)) ?? .pantry
+    @Bindable private var navigator = AppNavigator.shared
     @State private var showSettings = false
     @AppStorage("onboarding.done") private var onboardingDone = false
     @Query(filter: #Predicate<ShoppingItem> { !$0.checked }) private var openShopping: [ShoppingItem]
 
     var body: some View {
-        TabView(selection: $tab) {
+        TabView(selection: $navigator.tab) {
             Tab("Pantry", systemImage: "cabinet", value: AppTab.pantry) {
                 PantryView(showSettings: $showSettings)
             }

@@ -39,6 +39,17 @@
                ReferencedContainer = "container:SousChef.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "5C0000000000000000000050"
+               BuildableName = "SousChefUITests.xctest"
+               BlueprintName = "SousChefUITests"
+               ReferencedContainer = "container:SousChef.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

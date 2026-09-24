@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftData
 import SwiftUI
 
@@ -107,6 +108,17 @@ struct RecipeDetailView: View {
             }
         }
         .onAppear { servings = servings ?? recipe.servings }
+        // "Start cooking …" from Siri, whether or not this recipe was already open.
+        .task(id: AppNavigator.shared.recipeToCook) {
+            guard AppNavigator.shared.recipeToCook == recipe.uuid else { return }
+            AppNavigator.shared.recipeToCook = nil
+            cooking = true
+        }
+        // Lets Siri resolve "this recipe" to the one on screen.
+        .userActivity(RecipeEntity.activityType) { activity in
+            activity.title = recipe.title
+            activity.appEntityIdentifier = EntityIdentifier(for: RecipeEntity.self, identifier: recipe.uuid)
+        }
     }
 
     private var header: some View {

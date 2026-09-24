@@ -17,6 +17,12 @@
 	     community (https://<deployment>.convex.site) before release. -->
 	<key>SousChefCommunityURL</key>
 	<string>https://silent-gerbil-530.convex.site</string>
+	<!-- Recipe screens advertise this activity so Siri knows which recipe
+	     "this recipe" means. -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.georgevina.souschef.recipe</string>
+	</array>
 	<!-- CloudKit pushes wake the app so iCloud changes arrive promptly. -->
 	<key>UIBackgroundModes</key>
 	<array>

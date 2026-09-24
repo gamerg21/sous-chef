@@ -10,6 +10,8 @@ import SwiftData
 /// companion server goes through here so tombstones and syncing stay right.
 @Observable
 final class Kitchen {
+    /// The kitchen the app and its Siri intents share. `-uiTesting` keeps it in memory.
+    static let shared = Kitchen(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
     static let cloudContainerID = "iCloud.com.georgevina.souschef"
 
     private(set) var container: ModelContainer
