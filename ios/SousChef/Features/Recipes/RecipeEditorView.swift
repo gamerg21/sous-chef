@@ -3,9 +3,15 @@ import SwiftData
 import SwiftUI
 
 struct RecipeEditorView: View {
-    @State var draft: RecipeDraft
+    @State private var draft: RecipeDraft
     let recipe: Recipe?
-    var onSave: (Recipe) -> Void = { _ in }
+    var onSave: (Recipe) -> Void
+
+    init(draft: RecipeDraft, recipe: Recipe?, onSave: @escaping (Recipe) -> Void = { _ in }) {
+        _draft = State(initialValue: draft)
+        self.recipe = recipe
+        self.onSave = onSave
+    }
 
     @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
@@ -36,7 +42,7 @@ struct RecipeEditorView: View {
 
                 Section {
                     PhotosPicker(selection: $photoItem, matching: .images) {
-                        RecipeImage(data: draft.photo, symbol: "camera")
+                        RecipeImage(data: draft.photo, symbol: "camera", maxPixel: 1200)
                             .frame(height: 170)
                             .frame(maxWidth: .infinity)
                             .clipShape(.rect(cornerRadius: 16, style: .continuous))
@@ -57,17 +63,17 @@ struct RecipeEditorView: View {
                         .font(.system(.title2, design: .rounded, weight: .bold))
                         .focused($focus, equals: .title)
                         .accessibilityIdentifier("recipeTitle")
-                    TextField("Short description", text: Binding(get: { draft.summary ?? "" }, set: { draft.summary = $0 }), axis: .vertical)
+                    TextField("Short description", text: $draft.summaryText, axis: .vertical)
                         .lineLimit(1...4)
                 } header: {
                     Eyebrow("Recipe")
                 }
 
                 Section {
-                    Stepper(value: Binding(get: { draft.servings ?? 0 }, set: { draft.servings = $0 == 0 ? nil : $0 }), in: 0...48) {
+                    Stepper(value: $draft.servingsCount, in: 0...48) {
                         LabeledContent("Servings", value: draft.servings.map(String.init) ?? "—")
                     }
-                    Stepper(value: Binding(get: { draft.totalTimeMinutes ?? 0 }, set: { draft.totalTimeMinutes = $0 == 0 ? nil : $0 }), in: 0...1440, step: 5) {
+                    Stepper(value: $draft.totalMinutes, in: 0...1440, step: 5) {
                         LabeledContent("Total time", value: draft.totalTimeMinutes.map { "\($0) min" } ?? "—")
                     }
                 } header: {
@@ -128,7 +134,7 @@ struct RecipeEditorView: View {
 
                 Section {
                     if !draft.tags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
+                        ScrollView(.horizontal) {
                             HStack {
                                 ForEach(draft.tags, id: \.self) { tag in
                                     Button { draft.tags.removeAll { $0 == tag } } label: { Chip(text: tag, systemImage: "xmark") }
@@ -136,6 +142,7 @@ struct RecipeEditorView: View {
                                 }
                             }
                         }
+                        .scrollIndicators(.hidden)
                     }
                     TextField("Add tag", text: $newTag)
                         .focused($focus, equals: .tag)
@@ -162,10 +169,10 @@ struct RecipeEditorView: View {
                 }
 
                 Section {
-                    TextField("Source link", text: Binding(get: { draft.sourceURL ?? "" }, set: { draft.sourceURL = $0 }))
+                    TextField("Source link", text: $draft.sourceText)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
-                    TextField("Notes", text: Binding(get: { draft.notes ?? "" }, set: { draft.notes = $0 }), axis: .vertical)
+                    TextField("Notes", text: $draft.notesText, axis: .vertical)
                         .lineLimit(2...6)
                 } header: {
                     Eyebrow("Source & notes")
@@ -231,9 +238,15 @@ struct RecipeEditorView: View {
 }
 
 struct IngredientEditor: View {
-    @State var ingredient: Ingredient
+    @State private var ingredient: Ingredient
     let pantryNames: [String]
     let onSave: (Ingredient) -> Void
+
+    init(ingredient: Ingredient, pantryNames: [String], onSave: @escaping (Ingredient) -> Void) {
+        _ingredient = State(initialValue: ingredient)
+        self.pantryNames = pantryNames
+        self.onSave = onSave
+    }
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -244,11 +257,11 @@ struct IngredientEditor: View {
                         .font(.title3.weight(.semibold))
                     TextField("Amount", value: $ingredient.quantity, format: .number.precision(.fractionLength(0...3)))
                         .keyboardType(.decimalPad)
-                    UnitPicker(unit: Binding(get: { ingredient.unit ?? "" }, set: { ingredient.unit = $0.isEmpty ? nil : $0 }), allowNone: true)
-                    TextField("Note (e.g. finely chopped)", text: Binding(get: { ingredient.note ?? "" }, set: { ingredient.note = $0.nilIfEmpty }))
+                    UnitPicker(unit: $ingredient.unitText, allowNone: true)
+                    TextField("Note (e.g. finely chopped)", text: $ingredient.noteText)
                 }
                 Section {
-                    Picker(selection: Binding(get: { ingredient.mappingLabel ?? "" }, set: { ingredient.mappingLabel = $0.isEmpty ? nil : $0 })) {
+                    Picker(selection: $ingredient.mappingText) {
                         Text("Same name").tag("")
                         ForEach(pantryNames, id: \.self) { Text($0).tag($0) }
                     } label: {

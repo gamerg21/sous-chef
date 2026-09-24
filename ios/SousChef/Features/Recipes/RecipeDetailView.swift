@@ -28,7 +28,7 @@ struct RecipeDetailView: View {
         let plan = plan
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                RecipeImage(data: recipe.photo)
+                RecipeImage(data: recipe.photo, maxPixel: 1600)
                     .frame(height: 280)
                     .frame(maxWidth: .infinity)
                     .clipped()
@@ -132,7 +132,7 @@ struct RecipeDetailView: View {
             if let author = recipe.communityAuthor {
                 Label("From the community · \(author)", systemImage: "person.2").font(.caption).foregroundStyle(.secondary)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     if let minutes = recipe.totalTimeMinutes { Chip(text: "\(minutes) min", systemImage: "timer") }
                     if let calories = recipe.caloriesKcal { Chip(text: "\(Int(calories)) kcal", systemImage: "flame", tint: .orange) }
@@ -140,6 +140,7 @@ struct RecipeDetailView: View {
                     ForEach(recipe.tags, id: \.self) { Chip(text: $0, systemImage: "number", tint: .secondary) }
                 }
             }
+            .scrollIndicators(.hidden)
             .scrollClipDisabled()
         }
     }
@@ -149,7 +150,7 @@ struct RecipeDetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Eyebrow("From your pantry", systemImage: "cabinet")
                 Spacer()
-                ReadinessBadge(plan: plan, total: recipe.ingredients.count)
+                ReadinessBadge(plan: recipe.ingredients.isEmpty ? nil : plan)
             }
             let total = recipe.ingredients.count
             if total == 0 {

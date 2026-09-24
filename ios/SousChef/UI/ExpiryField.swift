@@ -35,7 +35,7 @@ struct ExpiryField: View {
         .accessibilityIdentifier("expiryField")
 
         if open {
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(Self.shortcuts, id: \.days) { shortcut in
                         Button { pick(Self.day(in: shortcut.days)) } label: {
@@ -51,6 +51,7 @@ struct ExpiryField: View {
                 }
                 .padding(.vertical, 2)
             }
+            .scrollIndicators(.hidden)
             .scrollClipDisabled()
 
             DatePicker("Use by", selection: Binding(get: { date ?? Self.day(in: 0) }, set: { pick($0) }), displayedComponents: .date)

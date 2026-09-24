@@ -92,7 +92,8 @@ struct CookModeView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Eyebrow("Step \(index + 1) of \(steps.count)")
                 Text(step.text)
-                    .font(.system(size: 30, weight: .medium, design: .rounded))
+                    .font(.title.weight(.medium))
+                .fontDesign(.rounded)
                     .fixedSize(horizontal: false, vertical: true)
                 ForEach(CookTimer.durations(in: step.text), id: \.self) { seconds in
                     Button {
@@ -207,7 +208,7 @@ struct CookModeView: View {
     }
 
     private var timerStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack {
                 ForEach(timers) { timer in
                     TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -217,9 +218,11 @@ struct CookModeView: View {
                                 .symbolEffect(.wiggle, isActive: remaining == 0)
                             Text(remaining == 0 ? "\(timer.label) done" : CookTimer.clock(remaining))
                                 .font(.headline.monospacedDigit())
-                            Button {
+                            Button("Remove \(timer.label) timer", systemImage: "xmark.circle.fill") {
                                 timers.removeAll { $0.id == timer.id }
-                            } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                            }
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(.secondary)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -234,6 +237,7 @@ struct CookModeView: View {
             .padding(.horizontal)
             .padding(.vertical, 4)
         }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -246,7 +250,7 @@ struct CookTimer: Identifiable {
     func remaining(at date: Date) -> Int { max(0, seconds - Int(date.timeIntervalSince(started))) }
 
     static func clock(_ seconds: Int) -> String {
-        seconds >= 3600 ? String(format: "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60) : String(format: "%d:%02d", seconds / 60, seconds % 60)
+        Duration.seconds(seconds).formatted(.time(pattern: seconds >= 3600 ? .hourMinuteSecond : .minuteSecond))
     }
 
     static func describe(_ seconds: Int) -> String {

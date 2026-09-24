@@ -17,16 +17,18 @@ struct PhotoStrip: View {
     private var cameraAvailable: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 12) {
-                ForEach(photos.indices, id: \.self) { index in
-                    Image(uiImage: photos[index])
+                // Photos are identified by the image itself, not its position,
+                // so removing one never removes or animates its neighbour.
+                ForEach(photos.enumerated(), id: \.element) { index, photo in
+                    Image(uiImage: photo)
                         .resizable()
                         .scaledToFill()
                         .frame(width: 120, height: 160)
                         .clipShape(.rect(cornerRadius: 18, style: .continuous))
                         .overlay(alignment: .topTrailing) {
-                            Button { photos.remove(at: index) } label: {
+                            Button { photos.removeAll { $0 === photo } } label: {
                                 Image(systemName: "xmark.circle.fill").font(.title3).symbolRenderingMode(.palette)
                                     .foregroundStyle(.white, .black.opacity(0.5))
                             }
@@ -37,6 +39,7 @@ struct PhotoStrip: View {
                 if photos.count < maxCount { addTile }
             }
         }
+        .scrollIndicators(.hidden)
         .scrollClipDisabled()
         .fullScreenCover(isPresented: $showCamera) {
             CameraCapture { image in photos.append(image) }

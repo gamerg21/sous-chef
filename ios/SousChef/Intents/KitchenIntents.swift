@@ -139,7 +139,7 @@ struct SuggestRecipeIntent: AppIntent {
         var text = missing.isEmpty
             ? "You can make \(title) with what you have."
             : "\(title) is closest. You're missing \(Kitchen.spokenList(missing, limit: 3))."
-        if suggestion.usesExpiring > 0 { text += " It uses up food that expires soon." }
+        if !suggestion.usesExpiring.isEmpty { text += " It uses up food that expires soon." }
         return text
     }
 }

@@ -174,6 +174,9 @@ struct MiscTests {
     @Test func findsTimersInSteps() {
         #expect(CookTimer.durations(in: "Simmer for 10 minutes, then bake 1-2 hours.") == [600, 7200])
         #expect(CookTimer.durations(in: "Serve immediately.").isEmpty)
+        #expect(CookTimer.clock(65) == "1:05")
+        #expect(CookTimer.clock(600) == "10:00")
+        #expect(CookTimer.clock(3700) == "1:01:40")
     }
 
     @Test func detectsInsecureRemoteServers() throws {

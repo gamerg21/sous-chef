@@ -64,7 +64,7 @@ struct PantryItemEditor: View {
                         .textInputAutocapitalization(.words)
                         .accessibilityIdentifier("pantryBrand")
                     if !suggestions.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
+                        ScrollView(.horizontal) {
                             HStack {
                                 ForEach(suggestions, id: \.self) { suggestion in
                                     Button { name = suggestion } label: { Chip(text: suggestion, systemImage: "arrow.up.left") }
@@ -72,6 +72,7 @@ struct PantryItemEditor: View {
                                 }
                             }
                         }
+                        .scrollIndicators(.hidden)
                     }
                 } header: {
                     Eyebrow(item == nil ? "New item" : "Item")
@@ -111,7 +112,8 @@ struct PantryItemEditor: View {
                     HStack {
                         TextField("Barcode", text: $barcode)
                             .keyboardType(.numberPad)
-                        Button { scanning = true } label: { Image(systemName: "barcode.viewfinder") }
+                        Button("Scan barcode", systemImage: "barcode.viewfinder") { scanning = true }
+                            .labelStyle(.iconOnly)
                             .buttonStyle(.borderless)
                         if !barcode.isEmpty {
                             Button("Look up") { Task { await lookup(barcode) } }

@@ -55,6 +55,10 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   number, ask the maintainer instead of guessing.
 - App Intent titles, descriptions and phrases can't mention Apple trademarks
   such as "Apple" or "Siri"; uploads fail with ITMS-90626.
+- Upload with the checked-in `ios/ExportOptions.plist`:
+  `xcodebuild -exportArchive -archivePath <archive> -exportOptionsPlist ios/ExportOptions.plist -exportPath <dir> -allowProvisioningUpdates`.
+  Never add `testFlightInternalTestingOnly`: it permanently limits a build to
+  internal testers, so it can't go to external testers or App Review.
 
 ## Installed skills
 

@@ -16,40 +16,53 @@ extension Kitchen {
     /// On-hand items expiring by the end of the day `days` from now
     /// (including anything already past its date).
     func expiringSoon(within days: Int = 3, now: Date = Date()) -> [PantryItem] {
-        let limit = Calendar.current.date(byAdding: .day, value: days + 1, to: Calendar.current.startOfDay(for: now)) ?? now
-        return onHand().filter { ($0.expiresOn ?? .distantFuture) < limit }
+        Self.expiring(onHand(), within: days, now: now)
     }
 
-    struct RecipeSuggestion {
+    static func expiring(_ items: [PantryItem], within days: Int = 3, now: Date = Date()) -> [PantryItem] {
+        let limit = Calendar.current.date(byAdding: .day, value: days + 1, to: Calendar.current.startOfDay(for: now)) ?? now
+        return items.filter { $0.quantity > 0 && ($0.expiresOn ?? .distantFuture) < limit }
+    }
+
+    struct RecipeSuggestion: Identifiable {
         var recipe: Recipe
         var plan: CookingPlan
         /// Ingredients that draw on items expiring within three days.
-        var usesExpiring: Int
+        var usesExpiring: [String]
+
+        var id: UUID { recipe.uuid }
+        var missing: Int { plan.missingIngredients.count }
     }
 
-    /// Saved recipes ranked by how well the pantry covers them: nothing
-    /// missing first, then recipes that use up food about to expire, then
-    /// favorites, then whatever hasn't been cooked in a while.
-    func suggestRecipes(limit: Int = 3, now: Date = Date()) -> [RecipeSuggestion] {
-        let stock = stock()
-        let expiring = Set(expiringSoon(now: now).map { normalizeName($0.name) })
-        let suggestions = fetch(Recipe.self)
-            .filter { !$0.ingredients.isEmpty }
-            .map { recipe in
-                RecipeSuggestion(recipe: recipe, plan: CookingPlanner.plan(ingredients: recipe.ingredients, stock: stock),
-                                 usesExpiring: recipe.ingredients.filter { expiring.contains(normalizeName($0.pantryName)) }.count)
-            }
-            .filter { $0.plan.availableCount > 0 }
-        return suggestions.sorted { a, b in
-            if a.plan.missingIngredients.count != b.plan.missingIngredients.count {
-                return a.plan.missingIngredients.count < b.plan.missingIngredients.count
-            }
-            if a.usesExpiring != b.usesExpiring { return a.usesExpiring > b.usesExpiring }
-            if a.recipe.favorited != b.recipe.favorited { return a.recipe.favorited }
-            return (a.recipe.lastCookedAt ?? .distantPast) < (b.recipe.lastCookedAt ?? .distantPast)
+    /// Every recipe with ingredients, ranked by how well the pantry covers
+    /// it: nothing missing first, then recipes that use up food about to
+    /// expire, then favorites, then whatever hasn't been cooked in a while.
+    /// The Cook tab and Siri both use this order.
+    static func rankRecipes(_ recipes: [Recipe], pantry: [PantryItem], now: Date = Date()) -> [RecipeSuggestion] {
+        let stock = pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
+        let expiring = Set(Self.expiring(pantry, now: now).map { normalizeName($0.name) })
+        return recipes.compactMap { recipe -> RecipeSuggestion? in
+            let ingredients = recipe.ingredients
+            guard !ingredients.isEmpty else { return nil }
+            return RecipeSuggestion(recipe: recipe, plan: CookingPlanner.plan(ingredients: ingredients, stock: stock),
+                                    usesExpiring: ingredients.filter { expiring.contains(normalizeName($0.pantryName)) }.map(\.name))
         }
-        .prefix(limit)
-        .map { $0 }
+        .sorted { a, b in
+            if a.missing != b.missing { return a.missing < b.missing }
+            if a.usesExpiring.count != b.usesExpiring.count { return a.usesExpiring.count > b.usesExpiring.count }
+            if a.recipe.favorited != b.recipe.favorited { return a.recipe.favorited }
+            let aCooked = a.recipe.lastCookedAt ?? .distantPast, bCooked = b.recipe.lastCookedAt ?? .distantPast
+            if aCooked != bCooked { return aCooked < bCooked }
+            return a.recipe.title.localizedStandardCompare(b.recipe.title) == .orderedAscending
+        }
+    }
+
+    /// The best few recipes that use at least something from the pantry.
+    func suggestRecipes(limit: Int = 3, now: Date = Date()) -> [RecipeSuggestion] {
+        Self.rankRecipes(fetch(Recipe.self), pantry: fetch(PantryItem.self), now: now)
+            .filter { $0.plan.availableCount > 0 }
+            .prefix(limit)
+            .map { $0 }
     }
 
     func openShoppingItems() -> [ShoppingItem] {

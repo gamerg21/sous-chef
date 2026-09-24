@@ -11,26 +11,11 @@ struct CookView: View {
     @State private var cooking: Recipe?
     @State private var ideas = false
 
-    private struct Ranked: Identifiable {
-        let recipe: Recipe
-        let plan: CookingPlan
-        let usesExpiring: [String]
-        var id: UUID { recipe.uuid }
-        var missing: Int { plan.missingIngredients.count }
-    }
+    /// Ranking reruns only when recipes or the pantry change.
+    @State private var ranking = Memo<Int, [Kitchen.RecipeSuggestion]>()
 
-    private var ranked: [Ranked] {
-        let stock = pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
-        let expiring = Set(pantry.filter { $0.quantity > 0 && ($0.expiresOn.map { ExpiryLabel.days(until: $0) <= 4 } ?? false) }.map { normalizeName($0.name) })
-        return recipes.filter { !$0.ingredients.isEmpty }.map { recipe in
-            let uses = recipe.ingredients.filter { expiring.contains(normalizeName($0.pantryName)) }.map(\.name)
-            return Ranked(recipe: recipe, plan: CookingPlanner.plan(ingredients: recipe.ingredients, stock: stock), usesExpiring: uses)
-        }
-        .sorted {
-            if $0.missing != $1.missing { return $0.missing < $1.missing }
-            if $0.usesExpiring.count != $1.usesExpiring.count { return $0.usesExpiring.count > $1.usesExpiring.count }
-            return $0.recipe.title < $1.recipe.title
-        }
+    private var ranked: [Kitchen.RecipeSuggestion] {
+        ranking(Kitchen.readinessKey(recipes: recipes, pantry: pantry)) { Kitchen.rankRecipes(recipes, pantry: pantry) }
     }
 
     var body: some View {
@@ -98,7 +83,7 @@ struct CookView: View {
     }
 
     @ViewBuilder
-    private func section(_ title: String, symbol: String, items: [Ranked]) -> some View {
+    private func section(_ title: String, symbol: String, items: [Kitchen.RecipeSuggestion]) -> some View {
         if !items.isEmpty {
             Section {
                 ForEach(items) { item in

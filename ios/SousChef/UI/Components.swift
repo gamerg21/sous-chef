@@ -110,17 +110,30 @@ struct SettingsToolbarButton: ToolbarContent {
 struct RecipeImage: View {
     let data: Data?
     var symbol = "fork.knife"
+    /// Longest side of the decoded image, in pixels. Cards need far less
+    /// than the stored photo, which is up to 1600 px.
+    var maxPixel = 600
+    @State private var loaded: UIImage?
 
     var body: some View {
-        if let data, let image = UIImage(data: data) {
-            Image(uiImage: image).resizable().scaledToFill()
-        } else {
-            ZStack {
+        let image = loaded ?? data.flatMap { PhotoThumbnails.cached($0, maxPixel: maxPixel) }
+        ZStack {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
                 LinearGradient(colors: [Color.brand.opacity(0.28), Color.brand.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                Image(systemName: symbol)
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(Color.brand.opacity(0.7))
+                if data == nil {
+                    Image(systemName: symbol)
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundStyle(Color.brand.opacity(0.7))
+                        .accessibilityHidden(true)
+                }
             }
+        }
+        .task(id: data) {
+            loaded = nil
+            guard let data else { return }
+            loaded = await PhotoThumbnails.load(data, maxPixel: maxPixel)
         }
     }
 }

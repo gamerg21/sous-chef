@@ -20,6 +20,35 @@ struct RecipeDraft: Equatable {
     var warnings: [String] = []
 }
 
+/// Editor-friendly views of the optional fields: empty text or zero means
+/// "not set". `Kitchen.save` turns empty text back into nil.
+extension RecipeDraft {
+    var summaryText: String {
+        get { summary ?? "" }
+        set { summary = newValue }
+    }
+
+    var sourceText: String {
+        get { sourceURL ?? "" }
+        set { sourceURL = newValue }
+    }
+
+    var notesText: String {
+        get { notes ?? "" }
+        set { notes = newValue }
+    }
+
+    var servingsCount: Int {
+        get { servings ?? 0 }
+        set { servings = newValue == 0 ? nil : newValue }
+    }
+
+    var totalMinutes: Int {
+        get { totalTimeMinutes ?? 0 }
+        set { totalTimeMinutes = newValue == 0 ? nil : newValue }
+    }
+}
+
 /// Ingredient-line parsing ported from `src/lib/recipe-capture.ts`: it never
 /// invents an amount it cannot read.
 enum IngredientParser {

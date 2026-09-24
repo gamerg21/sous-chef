@@ -46,7 +46,7 @@ struct KitchenAssistantTests {
 
         let suggestions = kitchen.suggestRecipes()
         #expect(suggestions.map(\.recipe.title) == ["Spinach pasta", "Garlic pasta", "Pesto pasta"])
-        #expect(suggestions[0].usesExpiring == 1)
+        #expect(suggestions[0].usesExpiring == ["Spinach"])
         #expect(suggestions[2].plan.missingIngredients.map(\.name) == ["Basil"])
         #expect(SuggestRecipeIntent.sentence(for: suggestions[0]) == "You can make Spinach pasta with what you have. It uses up food that expires soon.")
         #expect(SuggestRecipeIntent.sentence(for: suggestions[2]) == "Pesto pasta is closest. You're missing Basil.")
@@ -123,5 +123,63 @@ struct KitchenAssistantTests {
         draft.steps = [RecipeStep(text: "Toast the bread.")]
         let entity = RecipeEntity(kitchen.save(draft))
         #expect(entity.plainText == "Toast\n\nCrisp.\n\nIngredients\n• 2 slice Bread\n\nSteps\n1. Toast the bread.")
+    }
+
+    @Test func cookTabRanksEveryRecipeTheSameWayAsSiri() {
+        let kitchen = Kitchen(inMemory: true)
+        _ = item(kitchen, "Pasta", 500, "g")
+        _ = recipe(kitchen, "Pasta", [("Pasta", 200, "g")])
+        _ = recipe(kitchen, "Steak", [("Steak", 1, "each")])
+        _ = recipe(kitchen, "Empty", [])
+        let ranked = Kitchen.rankRecipes(kitchen.fetch(Recipe.self), pantry: kitchen.fetch(PantryItem.self))
+        // The Cook tab keeps recipes that need a shop; Siri only suggests ones the pantry helps with.
+        #expect(ranked.map(\.recipe.title) == ["Pasta", "Steak"])
+        #expect(kitchen.suggestRecipes().map(\.recipe.title) == ["Pasta"])
+    }
+
+    @Test func readinessKeyChangesWhenIngredientsOrStockChange() {
+        let kitchen = Kitchen(inMemory: true)
+        let pasta = item(kitchen, "Pasta", 500, "g")
+        let dish = recipe(kitchen, "Pasta", [("Pasta", 200, "g")])
+        let key = { Kitchen.readinessKey(recipes: kitchen.fetch(Recipe.self), pantry: kitchen.fetch(PantryItem.self)) }
+        let original = key()
+        #expect(key() == original)
+
+        // Server sync replaces ingredients without touching updatedAt.
+        dish.ingredients = [Ingredient(name: "Pasta", quantity: 300, unit: "g")]
+        let edited = key()
+        #expect(edited != original)
+
+        pasta.quantity = 100
+        #expect(key() != edited)
+    }
+
+    @Test func memoRecomputesOnlyWhenTheKeyChanges() {
+        let memo = Memo<Int, Int>()
+        var runs = 0
+        #expect(memo(1) { runs += 1; return 10 } == 10)
+        #expect(memo(1) { runs += 1; return 20 } == 10)
+        #expect(memo(2) { runs += 1; return 30 } == 30)
+        #expect(runs == 2)
+    }
+
+    @Test func editorFieldsTreatBlankAsUnset() {
+        var draft = RecipeDraft(title: "Soup")
+        draft.servingsCount = 4
+        draft.totalMinutes = 0
+        draft.notesText = "Freezes well"
+        #expect(draft.servings == 4)
+        #expect(draft.totalTimeMinutes == nil)
+        #expect(draft.notes == "Freezes well")
+        draft.servingsCount = 0
+        #expect(draft.servings == nil)
+
+        var ingredient = Ingredient(name: "Onion")
+        ingredient.noteText = "finely chopped"
+        ingredient.unitText = ""
+        #expect(ingredient.note == "finely chopped")
+        #expect(ingredient.unit == nil)
+        ingredient.mappingText = "Yellow onion"
+        #expect(ingredient.pantryName == "Yellow onion")
     }
 }

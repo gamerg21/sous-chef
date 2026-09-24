@@ -135,7 +135,7 @@ struct CommunityRecipeView: View {
     private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                RecipeImage(data: recipe.imageData)
+                RecipeImage(data: recipe.imageData, maxPixel: 1600)
                     .frame(height: 240)
                     .frame(maxWidth: .infinity)
                     .clipShape(.rect(cornerRadius: 24, style: .continuous))

@@ -98,6 +98,22 @@ nonisolated struct Ingredient: Codable, Hashable, Identifiable {
     var mappingLabel: String?
 
     var pantryName: String { (mappingLabel?.isEmpty == false ? mappingLabel : nil) ?? name }
+
+    /// Editor-friendly views of the optional fields; empty text means "not set".
+    var unitText: String {
+        get { unit ?? "" }
+        set { unit = newValue.isEmpty ? nil : newValue }
+    }
+
+    var noteText: String {
+        get { note ?? "" }
+        set { note = newValue.isEmpty ? nil : newValue }
+    }
+
+    var mappingText: String {
+        get { mappingLabel ?? "" }
+        set { mappingLabel = newValue.isEmpty ? nil : newValue }
+    }
 }
 
 nonisolated struct RecipeStep: Codable, Hashable, Identifiable {

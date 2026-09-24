@@ -168,7 +168,7 @@ struct RecipeImportView: View {
                 .lineLimit(2...4)
                 .padding(14)
                 .background(.background.secondary, in: .rect(cornerRadius: 16, style: .continuous))
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal) {
                 HStack {
                     ForEach(ideaChips, id: \.self) { idea in
                         Button { preferences = preferences.isEmpty ? idea : "\(preferences), \(idea.lowercased())" } label: { Chip(text: idea, systemImage: "plus") }
@@ -176,6 +176,7 @@ struct RecipeImportView: View {
                     }
                 }
             }
+            .scrollIndicators(.hidden)
             .scrollClipDisabled()
             if case .unavailable(let reason) = kitchen.ai.engine {
                 ErrorBanner(message: "\(reason). You can also connect your Sous Chef server to use its AI provider.")

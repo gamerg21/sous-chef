@@ -21,20 +21,35 @@ struct RecipesView: View {
         Array(Set(recipes.flatMap(\.tags))).sorted().prefix(20).map { $0 }
     }
 
-    private var plans: [UUID: CookingPlan] {
-        let stock = pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
-        return Dictionary(uniqueKeysWithValues: recipes.map { ($0.uuid, CookingPlanner.plan(ingredients: $0.ingredients, stock: stock)) })
+    /// Pantry readiness and search text per recipe, rebuilt only when recipes
+    /// or the pantry change rather than on every keystroke.
+    private struct Readiness {
+        var plans: [UUID: CookingPlan] = [:]
+        var searchText: [UUID: String] = [:]
     }
 
-    private func visible(_ plans: [UUID: CookingPlan]) -> [Recipe] {
+    @State private var readinessCache = Memo<Int, Readiness>()
+
+    private var readiness: Readiness {
+        readinessCache(Kitchen.readinessKey(recipes: recipes, pantry: pantry)) {
+            let stock = pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
+            var readiness = Readiness()
+            for recipe in recipes {
+                let ingredients = recipe.ingredients
+                if !ingredients.isEmpty { readiness.plans[recipe.uuid] = CookingPlanner.plan(ingredients: ingredients, stock: stock) }
+                readiness.searchText[recipe.uuid] = ([recipe.title] + recipe.tags + ingredients.map(\.name)).joined(separator: "\n")
+            }
+            return readiness
+        }
+    }
+
+    private func visible(_ readiness: Readiness) -> [Recipe] {
         recipes.filter { recipe in
-            let matchesSearch = search.isEmpty || recipe.title.localizedStandardContains(search)
-                || recipe.tags.contains { $0.localizedStandardContains(search) }
-                || recipe.ingredients.contains { $0.name.localizedStandardContains(search) }
+            let matchesSearch = search.isEmpty || readiness.searchText[recipe.uuid, default: recipe.title].localizedStandardContains(search)
             let matchesFilter = switch filter {
             case .all: true
             case .favorites: recipe.favorited
-            case .ready: plans[recipe.uuid]?.missingIngredients.isEmpty == true && !recipe.ingredients.isEmpty
+            case .ready: readiness.plans[recipe.uuid]?.missingIngredients.isEmpty == true
             case .tag(let tag): recipe.tags.contains(tag)
             }
             return matchesSearch && matchesFilter
@@ -43,8 +58,9 @@ struct RecipesView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            let plans = plans
-            let shown = visible(plans)
+            let readiness = readiness
+            let plans = readiness.plans
+            let shown = visible(readiness)
             ScrollView {
                 if recipes.isEmpty {
                     emptyState.padding(.top, 60)
@@ -116,7 +132,7 @@ struct RecipesView: View {
     }
 
     private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 filterChip("All", .all, symbol: nil)
                 filterChip("Favorites", .favorites, symbol: "heart.fill")
@@ -124,6 +140,7 @@ struct RecipesView: View {
                 ForEach(tags, id: \.self) { filterChip($0, .tag($0), symbol: "number") }
             }
         }
+        .scrollIndicators(.hidden)
         .scrollClipDisabled()
     }
 
@@ -172,6 +189,7 @@ struct RecipeDraftSession: Identifiable {
 
 struct RecipeCard: View {
     let recipe: Recipe
+    /// Nil for recipes without ingredients.
     let plan: CookingPlan?
 
     var body: some View {
@@ -200,7 +218,7 @@ struct RecipeCard: View {
                         Label("\(minutes) min", systemImage: "timer").font(.caption2).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
-                    ReadinessBadge(plan: plan, total: recipe.ingredients.count)
+                    ReadinessBadge(plan: plan)
                 }
             }
             .padding(10)
@@ -212,11 +230,11 @@ struct RecipeCard: View {
 }
 
 struct ReadinessBadge: View {
+    /// Nil for recipes without ingredients, which show no badge.
     let plan: CookingPlan?
-    let total: Int
 
     var body: some View {
-        if let plan, total > 0 {
+        if let plan {
             if plan.missingIngredients.isEmpty {
                 Label("Ready", systemImage: "checkmark.circle.fill")
                     .font(.caption2.weight(.semibold))
