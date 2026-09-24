@@ -345,7 +345,7 @@ struct CommunityModerationTests {
         #expect(report.body.contains("Reason: Spam or scam"))
         #expect(report.body.contains("Note: Links to a shop"))
         let url = try #require(report.mailtoURL)
-        #expect(url.absoluteString.hasPrefix("mailto:george@georgevina.com?subject="))
+        #expect(url.absoluteString.hasPrefix("mailto:community-souschef@georgevina.com?subject="))
     }
 }
 

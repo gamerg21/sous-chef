@@ -1,9 +1,14 @@
+import AuthenticationServices
 import MessageUI
 import SwiftUI
 
 /// Community rules shown before any community content, and before publishing.
+/// Agreeing and signing in are one step; browsing without an account stays
+/// available because only publishing needs one.
 struct CommunityGuidelinesCard: View {
     @Environment(CommunityModeration.self) private var moderation
+    @Environment(CommunityAccount.self) private var account
+    @State private var signInError: String?
 
     private static let rules: [(String, String)] = [
         ("hand.raised", "No hateful, harassing, sexual, violent or illegal content."),
@@ -34,14 +39,31 @@ struct CommunityGuidelinesCard: View {
                 Label("Read the full guidelines", systemImage: "arrow.up.right.square")
             }
             .font(.callout.weight(.medium))
-            Button {
-                withAnimation { moderation.acceptGuidelines() }
-            } label: {
-                Text("Agree and continue").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+            if account.isSignedIn {
+                Button { accept() } label: {
+                    Text("Agree and continue").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+                }
+                .buttonStyle(.glassProminent)
+                .accessibilityIdentifier("agreeGuidelines")
+            } else {
+                CommunitySignInButton(error: $signInError, label: .continue) { accept() }
+                if let signInError { Text(signInError).font(.footnote).foregroundStyle(.orange) }
+                Button { accept() } label: {
+                    Text("Browse without an account").font(.callout.weight(.semibold)).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+                .accessibilityIdentifier("agreeGuidelines")
+                Text("By continuing, you agree to the community guidelines. You only need an account to publish recipes.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.glassProminent)
-            .accessibilityIdentifier("agreeGuidelines")
         }
+    }
+
+    private func accept() {
+        withAnimation { moderation.acceptGuidelines() }
     }
 }
 
@@ -135,6 +157,8 @@ struct ReportRecipeSheet: View {
                     }
                 }
             }
+            // The default translucent sheet let the hidden recipe show through.
+            .presentationBackground(Color(.systemGroupedBackground))
         }
     }
 
@@ -164,11 +188,26 @@ struct ReportRecipeSheet: View {
     }
 
     private var confirmation: some View {
-        ContentUnavailableView {
-            Label("Report received", systemImage: "checkmark.shield")
-        } description: {
+        VStack(spacing: 18) {
+            Image(systemName: "checkmark.shield.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(Color.brand)
+                .symbolEffect(.bounce, options: .nonRepeating)
+            Text("Report received").font(.title2.weight(.bold))
             Text(Self.thanks)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Button { dismiss() } label: {
+                Text("Done").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 4)
+            }
+            .buttonStyle(.glassProminent)
+            .padding(.top, 8)
         }
+        .padding(28)
+        .frame(maxWidth: 420)
+        .background(.background, in: .rect(cornerRadius: 28, style: .continuous))
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var fallback: some View {

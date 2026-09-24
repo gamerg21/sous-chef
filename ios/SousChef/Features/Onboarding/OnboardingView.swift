@@ -5,8 +5,24 @@ struct OnboardingView: View {
     let onFinish: () -> Void
     @Environment(Kitchen.self) private var kitchen
     @State private var connecting = false
+    /// `-onboardingPage 1` opens the iCloud page directly, for screenshots.
+    @State private var page = UserDefaults.standard.integer(forKey: "onboardingPage")
+    @State private var syncWithICloud = Kitchen.iCloudPreferred
 
     var body: some View {
+        Group {
+            if page == 0 { welcome } else { iCloudConsent }
+        }
+        .padding(28)
+        .animation(.snappy, value: page)
+        .sheet(isPresented: $connecting, onDismiss: {
+            if kitchen.server.isConnected { page = 1 }
+        }) {
+            ServerConnectView()
+        }
+    }
+
+    private var welcome: some View {
         VStack(spacing: 28) {
             Spacer()
             Image("Logo")
@@ -31,7 +47,7 @@ struct OnboardingView: View {
             Spacer()
             VStack(spacing: 12) {
                 Button {
-                    onFinish()
+                    page = 1
                 } label: {
                     Text("Start cooking").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
@@ -41,12 +57,46 @@ struct OnboardingView: View {
                     .font(.callout)
             }
         }
-        .padding(28)
-        .sheet(isPresented: $connecting, onDismiss: {
-            if kitchen.server.isConnected { onFinish() }
-        }) {
-            ServerConnectView()
+        .transition(.move(edge: .leading).combined(with: .opacity))
+    }
+
+    private var iCloudConsent: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            Image(systemName: "icloud.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(Color.brand)
+                .symbolEffect(.bounce, value: syncWithICloud)
+            VStack(spacing: 8) {
+                Text("Keep your kitchen in iCloud").font(.system(.title, design: .rounded, weight: .bold))
+                    .multilineTextAlignment(.center)
+                Text("Sync your pantry, recipes and shopping list across your iPhone and iPad.")
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 18) {
+                feature("lock.icloud", "Private to you", "Stored in your own iCloud. Sous Chef has no servers and can't see it.")
+                feature("arrow.triangle.2.circlepath.icloud", "Always up to date", "Changes on one device show up on the others.")
+                feature("gearshape", "Your choice", "Turn it off, or remove your kitchen from iCloud, anytime in Settings.")
+            }
+            .padding(.horizontal, 8)
+            Toggle(isOn: $syncWithICloud) { Label("Sync with iCloud", systemImage: "icloud").font(.headline) }
+                .padding(16)
+                .background(.background.secondary, in: .rect(cornerRadius: 20, style: .continuous))
+                .disabled(!kitchen.iCloudAvailable)
+                .accessibilityIdentifier("onboardingICloud")
+            Spacer()
+            Button {
+                kitchen.setICloud(syncWithICloud)
+                onFinish()
+            } label: {
+                Text("Continue").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+            }
+            .buttonStyle(.glassProminent)
+            .accessibilityIdentifier("finishOnboarding")
         }
+        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
     private func feature(_ symbol: String, _ title: String, _ detail: String) -> some View {

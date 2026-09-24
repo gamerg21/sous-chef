@@ -9,7 +9,7 @@ final class CommunityModeration {
     static let shared = CommunityModeration()
     static let guidelinesVersion = 1
     static let guidelinesURL = URL(string: "https://sous-chef-website.vercel.app/community-guidelines/")!
-    static let contactEmail = "george@georgevina.com"
+    static let contactEmail = "community-souschef@georgevina.com"
 
     private let defaults: UserDefaults
     private(set) var acceptedGuidelinesVersion: Int

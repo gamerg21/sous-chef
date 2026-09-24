@@ -5,13 +5,15 @@ import SwiftUI
 /// shares on first sign-in; nothing else is collected.
 struct CommunitySignInButton: View {
     @Binding var error: String?
+    var label: SignInWithAppleButton.Label = .signIn
+    var onSignedIn: () -> Void = {}
     @Environment(CommunityAccount.self) private var account
     @Environment(\.colorScheme) private var colorScheme
     @State private var nonce = ""
     @State private var working = false
 
     var body: some View {
-        SignInWithAppleButton(.signIn) { request in
+        SignInWithAppleButton(label) { request in
             nonce = AppleNonce.random()
             request.requestedScopes = [.fullName]
             request.nonce = AppleNonce.sha256(nonce)
@@ -39,6 +41,7 @@ struct CommunitySignInButton: View {
         do {
             try await account.completeSignIn(authorization, rawNonce: nonce, community: community)
             error = nil
+            onSignedIn()
         } catch {
             self.error = error.localizedDescription
         }

@@ -61,6 +61,8 @@ struct RootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
+        // Rebuild on the new store when iCloud sync is switched on or off.
+        .id(kitchen.storeGeneration)
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }

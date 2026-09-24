@@ -7,7 +7,9 @@ struct SettingsView: View {
     @Environment(CommunityModeration.self) private var moderation
     @Environment(CommunityAccount.self) private var account
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("icloud.enabled") private var iCloudEnabled = true
+    @State private var confirmICloudDelete = false
+    @State private var deletingICloud = false
+    @State private var iCloudMessage: String?
     @State private var connecting = false
     @State private var exportFile: ExportFile?
     @State private var importing = false
@@ -32,19 +34,38 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle(isOn: $iCloudEnabled) { Label("Sync with iCloud", systemImage: "icloud") }
+                    Toggle(isOn: Binding(get: { kitchen.usesICloud }, set: { kitchen.setICloud($0) })) {
+                        Label("Sync with iCloud", systemImage: "icloud")
+                    }
+                    .disabled(!kitchen.iCloudAvailable || deletingICloud)
                     LabeledContent("Status") {
                         HStack(spacing: 6) {
                             StatusDot(color: kitchen.usesICloud ? .green : .secondary)
                             Text(iCloudStatus)
                         }
                     }
+                    if kitchen.iCloudAvailable {
+                        Button(role: .destructive) { confirmICloudDelete = true } label: {
+                            HStack {
+                                Label("Remove kitchen from iCloud", systemImage: "icloud.slash")
+                                if deletingICloud { Spacer(); ProgressView() }
+                            }
+                        }
+                        .disabled(deletingICloud)
+                    }
+                    if let iCloudMessage { Text(iCloudMessage).font(.footnote).foregroundStyle(.secondary) }
                 } header: {
-                    Eyebrow("This device")
+                    Eyebrow("iCloud")
                 } footer: {
-                    Text(iCloudEnabled == kitchen.usesICloud
-                         ? "Your kitchen is stored on this device\(kitchen.usesICloud ? " and in your private iCloud, so it follows you to your other Apple devices" : ""). Sous Chef has no servers of its own."
-                         : "Restart Sous Chef to apply this change.")
+                    Text(kitchen.usesICloud
+                         ? "Your kitchen is stored on this device and in your private iCloud, so it follows you to your other Apple devices. Sous Chef has no servers of its own."
+                         : "Your kitchen is stored only on this device. Turn on iCloud to keep it on your other Apple devices too.")
+                }
+                .confirmationDialog("Remove your kitchen from iCloud?", isPresented: $confirmICloudDelete, titleVisibility: .visible) {
+                    Button("Remove from iCloud", role: .destructive) { Task { await deleteICloudData() } }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This turns off iCloud sync and deletes your pantry, recipes and shopping list from iCloud. This device keeps its copy. Other devices using your iCloud will clear theirs the next time they sync.")
                 }
 
                 Section {
@@ -175,7 +196,19 @@ struct SettingsView: View {
         if let session = account.session, session.origin != CommunityService.communityURL?.absoluteString { account.signOut() }
     }
 
+    private func deleteICloudData() async {
+        deletingICloud = true
+        defer { deletingICloud = false }
+        do {
+            try await kitchen.deleteICloudData()
+            iCloudMessage = "Your kitchen was removed from iCloud. It's still on this device."
+        } catch {
+            iCloudMessage = "Couldn't reach iCloud: \(error.localizedDescription)"
+        }
+    }
+
     private var iCloudStatus: String {
+        if !kitchen.iCloudAvailable { return "Not available in this build" }
         if kitchen.usesICloud { return FileManager.default.ubiquityIdentityToken == nil ? "On · sign in to iCloud to sync" : "On" }
         return "Off"
     }

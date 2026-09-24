@@ -148,7 +148,7 @@ without a connected server uses a community account from Sign in with Apple
 - **User-generated content (1.2):** community recipes are hidden until the person
   agrees to the community guidelines (zero tolerance for objectionable content and
   abusive users; versioned, stored on the device). Every community recipe has
-  **Report recipe** (reason plus optional note, emailed to george@georgevina.com
+  **Report recipe** (reason plus optional note, emailed to community-souschef@georgevina.com
   through Mail, a `mailto:` link, or copyable text) and **Block <cook>** in its
   detail menu and long-press menu. Reported recipes and blocked cooks disappear
   at once and can be restored in Settings → Blocked cooks and hidden recipes. A

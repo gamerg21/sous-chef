@@ -1,3 +1,4 @@
+import CloudKit
 import CoreData
 import Foundation
 import MachO
@@ -11,36 +12,22 @@ import SwiftData
 final class Kitchen {
     static let cloudContainerID = "iCloud.com.georgevina.souschef"
 
-    let container: ModelContainer
-    let usesICloud: Bool
+    private(set) var container: ModelContainer
+    private(set) var usesICloud: Bool
+    /// Changes when the store is reopened, so views rebuild on the new container.
+    private(set) var storeGeneration = 0
     let ai = KitchenAI()
     let server = CompanionServer()
+    private let inMemory: Bool
 
     var context: ModelContext { container.mainContext }
 
     init(inMemory: Bool = false) {
-        let schema = Schema(KitchenSchema.models)
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-initCloudKitSchema") { Self.initializeCloudKitSchema() }
         #endif
-        let wantsCloud = !inMemory && Self.hasCloudKitEntitlement && (UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? true)
-        var cloudContainer: ModelContainer?
-        if wantsCloud {
-            let configuration = ModelConfiguration(schema: schema, cloudKitDatabase: .private(Self.cloudContainerID))
-            cloudContainer = try? ModelContainer(for: schema, configurations: configuration)
-        }
-        if let cloudContainer {
-            container = cloudContainer
-            usesICloud = true
-        } else {
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none)
-            do {
-                container = try ModelContainer(for: schema, configurations: configuration)
-            } catch {
-                fatalError("Sous Chef couldn't open its kitchen database: \(error)")
-            }
-            usesICloud = false
-        }
+        self.inMemory = inMemory
+        (container, usesICloud) = Self.openStore(inMemory: inMemory, cloud: Self.iCloudPreferred)
         server.kitchen = self
         ai.serverConnected = { [weak server] in server?.isConnected ?? false }
         ai.serverGenerate = { [weak server] preferences in
@@ -77,6 +64,54 @@ final class Kitchen {
         try? FileManager.default.removeItem(at: url)
     }
     #endif
+
+    // MARK: iCloud
+
+    static var iCloudPreferred: Bool {
+        get { UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "icloud.enabled") }
+    }
+
+    var iCloudAvailable: Bool { !inMemory && Self.hasCloudKitEntitlement }
+
+    /// The local store and the iCloud-mirrored store are the same file, so
+    /// switching only changes whether it mirrors to the private database.
+    /// SwiftData records history either way, so edits made while sync was off
+    /// upload when it's turned back on.
+    private static func openStore(inMemory: Bool, cloud: Bool) -> (ModelContainer, Bool) {
+        let schema = Schema(KitchenSchema.models)
+        if cloud && !inMemory && hasCloudKitEntitlement,
+           let container = try? ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, cloudKitDatabase: .private(cloudContainerID))) {
+            return (container, true)
+        }
+        do {
+            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none)
+            return (try ModelContainer(for: schema, configurations: configuration), false)
+        } catch {
+            fatalError("Sous Chef couldn't open its kitchen database: \(error)")
+        }
+    }
+
+    /// Turns iCloud sync on or off without restarting the app.
+    func setICloud(_ enabled: Bool) {
+        Self.iCloudPreferred = enabled
+        guard iCloudAvailable, enabled != usesICloud else { return }
+        try? context.save()
+        (container, usesICloud) = Self.openStore(inMemory: inMemory, cloud: enabled)
+        storeGeneration += 1
+    }
+
+    /// Stops syncing and deletes the kitchen from the person's iCloud. This
+    /// device keeps its copy; other devices clear theirs on their next sync.
+    func deleteICloudData() async throws {
+        setICloud(false)
+        let zone = CKRecordZone.ID(zoneName: "com.apple.coredata.cloudkit.zone", ownerName: CKCurrentUserDefaultName)
+        do {
+            try await CKContainer(identifier: Self.cloudContainerID).privateCloudDatabase.deleteRecordZone(withID: zone)
+        } catch let error as CKError where error.code == .zoneNotFound {
+            // Nothing in iCloud yet.
+        }
+    }
 
     /// CloudKit traps when the app lacks the iCloud entitlement, which happens
     /// only for unsigned simulator builds. Device builds can't run unsigned.
