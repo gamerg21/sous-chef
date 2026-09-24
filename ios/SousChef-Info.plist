@@ -16,7 +16,7 @@
 	     custom community address is set. Switch this to the production
 	     community (https://<deployment>.convex.site) before release. -->
 	<key>SousChefCommunityURL</key>
-	<string>https://graceful-hummingbird-993.convex.site</string>
+	<string>https://silent-gerbil-530.convex.site</string>
 	<!-- CloudKit pushes wake the app so iCloud changes arrive promptly. -->
 	<key>UIBackgroundModes</key>
 	<array>

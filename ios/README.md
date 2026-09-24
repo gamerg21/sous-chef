@@ -120,10 +120,9 @@ without a connected server uses a community account from Sign in with Apple
 (`Server/CommunityAccount.swift`, `Features/Community/CommunityAccountViews.swift`).
 
 - The community address defaults to `SousChefCommunityURL` in
-  `SousChef-Info.plist` (currently the dev community,
-  `https://graceful-hummingbird-993.convex.site`); switch it to the production
-  community before release. A custom address in Settings overrides it, and a
-  connected server uses its own community connection.
+  `SousChef-Info.plist`, the production community
+  (`https://silent-gerbil-530.convex.site`). A custom address in Settings
+  overrides it, and a connected server uses its own community connection.
 - The system button asks only for the name scope, with a SHA-256 nonce the
   server checks. The server returns a 90-day publisher token, kept in the Keychain
   with the account's name and Apple user ID.
