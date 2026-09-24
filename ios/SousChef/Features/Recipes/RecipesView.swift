@@ -148,9 +148,9 @@ struct RecipesView: View {
         } description: {
             Text("Import a recipe from any website, scan a cookbook page, paste one in, or let Apple Intelligence suggest something.")
         } actions: {
-            Button { importMode = .link } label: { Label("Import from a link", systemImage: "link") }.buttonStyle(.glassProminent)
-            Button { importMode = .photo } label: { Label("Scan a cookbook page", systemImage: "doc.text.viewfinder") }.buttonStyle(.glass)
-            Button { importMode = .ideas } label: { Label("Recipe ideas", systemImage: "apple.intelligence") }.buttonStyle(.glass)
+            Button { importMode = .link } label: { Label("Import from a link", systemImage: "link") }.buttonStyle(.glassProminent).fixedSize()
+            Button { importMode = .photo } label: { Label("Scan a cookbook page", systemImage: "doc.text.viewfinder") }.buttonStyle(.glass).fixedSize()
+            Button { importMode = .ideas } label: { Label("Recipe ideas", systemImage: "apple.intelligence") }.buttonStyle(.glass).fixedSize()
             Button("Write one") { creating = RecipeDraftSession(draft: RecipeDraft()) }
         }
     }

@@ -171,8 +171,8 @@ struct PantryView: View {
         } description: {
             Text("Add what's in your pantry, fridge and freezer. Sous Chef uses it to find recipes you can cook now.")
         } actions: {
-            Button("Add an item") { adding = true }.buttonStyle(.glassProminent)
-            Button("Scan a barcode") { scanning = true }.buttonStyle(.glass)
+            Button("Add an item") { adding = true }.buttonStyle(.glassProminent).fixedSize()
+            Button("Scan a barcode") { scanning = true }.buttonStyle(.glass).fixedSize()
         }
         .listRowBackground(Color.clear)
     }

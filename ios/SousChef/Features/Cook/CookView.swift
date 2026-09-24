@@ -37,19 +37,7 @@ struct CookView: View {
         NavigationStack {
             let ranked = ranked
             List {
-                if recipes.isEmpty {
-                    ContentUnavailableView {
-                        Label("Nothing to cook yet", systemImage: "frying.pan")
-                    } description: {
-                        Text("Add recipes and pantry items, and Sous Chef will show what you can make right now.")
-                    } actions: {
-                        if kitchen.ai.canGenerateRecipes {
-                            Button { ideas = true } label: { Label("Suggest from my pantry", systemImage: "apple.intelligence") }
-                                .buttonStyle(.glassProminent)
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                } else {
+                if !recipes.isEmpty {
                     let ready = ranked.filter { $0.missing == 0 }
                     let almost = ranked.filter { (1...2).contains($0.missing) }
                     let rest = ranked.filter { $0.missing > 2 }
@@ -60,6 +48,21 @@ struct CookView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .overlay {
+                if recipes.isEmpty {
+                    ContentUnavailableView {
+                        Label("Nothing to cook yet", systemImage: "frying.pan")
+                    } description: {
+                        Text("Add recipes and pantry items, and Sous Chef will show what you can make right now.")
+                    } actions: {
+                        if kitchen.ai.canGenerateRecipes {
+                            Button { ideas = true } label: { Label("Suggest a recipe", systemImage: "apple.intelligence") }
+                                .buttonStyle(.glassProminent)
+                                .fixedSize()
+                        }
+                    }
+                }
+            }
             .navigationTitle("Cook")
             .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
             .toolbar {
