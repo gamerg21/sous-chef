@@ -140,6 +140,24 @@ enum IngredientParser {
 
 /// Deterministic recipe-text reading, used when Apple Intelligence is off.
 enum RecipeTextReader {
+    /// Reads text with Apple Intelligence when available, but keeps the plain
+    /// reader's lists when the text had clear sections and the model dropped
+    /// lines (small models sometimes skip the last step).
+    static func read(_ text: String, ai: KitchenAI) async -> RecipeDraft {
+        let plain = read(text)
+        guard ai.isAvailable, let smart = try? await ai.readRecipe(from: text) else { return plain }
+        return merged(smart: smart, plain: plain)
+    }
+
+    static func merged(smart: RecipeDraft, plain: RecipeDraft) -> RecipeDraft {
+        var draft = smart
+        guard !plain.ingredients.isEmpty, !plain.steps.isEmpty else { return draft }
+        if plain.ingredients.count > smart.ingredients.count { draft.ingredients = plain.ingredients }
+        if plain.steps.count > smart.steps.count { draft.steps = plain.steps }
+        if draft.title.isEmpty { draft.title = plain.title }
+        return draft
+    }
+
     static func read(_ text: String, sourceURL: String? = nil, title: String? = nil) -> RecipeDraft {
         let lines = text.components(separatedBy: .newlines).map(IngredientParser.clean).filter { !$0.isEmpty }
         var draft = RecipeDraft(sourceURL: sourceURL)

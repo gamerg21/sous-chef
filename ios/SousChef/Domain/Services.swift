@@ -29,7 +29,7 @@ enum OpenFoodFacts {
         var errorDescription: String? {
             switch self {
             case .invalid: "Enter a barcode with 8–14 digits."
-            case .notFound: "Open Food Facts doesn't know this product yet. Add it by hand."
+            case .notFound: "Open Food Facts doesn't know this product yet. Scan its label or add it by hand."
             case .failed: "Barcode lookup failed. Check your connection and try again."
             }
         }

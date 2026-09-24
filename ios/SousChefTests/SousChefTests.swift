@@ -127,6 +127,19 @@ struct RecipeImporterTests {
         #expect(result.photoURL?.absoluteString == "https://example.com/p.jpg")
     }
 
+    @Test func keepsStepsTheModelDropped() {
+        var smart = RecipeDraft(title: "Biscuits")
+        smart.ingredients = [Ingredient(name: "flour", quantity: 2, unit: "cups")]
+        smart.steps = [RecipeStep(text: "Mix.")]
+        var plain = RecipeDraft(title: "")
+        plain.ingredients = [Ingredient(name: "flour", quantity: 2, unit: "cups")]
+        plain.steps = [RecipeStep(text: "Mix."), RecipeStep(text: "Bake.")]
+        let merged = RecipeTextReader.merged(smart: smart, plain: plain)
+        #expect(merged.title == "Biscuits")
+        #expect(merged.steps.map(\.text) == ["Mix.", "Bake."])
+        #expect(RecipeTextReader.merged(smart: smart, plain: RecipeDraft()).steps.count == 1)
+    }
+
     @Test func parsesDurations() {
         #expect(RecipeImporter.parseDuration("PT1H30M") == 90)
         #expect(RecipeImporter.parseDuration("P0DT45M") == 45)
@@ -180,6 +193,21 @@ struct MiscTests {
         #expect(nutrition.energyKcal == 250)
         #expect(nutrition.proteinG == 7.5)
         #expect(nutrition.fatG == nil)
+    }
+
+    @Test func picksTheProductBrand() {
+        #expect(PantryPrefill.primaryBrand("Fairlife, The Coca-Cola Company") == "Fairlife")
+        #expect(PantryPrefill.primaryBrand("Wild Fork") == "Wild Fork")
+    }
+
+    @Test func ignoresBinariesWithoutASignature() {
+        #expect(Entitlements.fromCodeSignature(Data()) == nil)
+        #expect(Entitlements.fromCodeSignature(Data(repeating: 0, count: 64)) == nil)
+    }
+
+    @Test func expiryShortcutsCountFromToday() {
+        let week = ExpiryField.day(in: 7)
+        #expect(Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now), to: week).day == 7)
     }
 
     @Test func infersCategories() {

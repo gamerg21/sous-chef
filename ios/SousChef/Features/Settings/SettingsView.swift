@@ -87,13 +87,15 @@ struct SettingsView: View {
 
                 Section {
                     LabeledContent("In use") { AIEngineBadge() }
-                    LabeledContent("Private Cloud Compute", value: ai.privateCloudStatus)
                     LabeledContent("On-device model", value: ai.onDeviceStatus)
-                    Toggle("Prefer Private Cloud Compute", isOn: $ai.preferPrivateCloud)
+                    LabeledContent("Private Cloud Compute", value: ai.privateCloudStatus)
+                    if ai.privateCloudEnabled {
+                        Toggle("Prefer Private Cloud Compute", isOn: $ai.preferPrivateCloud)
+                    }
                 } header: {
                     Eyebrow("Apple Intelligence")
                 } footer: {
-                    Text("Recipe ideas, reading recipes and aisle sorting use Apple's models. Private Cloud Compute runs Apple's larger model on Apple silicon servers that don't keep your data. With a server connected and no Apple Intelligence, Sous Chef uses the AI provider set up on your server.")
+                    Text("Recipe ideas, label reading, recipe reading and aisle sorting use Apple's on-device model. Where available, Private Cloud Compute runs Apple's larger model on Apple silicon servers that don't keep your data. With a server connected and no Apple Intelligence, Sous Chef uses the AI provider set up on your server.")
                 }
 
                 Section {

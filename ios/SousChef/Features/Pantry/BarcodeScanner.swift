@@ -12,6 +12,7 @@ struct BarcodeLookupSheet: View {
     @State private var looking = false
     @State private var error: String?
     @State private var lastCode: String?
+    @State private var scanningLabel = false
 
     private var scannerAvailable: Bool {
         DataScannerViewController.isSupported && DataScannerViewController.isAvailable
@@ -58,9 +59,15 @@ struct BarcodeLookupSheet: View {
                 }
 
                 if let lastCode, error != nil {
-                    Button("Add \(lastCode) by hand") {
-                        onFound(PantryPrefill(barcode: lastCode))
+                    HStack {
+                        Button { scanningLabel = true } label: { Label("Scan the label", systemImage: "text.viewfinder") }
+                            .buttonStyle(.glassProminent)
+                        Button("Add by hand") { onFound(PantryPrefill(barcode: lastCode)) }
+                            .buttonStyle(.glass)
                     }
+                } else {
+                    Button { scanningLabel = true } label: { Label("No barcode? Scan the label", systemImage: "text.viewfinder") }
+                        .font(.subheadline)
                 }
                 Spacer()
                 Text("Product data © Open Food Facts contributors (ODbL).")
@@ -68,6 +75,9 @@ struct BarcodeLookupSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding()
+            .sheet(isPresented: $scanningLabel) {
+                LabelScanSheet(barcode: error == nil ? nil : lastCode) { onFound($0) }
+            }
             .navigationTitle("Scan a barcode")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

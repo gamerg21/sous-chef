@@ -40,6 +40,8 @@ nonisolated enum StorageLocation: String, CaseIterable, Identifiable, Codable {
 final class PantryItem {
     var uuid: UUID = UUID()
     var name: String = ""
+    /// Local to the app: the server keeps brands only on barcode records.
+    var brand: String?
     var locationRaw: String = StorageLocation.pantry.rawValue
     var quantity: Double = 1
     var unit: String = "each"

@@ -6,7 +6,7 @@ import SwiftUI
 /// hands it to the editor for review. Nothing is saved without that review.
 struct RecipeImportView: View {
     enum Mode: String, Identifiable {
-        case link, text, ideas
+        case link, text, photo, ideas
         var id: String { rawValue }
     }
 
@@ -19,6 +19,8 @@ struct RecipeImportView: View {
     @State private var link = ""
     @State private var text = ""
     @State private var preferences = ""
+    @State private var usePantry = true
+    @State private var pages: [UIImage] = []
     @State private var working = false
     @State private var error: String?
     @State private var partial: RecipeDraft?
@@ -31,6 +33,7 @@ struct RecipeImportView: View {
                     switch mode {
                     case .link: linkForm
                     case .text: textForm
+                    case .photo: photoForm
                     case .ideas: ideasForm
                     }
                     if let error { ErrorBanner(message: error) }
@@ -72,7 +75,8 @@ struct RecipeImportView: View {
         switch mode {
         case .link: "Import from a link"
         case .text: "Paste a recipe"
-        case .ideas: "Ideas from my pantry"
+        case .photo: "Scan a recipe"
+        case .ideas: "Recipe ideas"
         }
     }
 
@@ -80,6 +84,7 @@ struct RecipeImportView: View {
         switch mode {
         case .link: "Import recipe"
         case .text: "Read recipe"
+        case .photo: "Read recipe"
         case .ideas: "Suggest a recipe"
         }
     }
@@ -88,6 +93,7 @@ struct RecipeImportView: View {
         switch mode {
         case .link: link.nilIfEmpty != nil
         case .text: text.count > 20
+        case .photo: !pages.isEmpty
         case .ideas: kitchen.ai.canGenerateRecipes
         }
     }
@@ -126,20 +132,45 @@ struct RecipeImportView: View {
         }
     }
 
-    private var ideasForm: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var photoForm: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Eyebrow("Cooking with \(pantry.filter { $0.quantity > 0 }.count) pantry items", systemImage: "cabinet")
+                Eyebrow("Pages", systemImage: "book")
                 Spacer()
                 AIEngineBadge()
             }
-            TextField("Anything in mind? e.g. quick vegetarian dinner, no nuts", text: $preferences, axis: .vertical)
+            PhotoStrip(photos: $pages, maxCount: 6, openCameraFirst: true)
+            Text("Photograph a cookbook page, or choose photos and screenshots. Add a page for each part if the recipe continues. Sous Chef reads the text on this iPhone\(kitchen.ai.isAvailable ? " with Apple Intelligence" : ""), and you'll review everything before saving.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var ideasForm: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Picker("Ideas from", selection: $usePantry) {
+                Text("From my pantry").tag(true)
+                Text("Anything").tag(false)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!kitchen.ai.isAvailable)
+            HStack {
+                if usePantry {
+                    Eyebrow("Cooking with \(pantry.filter { $0.quantity > 0 }.count) pantry items", systemImage: "cabinet")
+                } else {
+                    Eyebrow("Any recipe", systemImage: "sparkles")
+                }
+                Spacer()
+                AIEngineBadge()
+            }
+            TextField(usePantry ? "Anything in mind? e.g. quick vegetarian dinner, no nuts" : "What sounds good? e.g. Thai green curry, crispy tofu, birthday cake",
+                      text: $preferences, axis: .vertical)
                 .lineLimit(2...4)
                 .padding(14)
                 .background(.background.secondary, in: .rect(cornerRadius: 16, style: .continuous))
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
-                    ForEach(["Quick weeknight", "Use what expires soon", "Vegetarian", "High protein", "Comfort food", "Kid friendly"], id: \.self) { idea in
+                    ForEach(ideaChips, id: \.self) { idea in
                         Button { preferences = preferences.isEmpty ? idea : "\(preferences), \(idea.lowercased())" } label: { Chip(text: idea, systemImage: "plus") }
                             .buttonStyle(.plain)
                     }
@@ -155,6 +186,11 @@ struct RecipeImportView: View {
         }
     }
 
+    private var ideaChips: [String] {
+        usePantry ? ["Quick weeknight", "Use what expires soon", "Vegetarian", "High protein", "Comfort food", "Kid friendly"]
+            : ["Weeknight dinner", "Date night", "Meal prep", "Vegetarian", "Dessert", "Something new"]
+    }
+
     private func start() {
         error = nil
         working = true
@@ -166,13 +202,16 @@ struct RecipeImportView: View {
                 case .link:
                     draft = try await RecipeImporter.importRecipe(from: link, ai: kitchen.ai)
                 case .text:
-                    if kitchen.ai.isAvailable, let read = try? await kitchen.ai.readRecipe(from: text) {
-                        draft = read
-                    } else {
-                        draft = RecipeTextReader.read(text)
+                    draft = await RecipeTextReader.read(text, ai: kitchen.ai)
+                case .photo:
+                    let read = await TextRecognition.text(in: pages)
+                    guard read.contains(where: \.isLetter) else {
+                        throw KitchenAI.AIError.failed("Sous Chef couldn't find any text. Try a closer, well-lit photo of the page.")
                     }
+                    draft = await RecipeTextReader.read(read, ai: kitchen.ai)
                 case .ideas:
-                    draft = try await kitchen.ai.generateRecipe(pantry: pantry, preferences: preferences) { partial = $0 }
+                    draft = try await kitchen.ai.generateRecipe(pantry: pantry, usePantry: usePantry || !kitchen.ai.isAvailable,
+                                                                preferences: preferences) { partial = $0 }
                 }
                 guard !Task.isCancelled else { return }
                 onDraft(draft)

@@ -19,7 +19,7 @@ struct PantryView: View {
     private var filtered: [PantryItem] {
         items.filter { item in
             (scope == .all || scope == .location(item.location)) &&
-            (search.isEmpty || item.name.localizedStandardContains(search) || (item.category ?? "").localizedStandardContains(search))
+            (search.isEmpty || item.name.localizedStandardContains(search) || (item.brand ?? "").localizedStandardContains(search) || (item.category ?? "").localizedStandardContains(search))
         }
     }
 
@@ -122,7 +122,7 @@ struct PantryView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.name).font(.body.weight(.medium)).foregroundStyle(.primary)
                     HStack(spacing: 8) {
-                        if let category = item.category { Text(category).font(.caption).foregroundStyle(.secondary) }
+                        if let detail = item.brand ?? item.category { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                         ExpiryLabel(date: item.expiresOn)
                     }
                 }

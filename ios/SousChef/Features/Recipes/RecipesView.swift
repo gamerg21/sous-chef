@@ -96,9 +96,10 @@ struct RecipesView: View {
         Menu {
             Button { creating = RecipeDraftSession(draft: RecipeDraft()) } label: { Label("New recipe", systemImage: "square.and.pencil") }
             Button { importMode = .link } label: { Label("Import from a link", systemImage: "link") }
+            Button { importMode = .photo } label: { Label("Scan a recipe", systemImage: "doc.text.viewfinder") }
             Button { importMode = .text } label: { Label("Paste recipe text", systemImage: "doc.on.clipboard") }
             Divider()
-            Button { importMode = .ideas } label: { Label("Ideas from my pantry", systemImage: "apple.intelligence") }
+            Button { importMode = .ideas } label: { Label("Recipe ideas", systemImage: "apple.intelligence") }
         } label: {
             Label("Add recipe", systemImage: "plus")
         }
@@ -145,10 +146,11 @@ struct RecipesView: View {
         ContentUnavailableView {
             Label("No recipes yet", systemImage: "book.pages")
         } description: {
-            Text("Import a recipe from any website, paste one in, or let Apple Intelligence suggest something from your pantry.")
+            Text("Import a recipe from any website, scan a cookbook page, paste one in, or let Apple Intelligence suggest something.")
         } actions: {
             Button { importMode = .link } label: { Label("Import from a link", systemImage: "link") }.buttonStyle(.glassProminent)
-            Button { importMode = .ideas } label: { Label("Ideas from my pantry", systemImage: "apple.intelligence") }.buttonStyle(.glass)
+            Button { importMode = .photo } label: { Label("Scan a cookbook page", systemImage: "doc.text.viewfinder") }.buttonStyle(.glass)
+            Button { importMode = .ideas } label: { Label("Recipe ideas", systemImage: "apple.intelligence") }.buttonStyle(.glass)
             Button("Write one") { creating = RecipeDraftSession(draft: RecipeDraft()) }
         }
     }

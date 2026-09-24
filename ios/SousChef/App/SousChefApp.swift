@@ -20,13 +20,14 @@ struct SousChefApp: App {
     }
 }
 
-enum AppTab: Hashable {
+enum AppTab: String, Hashable {
     case pantry, recipes, cook, shopping, community
 }
 
 struct RootView: View {
     @Environment(Kitchen.self) private var kitchen
-    @State private var tab: AppTab = .pantry
+    /// `-startTab recipes` opens a tab directly, for screenshots.
+    @State private var tab: AppTab = UserDefaults.standard.string(forKey: "startTab").flatMap(AppTab.init(rawValue:)) ?? .pantry
     @State private var showSettings = false
     @AppStorage("onboarding.done") private var onboardingDone = false
     @Query(filter: #Predicate<ShoppingItem> { !$0.checked }) private var openShopping: [ShoppingItem]

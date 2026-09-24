@@ -60,31 +60,42 @@ struct OnboardingView: View {
     }
 }
 
-/// Launch with `-seedSample` to fill an empty kitchen for screenshots and demos.
+/// Launch with `-seedSample` to fill an empty kitchen for screenshots and
+/// demos. Add `-samplePhotos <folder>` to attach recipe photos named after
+/// each recipe's `photo` key (e.g. pasta.jpg).
 enum SampleKitchen {
     static func seedIfRequested(into kitchen: Kitchen) {
         guard ProcessInfo.processInfo.arguments.contains("-seedSample"), kitchen.fetch(PantryItem.self).isEmpty else { return }
         UserDefaults.standard.set(true, forKey: "onboarding.done")
+        let photoFolder = UserDefaults.standard.string(forKey: "samplePhotos").map { URL(fileURLWithPath: $0) }
         let day: (Int) -> Date = { Calendar.current.date(byAdding: .day, value: $0, to: .now)! }
-        let pantry: [(String, StorageLocation, Double, String, String?, Date?)] = [
-            ("Pasta", .pantry, 500, "g", "Pasta & Noodles", nil),
-            ("Tomatoes", .fridge, 4, "each", "Produce", day(2)),
-            ("Olive oil", .pantry, 500, "ml", "Condiments & Sauces", nil),
-            ("Garlic", .pantry, 6, "clove", "Produce", day(12)),
-            ("Parmesan", .fridge, 120, "g", "Dairy", day(9)),
-            ("Eggs", .fridge, 6, "each", "Dairy", day(14)),
-            ("Spinach", .fridge, 150, "g", "Produce", day(1)),
-            ("Chicken thighs", .freezer, 800, "g", "Meat & Seafood", day(60)),
-            ("Rice", .pantry, 1, "kg", "Grains & Rice", nil),
-            ("Butter", .fridge, 200, "g", "Dairy", day(20)),
+        let pantry: [(String, String?, StorageLocation, Double, String, String?, Date?)] = [
+            ("Penne", "Barilla", .pantry, 500, "g", "Pasta & Noodles", nil),
+            ("Tomatoes", nil, .fridge, 4, "each", "Produce", day(2)),
+            ("Olive oil", "California Olive Ranch", .pantry, 500, "ml", "Condiments & Sauces", nil),
+            ("Garlic", nil, .pantry, 6, "clove", "Produce", day(12)),
+            ("Parmesan", "BelGioioso", .fridge, 120, "g", "Dairy", day(9)),
+            ("Eggs", "Vital Farms", .fridge, 12, "each", "Dairy", day(14)),
+            ("Spinach", nil, .fridge, 150, "g", "Produce", day(1)),
+            ("Whole milk", "Fairlife", .fridge, 1, "l", "Dairy", day(6)),
+            ("Chicken", "Wild Fork", .freezer, 1.5, "kg", "Meat & Seafood", day(60)),
+            ("Potatoes", nil, .pantry, 1, "kg", "Produce", day(20)),
+            ("Rosemary", nil, .fridge, 1, "bunch", "Spices & Seasonings", day(5)),
+            ("Flour", "King Arthur", .pantry, 2, "kg", "Grains & Rice", nil),
+            ("Butter", "Kerrygold", .fridge, 250, "g", "Dairy", day(20)),
+            ("Mixed greens", nil, .fridge, 200, "g", "Produce", day(3)),
+            ("Coconut milk", "Thai Kitchen", .pantry, 2, "can", "Canned Goods", nil),
+            ("Green curry paste", "Mae Ploy", .fridge, 200, "g", "Condiments & Sauces", day(90)),
         ]
-        for (name, location, quantity, unit, category, expiry) in pantry {
+        for (name, brand, location, quantity, unit, category, expiry) in pantry {
             let item = PantryItem(name: name, location: location, quantity: quantity, unit: unit)
+            item.brand = brand
             item.category = category
             item.expiresOn = expiry
             kitchen.context.insert(item)
         }
-        func recipe(_ title: String, _ summary: String, _ minutes: Int, _ servings: Int, _ tags: [String], _ lines: [String], _ steps: [String]) {
+        func recipe(_ title: String, photo: String, _ summary: String, _ minutes: Int, _ servings: Int, _ tags: [String],
+                    favorite: Bool = false, _ lines: [String], _ steps: [String]) {
             var draft = RecipeDraft(title: title)
             draft.summary = summary
             draft.totalTimeMinutes = minutes
@@ -92,24 +103,40 @@ enum SampleKitchen {
             draft.tags = tags
             draft.ingredients = lines.map(IngredientParser.parse)
             draft.steps = steps.map { RecipeStep(text: $0) }
-            kitchen.save(draft)
+            draft.photo = photoFolder.flatMap { try? Data(contentsOf: $0.appending(path: "\(photo).jpg")) }.flatMap { ImageTools.compressed($0) }
+            let saved = kitchen.save(draft)
+            saved.favorited = favorite
         }
-        recipe("Weeknight tomato pasta", "Bright, garlicky and on the table in 20 minutes.", 20, 2, ["dinner", "quick", "vegetarian"],
-               ["200 g Pasta", "2 Tomatoes", "2 clove Garlic", "15 ml Olive oil", "30 g Parmesan"],
-               ["Cook the pasta in well-salted boiling water for 10 minutes.", "Meanwhile, warm the olive oil and gently fry the sliced garlic for 1 minute.",
+        recipe("Penne all'arrabbiata", photo: "pasta", "Bright, garlicky and on the table in 20 minutes.", 20, 2, ["dinner", "quick", "vegetarian"], favorite: true,
+               ["200 g Penne", "2 Tomatoes", "2 clove Garlic", "15 ml Olive oil", "30 g Parmesan"],
+               ["Cook the penne in well-salted boiling water for 10 minutes.", "Meanwhile, warm the olive oil and gently fry the sliced garlic for 1 minute.",
                 "Add the chopped tomatoes and simmer for 5 minutes.", "Toss with the pasta and top with grated Parmesan."])
-        recipe("Spinach & parmesan omelette", "A fast, protein-packed breakfast.", 10, 1, ["breakfast", "quick"],
+        recipe("Thai green curry", photo: "curry", "Creamy, fragrant and ready in half an hour.", 30, 4, ["dinner", "spicy"], favorite: true,
+               ["2 tbsp Green curry paste", "1 can Coconut milk", "500 g Chicken", "1 bunch Thai basil", "1 Red chili"],
+               ["Fry the curry paste in a splash of coconut milk for 2 minutes.", "Add the chicken and cook for 5 minutes.",
+                "Pour in the rest of the coconut milk and simmer for 15 minutes.", "Finish with Thai basil and sliced chili."])
+        recipe("Fluffy pancakes", photo: "pancakes", "Weekend-morning classic.", 25, 4, ["breakfast", "sweet"],
+               ["200 g Flour", "2 Eggs", "300 ml Whole milk", "30 g Butter", "1 tbsp baking powder"],
+               ["Whisk the flour and baking powder.", "Beat in the eggs, milk and melted butter until smooth.", "Cook ladlefuls in a hot pan for 2 minutes per side."])
+        recipe("Spinach & parmesan omelette", photo: "omelette", "A fast, protein-packed breakfast.", 10, 1, ["breakfast", "quick"],
                ["3 Eggs", "50 g Spinach", "20 g Parmesan", "10 g Butter"],
                ["Whisk the eggs with a pinch of salt.", "Melt the butter and wilt the spinach for 1 minute.", "Pour in the eggs and cook for 3 minutes, then fold with the Parmesan."])
-        recipe("Lemon herb chicken & rice", "One-pan comfort food.", 45, 4, ["dinner", "comfort food"],
-               ["600 g Chicken thighs", "300 g Rice", "1 Lemon", "4 clove Garlic", "30 ml Olive oil", "750 ml Chicken stock"],
-               ["Brown the chicken in olive oil for 6 minutes per side.", "Add garlic, rice and stock; bring to a simmer.", "Cover and bake at 190°C for 30 minutes.", "Finish with lemon juice."])
-        let milk = ShoppingItem(name: "Milk", quantity: 1, unit: "l")
-        milk.category = "Dairy"
-        let lemons = ShoppingItem(name: "Lemons", quantity: 3, unit: "each")
-        lemons.category = "Produce"
-        kitchen.context.insert(milk)
-        kitchen.context.insert(lemons)
+        recipe("Lemon herb roast", photo: "roast", "Sunday roast with crispy rosemary potatoes.", 90, 4, ["dinner", "comfort food"],
+               ["1.2 kg Chicken", "800 g Potatoes", "2 Lemons", "1 bunch Rosemary", "6 clove Garlic", "45 ml Olive oil"],
+               ["Heat the oven to 200°C.", "Toss the potatoes with olive oil, rosemary and garlic.", "Roast the chicken on top with halved lemons for 75 minutes.", "Rest for 10 minutes before carving."])
+        recipe("Garden salad", photo: "salad", "Crisp greens with a lemony dressing.", 10, 2, ["lunch", "vegetarian", "quick"],
+               ["150 g Mixed greens", "1 Carrot", "30 ml Olive oil", "1 Lemon"],
+               ["Wash and dry the greens.", "Shave the carrot into ribbons.", "Whisk olive oil and lemon juice, then toss."])
+        let shopping: [(String, Double?, String?, String)] = [
+            ("Lemons", 3, "each", "Produce"), ("Thai basil", 1, "bunch", "Produce"), ("Red chili", 2, "each", "Produce"),
+            ("Carrots", 500, "g", "Produce"), ("Greek yogurt", 500, "g", "Dairy"), ("Sourdough bread", 1, "each", "Bakery"),
+            ("Sparkling water", 6, "each", "Beverages"),
+        ]
+        for (name, quantity, unit, category) in shopping {
+            let item = ShoppingItem(name: name, quantity: quantity, unit: unit)
+            item.category = category
+            kitchen.context.insert(item)
+        }
         try? kitchen.context.save()
     }
 }

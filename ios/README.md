@@ -8,8 +8,8 @@ companion to a self-hosted Sous Chef server.
 
 | Tab | Web equivalent | Notes |
 | --- | --- | --- |
-| Pantry | Inventory | Pantry, fridge and freezer with amounts, expiry and nutrition; VisionKit barcode scanning with Open Food Facts lookup. |
-| Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD) or pasted text, pantry readiness, nutrition, sharing. |
+| Pantry | Inventory | Pantry, fridge and freezer with brand, amounts, expiry (quick durations or a calendar) and nutrition; VisionKit barcode scanning with Open Food Facts lookup, and label scanning for products it doesn't know. |
+| Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
 | Cook | Cooking | Recipes ranked by what you have, cook mode with timers, and pantry deduction. |
 | Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
 | Community | Community | Browse, save and (with a server) publish community recipes. |
@@ -40,13 +40,17 @@ Launch arguments: `-seedSample` fills an empty kitchen with sample data, and
 
 ### Signing and capabilities
 
-The target uses team `45SZPHTS5W` and bundle ID `io.souschef.app`. The first
+The target uses team `X423ZKYPDN` and bundle ID `com.georgevina.souschef`. The first
 signed device build registers these capabilities for the App ID:
 
-- **iCloud (CloudKit)** with container `iCloud.io.souschef.app`, plus push
+- **iCloud (CloudKit)** with container `iCloud.com.georgevina.souschef`, plus push
   notifications and the remote-notification background mode for CloudKit changes.
-- **Private Cloud Compute** (`com.apple.developer.private-cloud-compute`) for
-  Apple's larger Foundation Model.
+
+Private Cloud Compute (`com.apple.developer.private-cloud-compute`) is a managed
+entitlement that automatic signing can't add until Apple grants it to the team.
+It isn't in `SousChef.entitlements` yet, so device builds use the on-device
+model. Once the team has it, add the key back (`<true/>`) and the app picks
+Apple's larger model automatically.
 
 iCloud containers can't be deleted once created, so choose the final bundle ID
 and container name before the first signed build. Unsigned simulator builds
@@ -69,10 +73,20 @@ Chef-operated backend.
 2. **On-device Foundation Model** (iOS 26+).
 3. **The connected Sous Chef server**, using the AI provider configured there.
 
-It powers pantry recipe ideas (streamed with guided generation), reading recipes
+It powers recipe ideas, from the pantry or open-ended (streamed with guided generation), reading package labels, reading recipes
 from pasted text or pages without structured data, aisle sorting, and the
 "Ask Sous Chef" chat in recipe and cook views. Ingredient amounts from pasted
 text are parsed deterministically, so the model can't invent them.
+
+Recipe and label scanning read photos on device with Vision. For recipe pages,
+the plain text reader's ingredient and step lists win when the page has clear
+sections and the model returns fewer lines. For package labels, the model
+extracts name, brand, net contents, storage and the nutrition panel. Nutrition
+is rescaled to per 100 g in code, and a value is kept only when its row appears
+in the label text.
+
+Brands are stored on the device and in iCloud. The server keeps brands only on
+barcode records, so a connected server doesn't receive hand-entered brands.
 
 ## Companion server sync
 

@@ -272,10 +272,7 @@ struct StockPurchasesView: View {
                             ForEach(StorageLocation.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
                         }
                         .pickerStyle(.segmented)
-                        Toggle("Expiry date", isOn: Binding(get: { purchase.expiresOn != nil }, set: { purchase.expiresOn = $0 ? Calendar.current.date(byAdding: .day, value: 7, to: .now) : nil }))
-                        if let date = purchase.expiresOn {
-                            DatePicker("Use by", selection: Binding(get: { date }, set: { purchase.expiresOn = $0 }), displayedComponents: .date)
-                        }
+                        ExpiryField(date: $purchase.expiresOn)
                     } header: {
                         Eyebrow(purchase.item.name)
                     }

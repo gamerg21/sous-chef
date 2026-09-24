@@ -5,9 +5,20 @@ import SwiftUI
 struct PantryPrefill: Identifiable {
     let id = UUID()
     var name = ""
+    var brand: String?
+    var quantity: Double?
+    var unit: String?
+    var location: StorageLocation?
     var barcode: String?
     var category: String?
     var facts: FoodFacts?
+    var notes: String?
+    var nutrition: Nutrition?
+
+    /// Open Food Facts lists brands comma-separated, owner last ("Fairlife, The Coca-Cola Company").
+    static func primaryBrand(_ brands: String) -> String {
+        brands.split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? brands
+    }
 }
 
 struct PantryItemEditor: View {
@@ -22,8 +33,8 @@ struct PantryItemEditor: View {
     @State private var quantity: Double? = 1
     @State private var unit = "each"
     @State private var location: StorageLocation = .pantry
-    @State private var hasExpiry = false
-    @State private var expiresOn = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
+    @State private var expiresOn: Date?
+    @State private var brand = ""
     @State private var category: String?
     @State private var notes = ""
     @State private var barcode = ""
@@ -49,6 +60,9 @@ struct PantryItemEditor: View {
                         .focused($nameFocused)
                         .submitLabel(.done)
                         .accessibilityIdentifier("pantryName")
+                    TextField("Brand (optional)", text: $brand)
+                        .textInputAutocapitalization(.words)
+                        .accessibilityIdentifier("pantryBrand")
                     if !suggestions.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
@@ -82,10 +96,7 @@ struct PantryItemEditor: View {
                         ForEach(StorageLocation.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    Toggle(isOn: $hasExpiry.animation()) { Label("Expires", systemImage: "calendar.badge.clock") }
-                    if hasExpiry {
-                        DatePicker("Use by", selection: $expiresOn, displayedComponents: .date)
-                    }
+                    ExpiryField(date: $expiresOn)
                     Picker(selection: $category) {
                         Text("None").tag(String?.none)
                         ForEach(ShoppingCategories.all, id: \.self) { Text($0).tag(String?.some($0)) }
@@ -184,8 +195,8 @@ struct PantryItemEditor: View {
             quantity = item.quantity
             unit = item.unit
             location = item.location
-            hasExpiry = item.expiresOn != nil
-            expiresOn = item.expiresOn ?? expiresOn
+            expiresOn = item.expiresOn
+            brand = item.brand ?? ""
             category = item.category
             notes = item.notes ?? ""
             barcode = item.barcode ?? ""
@@ -200,10 +211,15 @@ struct PantryItemEditor: View {
 
     private func apply(_ prefill: PantryPrefill) {
         if !prefill.name.isEmpty { name = prefill.name }
+        if let value = prefill.brand ?? prefill.facts?.brand.map(PantryPrefill.primaryBrand), brand.isEmpty { brand = value }
+        if let value = prefill.quantity { quantity = value }
+        if let value = prefill.unit { unit = value }
+        if let value = prefill.location { location = value }
         barcode = prefill.barcode ?? barcode
         category = prefill.category ?? category
         facts = prefill.facts ?? facts
-        if nutrition.isEmpty, let facts = prefill.facts?.nutrition { nutrition = facts }
+        if let value = prefill.notes, notes.isEmpty { notes = value }
+        if nutrition.isEmpty, let facts = prefill.nutrition ?? prefill.facts?.nutrition { nutrition = facts }
     }
 
     private func lookup(_ code: String) async {
@@ -222,7 +238,8 @@ struct PantryItemEditor: View {
         target.quantity = max(0, quantity ?? 0)
         target.unit = unit
         target.location = location
-        target.expiresOn = hasExpiry ? expiresOn : nil
+        target.expiresOn = expiresOn
+        target.brand = brand.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         target.category = category
         target.notes = notes.nilIfEmpty
         target.barcode = barcode.nilIfEmpty
@@ -271,7 +288,6 @@ struct FoodFactsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                if let brand = facts.brand { Chip(text: brand, systemImage: "tag") }
                 if let grade = facts.nutriscoreGrade?.uppercased(), grade.count == 1 { Chip(text: "Nutri-Score \(grade)", tint: nutriColor(grade)) }
                 if let nova = facts.novaGroup { Chip(text: "NOVA \(nova)", tint: .secondary) }
             }

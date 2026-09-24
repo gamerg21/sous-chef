@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 import MachO
 import Observation
@@ -8,7 +9,7 @@ import SwiftData
 /// companion server goes through here so tombstones and syncing stay right.
 @Observable
 final class Kitchen {
-    static let cloudContainerID = "iCloud.io.souschef.app"
+    static let cloudContainerID = "iCloud.com.georgevina.souschef"
 
     let container: ModelContainer
     let usesICloud: Bool
@@ -19,6 +20,9 @@ final class Kitchen {
 
     init(inMemory: Bool = false) {
         let schema = Schema(KitchenSchema.models)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-initCloudKitSchema") { Self.initializeCloudKitSchema() }
+        #endif
         let wantsCloud = !inMemory && Self.hasCloudKitEntitlement && (UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? true)
         var cloudContainer: ModelContainer?
         if wantsCloud {
@@ -44,6 +48,35 @@ final class Kitchen {
             return try await server.generateRecipe(preferences: preferences)
         }
     }
+
+    #if DEBUG
+    /// Creates every record type and field in the CloudKit development
+    /// environment, so the schema can be deployed to production before a
+    /// TestFlight or App Store build. Run once from Xcode on a device signed
+    /// in to iCloud with the `-initCloudKitSchema` launch argument.
+    private static func initializeCloudKitSchema() {
+        guard hasCloudKitEntitlement, let model = NSManagedObjectModel.makeManagedObjectModel(for: KitchenSchema.models) else { return }
+        let url = URL.temporaryDirectory.appending(path: "schema-\(UUID().uuidString).store")
+        let description = NSPersistentStoreDescription(url: url)
+        description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: cloudContainerID)
+        description.shouldAddStoreAsynchronously = false
+        let container = NSPersistentCloudKitContainer(name: "SchemaSetup", managedObjectModel: model)
+        container.persistentStoreDescriptions = [description]
+        container.loadPersistentStores { _, error in
+            if let error { print("CloudKit schema store failed: \(error)") }
+        }
+        do {
+            try container.initializeCloudKitSchema()
+            print("CloudKit schema initialized. Deploy it to production in the CloudKit Console.")
+        } catch {
+            print("CloudKit schema initialization failed: \(error)")
+        }
+        for store in container.persistentStoreCoordinator.persistentStores {
+            try? container.persistentStoreCoordinator.remove(store)
+        }
+        try? FileManager.default.removeItem(at: url)
+    }
+    #endif
 
     /// CloudKit traps when the app lacks the iCloud entitlement, which happens
     /// only for unsigned simulator builds. Device builds can't run unsigned.
@@ -371,21 +404,56 @@ final class Kitchen {
     }
 }
 
-enum Entitlements {
+nonisolated enum Entitlements {
     /// Frameworks such as CloudKit and Private Cloud Compute trap when an
-    /// entitlement is missing. That can only happen in unsigned simulator
-    /// builds, where the entitlements live in the executable itself.
+    /// entitlement is missing, so check what this build was signed with.
     static func contains(_ text: String) -> Bool {
+        signed?.contains(text) ?? false
+    }
+
+    private static let signed: String? = {
         #if targetEnvironment(simulator)
-        guard let header = _dyld_get_image_header(0) else { return false }
-        var size: UInt = 0
-        let section = header.withMemoryRebound(to: mach_header_64.self, capacity: 1) {
-            getsectiondata($0, "__TEXT", "__entitlements", &size)
+        // Simulator builds carry their entitlements in the executable itself.
+        if let header = _dyld_get_image_header(0) {
+            var size: UInt = 0
+            let section = header.withMemoryRebound(to: mach_header_64.self, capacity: 1) {
+                getsectiondata($0, "__TEXT", "__entitlements", &size)
+            }
+            if let section, size > 0 {
+                return String(decoding: UnsafeBufferPointer(start: section, count: Int(size)), as: UTF8.self)
+            }
         }
-        guard let section, size > 0 else { return false }
-        return String(decoding: UnsafeBufferPointer(start: section, count: Int(size)), as: UTF8.self).contains(text)
-        #else
-        return true
         #endif
+        return Bundle.main.executableURL.flatMap { try? Data(contentsOf: $0, options: .mappedIfSafe) }.flatMap(fromCodeSignature)
+    }()
+
+    /// Reads the entitlements blob from a thin 64-bit Mach-O's code signature.
+    static func fromCodeSignature(_ binary: Data) -> String? {
+        func little(_ offset: Int) -> UInt32? {
+            guard offset >= 0, offset + 4 <= binary.count else { return nil }
+            return binary.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt32.self) }.littleEndian
+        }
+        func big(_ offset: Int) -> UInt32? {
+            guard offset >= 0, offset + 4 <= binary.count else { return nil }
+            return binary.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt32.self) }.bigEndian
+        }
+        guard little(0) == MH_MAGIC_64, let commandCount = little(16) else { return nil }
+        var offset = 32
+        for _ in 0..<commandCount {
+            guard let command = little(offset), let size = little(offset + 4), size > 0 else { return nil }
+            if command == UInt32(LC_CODE_SIGNATURE), let signature = little(offset + 8).map(Int.init) {
+                // A big-endian SuperBlob indexing the signature's blobs.
+                guard big(signature) == 0xFADE0CC0, let count = big(signature + 8) else { return nil }
+                for index in 0..<Int(count) {
+                    guard let blob = big(signature + 12 + index * 8 + 4).map({ signature + Int($0) }),
+                          big(blob) == 0xFADE7171, let length = big(blob + 4), length > 8,
+                          blob + Int(length) <= binary.count else { continue }
+                    return String(decoding: binary[(blob + 8)..<(blob + Int(length))], as: UTF8.self)
+                }
+                return nil
+            }
+            offset += Int(size)
+        }
+        return nil
     }
 }

@@ -392,6 +392,7 @@ private struct SyncPass {
             item.barcode = remote.barcode
             item.nutrition = (remote.nutritionPer100g?.any as? [String: Any]).map(Nutrition.init(json:))
             item.foodFacts = remote.foodFacts.map(FoodFacts.init(json:))
+            if item.brand == nil, let brand = item.foodFacts?.brand { item.brand = PantryPrefill.primaryBrand(brand) }
             item.needsPush = false
         }
         for item in all(PantryItem.self) where item.serverID != nil && !serverPantry.contains(item.serverID!) && !item.needsPush {
