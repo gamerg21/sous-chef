@@ -13,6 +13,7 @@ import {
   type CookSort,
 } from "@/components/cooking";
 import { AlertModal } from "@/components/ui/alert-modal";
+import { PageLoader } from "@/components/ui/page-loader";
 
 type ViewMode = "list" | "cook";
 
@@ -170,9 +171,7 @@ export default function CookingPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <PageLoader />
     );
   }
 

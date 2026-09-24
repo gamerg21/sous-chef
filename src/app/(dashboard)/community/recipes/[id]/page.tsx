@@ -7,6 +7,9 @@ import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { useRouter, useParams } from "next/navigation";
 import { CommunityRecipeDetailView } from "@/components/community";
 import { AlertModal } from "@/components/ui/alert-modal";
+import { PageLoader } from "@/components/ui/page-loader";
+import { buttonClassName, cardClassName, EmptyState, PageContainer } from "@/components/ui/kit";
+import { SearchX } from "lucide-react";
 
 export default function CommunityRecipeDetailPage() {
   const router = useRouter();
@@ -47,22 +50,31 @@ export default function CommunityRecipeDetailPage() {
 
   if (recipe === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Loading...</p>
-      </div>
+      <PageLoader />
     );
   }
 
   if (!recipeData) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Recipe not found</p>
-      </div>
+      <PageContainer width="3xl">
+        <div className={cardClassName}>
+          <EmptyState
+            icon={SearchX}
+            title="Recipe not found"
+            description="It may have been unpublished, or the community service is unavailable."
+            action={
+              <button type="button" onClick={() => router.push("/community/recipes")} className={buttonClassName("secondary")}>
+                Browse community recipes
+              </button>
+            }
+          />
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <CommunityRecipeDetailView
         recipe={recipeData}
         onSaveToLibrary={handleSaveRecipe}
@@ -76,6 +88,6 @@ export default function CommunityRecipeDetailPage() {
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </>
   );
 }

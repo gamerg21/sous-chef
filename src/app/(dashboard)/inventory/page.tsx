@@ -1,14 +1,15 @@
 "use client";
 
+import { unitLabel } from "@/lib/units";
+import { NUTRIENT_FIELDS, readNutrition, type NutrientKey, type NutritionPer100g } from "@/lib/nutrition";
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useAction } from "@/lib/kitchen/client";
 import { api } from "@/lib/kitchen/api";
 import type { Id } from "@/server/kitchen/_generated/dataModel";
 import { KitchenInventoryDashboardView } from "@/components/inventory";
 import { BarcodeScanner } from "@/components/inventory/BarcodeScanner";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { UnitPicker } from "@/components/ui/unit-picker";
-import { DatePicker } from "@/components/ui/date-picker";
+import { UnitMenu } from "@/components/ui/unit-menu";
+import { Calendar, daysFromTodayISO, formatDisplay } from "@/components/ui/date-picker";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Modal } from "@/components/ui/modal";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -24,6 +25,9 @@ import type {
   InventoryFilter,
   KitchenLocationId,
 } from "@/components/inventory";
+import { PageLoader } from "@/components/ui/page-loader";
+import { Apple, CalendarDays, Check, ChevronDown, Loader2, NotebookPen, Package, Refrigerator, ScanBarcode, ScanLine, Search, Snowflake, Tag } from "lucide-react";
+import { Collapse } from "@/components/ui/collapse";
 interface BarcodeLookupResponse {
   found: boolean;
   prefill: {
@@ -85,6 +89,20 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingItemId, setEditingItemId] = useState<Id<"inventoryItems"> | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Deep link from elsewhere (e.g. a recipe's "Add facts"): /inventory?edit=<id>.
+  const hasItems = inventoryData !== undefined;
+  useEffect(() => {
+    if (!hasItems) return;
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("edit");
+    if (!id) return;
+    url.searchParams.delete("edit");
+    window.history.replaceState(null, "", url);
+    if (!inventoryData.items.some((item) => item.id === id)) return;
+    setEditingItemId(id as Id<"inventoryItems">);
+    setShowAddModal(true);
+  }, [hasItems, inventoryData]);
   const [showScanner, setShowScanner] = useState(false);
   const [prefillData, setPrefillData] = useState<InventoryPrefillData | null>(
     null
@@ -231,6 +249,7 @@ export default function InventoryPage() {
             category: cleanedData.category,
             notes: cleanedData.notes,
             barcode: cleanedData.barcode,
+            nutritionPer100g: itemData.nutritionPer100g,
           });
         } else {
           if (!itemData.name || !itemData.locationId || !itemData.quantity || !itemData.unit) {
@@ -245,6 +264,7 @@ export default function InventoryPage() {
             category: cleanedData.category,
             notes: cleanedData.notes,
             barcode: cleanedData.barcode,
+            nutritionPer100g: itemData.nutritionPer100g ?? undefined,
           });
         }
 
@@ -269,9 +289,7 @@ export default function InventoryPage() {
 
   if (inventoryData === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <PageLoader />
     );
   }
 
@@ -360,6 +378,42 @@ interface InventoryItemModalProps {
   onClose: () => void;
 }
 
+function nutritionToForm(nutrition?: NutritionPer100g): Record<NutrientKey, string> {
+  return Object.fromEntries(
+    NUTRIENT_FIELDS.map(({ key }) => [key, nutrition?.[key] !== undefined ? `${nutrition[key]}` : ""])
+  ) as Record<NutrientKey, string>;
+}
+
+function formToNutrition(form: Record<NutrientKey, string>): NutritionPer100g | undefined {
+  const result: NutritionPer100g = {};
+  for (const { key } of NUTRIENT_FIELDS) {
+    const value = Number(form[key].trim().replace(",", "."));
+    if (form[key].trim() && Number.isFinite(value) && value >= 0) result[key] = value;
+  }
+  return Object.keys(result).length ? result : undefined;
+}
+
+const EXPIRY_SHORTCUTS = [
+  { label: "3 days", days: 3 },
+  { label: "1 week", days: 7 },
+  { label: "2 weeks", days: 14 },
+  { label: "1 month", days: 30 },
+  { label: "6 months", days: 182 },
+];
+
+function LocationIcon({ id, className }: { id: KitchenLocationId; className?: string }) {
+  const Icon = id === "fridge" ? Refrigerator : id === "freezer" ? Snowflake : Package;
+  return <Icon className={className} strokeWidth={1.75} aria-hidden="true" />;
+}
+
+function LocationBadge({ id }: { id: KitchenLocationId }) {
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
+      <LocationIcon id={id} className="h-4 w-4" />
+    </span>
+  );
+}
+
 function InventoryItemModal({
   item,
   prefillData,
@@ -387,15 +441,34 @@ function InventoryItemModal({
     initialCategoryState.customCategory
   );
   const [saving, setSaving] = useState(false);
+  // Only one inline panel is open at a time, like a settings sheet.
+  const [panel, setPanel] = useState<"unit" | "location" | "expires" | "category" | null>(null);
+  const togglePanel = (next: NonNullable<typeof panel>) =>
+    setPanel((current) => (current === next ? null : next));
+  const currentLocation = locations.find((location) => location.id === formData.locationId);
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const initialNutrition =
+    readNutrition(item?.nutritionPer100g) ??
+    readNutrition(item?.foodFacts?.nutritionPer100g) ??
+    readNutrition(prefillData?.foodFacts?.nutritionPer100g);
+  const [nutrition, setNutrition] = useState<Record<NutrientKey, string>>(() => nutritionToForm(initialNutrition));
+  const [nutritionOpen, setNutritionOpen] = useState(false);
+  const nutritionCount = Object.values(nutrition).filter((value) => value.trim()).length;
+  const lookupBarcode = useAction(api.barcodes.lookup);
+  const [scanning, setScanning] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [lookedUpCode, setLookedUpCode] = useState(prefillData?.foodFacts ? prefillData.barcode ?? "" : "");
+  const [scanned, setScanned] = useState<{
+    foodFacts?: FoodFacts;
+    attribution?: InventoryPrefillData["attribution"];
+  }>({ foodFacts: prefillData?.foodFacts, attribution: prefillData?.attribution });
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     message: string;
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
-  const inputClassName =
-    "w-full h-11 px-3 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100";
-  const textareaClassName =
-    "w-full min-h-[72px] px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100";
+  const eyebrowClassName =
+    "block text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500 dark:text-stone-400";
   const categorySelectOptions = [
     { value: "", label: "No category" },
     ...INVENTORY_CATEGORY_OPTIONS.map((category) => ({
@@ -421,6 +494,57 @@ function InventoryItemModal({
       setCustomCategory(nextCategoryState.customCategory);
     }
   }, [prefillData, item]);
+
+  const filteredCategories = categorySelectOptions.filter((option) =>
+    `${option.label} ${option.searchText ?? ""}`
+      .toLowerCase()
+      .includes(categoryQuery.trim().toLowerCase())
+  );
+  const categoryLabel =
+    selectedCategory === INVENTORY_CUSTOM_CATEGORY_VALUE
+      ? customCategory.trim() || "Custom category"
+      : selectedCategory || "";
+
+  // Fill blanks from the product database; never overwrite what the user typed.
+  const lookUp = async (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setFormData((previous) => ({ ...previous, barcode: trimmed }));
+    setLookedUpCode(trimmed);
+    setLookingUp(true);
+    try {
+      const data = (await lookupBarcode({ code: trimmed })) as BarcodeLookupResponse;
+      if (!data.found) {
+        setAlertModal({
+          isOpen: true,
+          message: `No product found for ${trimmed}. You can still save it with this barcode.`,
+          variant: "info",
+        });
+        return;
+      }
+      setFormData((previous) => ({
+        ...previous,
+        name: previous.name.trim() ? previous.name : data.prefill.name || previous.name,
+      }));
+      if (!selectedCategory && data.prefill.category) {
+        const next = categoryToFormState(data.prefill.category);
+        setSelectedCategory(next.selectedCategory);
+        setCustomCategory(next.customCategory);
+      }
+      setScanned({ foodFacts: data.facts as FoodFacts | undefined, attribution: data.attribution });
+      const scannedNutrition = readNutrition((data.facts as FoodFacts | undefined)?.nutritionPer100g);
+      if (scannedNutrition) {
+        setNutrition((previous) =>
+          Object.values(previous).some((value) => value.trim()) ? previous : nutritionToForm(scannedNutrition)
+        );
+      }
+    } catch (error) {
+      console.error("Error looking up barcode:", error);
+      setAlertModal({ isOpen: true, message: "Couldn’t look up that barcode. Please try again.", variant: "error" });
+    } finally {
+      setLookingUp(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -463,6 +587,8 @@ function InventoryItemModal({
         category: resolvedCategory || "",
         notes: formData.notes || "",
         barcode: formData.barcode || "",
+        // null clears facts that were removed; undefined leaves them untouched.
+        nutritionPer100g: formToNutrition(nutrition) ?? (item?.nutritionPer100g ? null : undefined),
       });
     } finally {
       setSaving(false);
@@ -471,244 +597,463 @@ function InventoryItemModal({
 
   return (
     <Modal isOpen onClose={onClose} title={item ? "Edit item" : "Add item"}>
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-          <div>
-            <label htmlFor="inventory-name" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Name *
-            </label>
-            <input id="inventory-name" autoFocus
-              type="text"
-              value={formData.name}
-              onChange={(event) =>
-                setFormData({ ...formData, name: event.target.value })
-              }
-              className={inputClassName}
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Essentials, grouped in one card like a receipt: name and amount up
+              top, where and how long below. */}
+          <div className="rounded-2xl border border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/40">
+            <div className="flex items-start gap-4 p-4">
+              <div className="min-w-0 flex-1">
+                <label htmlFor="inventory-name" className={eyebrowClassName}>
+                  Item
+                </label>
+                <input id="inventory-name" autoFocus
+                  type="text"
+                  value={formData.name}
+                  onChange={(event) =>
+                    setFormData({ ...formData, name: event.target.value })
+                  }
+                  placeholder="What are you adding?"
+                  className="mt-1 w-full bg-transparent text-xl font-semibold tracking-tight text-stone-900 placeholder:font-medium placeholder:text-stone-400 focus:outline-none dark:text-stone-100 dark:placeholder:text-stone-600"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                  required
+                />
+              </div>
+              <div className="w-28 shrink-0 text-right">
+                <label htmlFor="inventory-quantity" className={eyebrowClassName}>
+                  Quantity
+                </label>
+                <input id="inventory-quantity"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0.01"
+                  value={formData.quantity}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      quantity: parseFloat(event.target.value) || 0,
+                    })
+                  }
+                  className="mt-1 w-full bg-transparent text-right text-xl font-semibold tabular-nums text-stone-900 focus:outline-none dark:text-stone-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                  required
+                />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label htmlFor="inventory-location" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                Location *
-              </label>
-              <select id="inventory-location"
-                value={formData.locationId}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    locationId: event.target.value as KitchenLocationId,
-                  })
-                }
-                className={inputClassName}
-                required
+            <div className="border-t border-stone-200 dark:border-stone-800">
+              <button
+                type="button"
+                aria-label={`Unit: ${formData.unit || "not set"}`}
+                aria-expanded={panel === "unit"}
+                aria-controls="inventory-unit-menu"
+                onClick={() => togglePanel("unit")}
+                className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-stone-100/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-stone-800/30"
               >
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
+                <span className={eyebrowClassName} aria-hidden="true">Unit</span>
+                <span className={`ml-auto truncate text-base ${formData.unit ? "text-stone-900 dark:text-stone-100" : "text-stone-400"}`}>
+                  {unitLabel(formData.unit, formData.quantity) || "Choose a unit"}
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300 ${panel === "unit" ? "rotate-180" : ""}`} strokeWidth={1.75} />
+              </button>
+              <Collapse open={panel === "unit"}>
+                <div id="inventory-unit-menu" className="border-t border-stone-200 dark:border-stone-800">
+                  <UnitMenu
+                    active={panel === "unit"}
+                    value={formData.unit}
+                    onChange={(unit) => setFormData((previous) => ({ ...previous, unit }))}
+                    onDone={() => setPanel(null)}
+                    ingredientName={formData.name}
+                  />
+                </div>
+              </Collapse>
             </div>
 
-            <div>
-              <label htmlFor="inventory-unit" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                Unit *
+            <div className="grid grid-cols-2 divide-x divide-stone-200 border-t border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+              <div className="p-4">
+                <span id="inventory-location-label" className={eyebrowClassName}>Location</span>
+                <button
+                  type="button"
+                  aria-label={`Location: ${currentLocation?.name ?? "not set"}`}
+                  aria-expanded={panel === "location"}
+                  aria-controls="inventory-location-options"
+                  onClick={() => togglePanel("location")}
+                  className="mt-1.5 -ml-1 flex min-h-10 items-center gap-2.5 rounded-full py-1 pl-1 pr-3 text-base text-stone-900 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-stone-100 dark:hover:bg-stone-800/60"
+                >
+                  <LocationBadge id={formData.locationId} />
+                  <span className="truncate">{currentLocation?.name ?? "Choose"}</span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300 ${panel === "location" ? "rotate-180" : ""}`} strokeWidth={1.75} />
+                </button>
+              </div>
+              <div className="p-4">
+                <span className={eyebrowClassName} aria-hidden="true">
+                  Expires
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Expires: ${formData.expiresOn ? formatDisplay(formData.expiresOn) : "no expiration"}`}
+                  aria-expanded={panel === "expires"}
+                  aria-controls="inventory-expires-calendar"
+                  onClick={() => togglePanel("expires")}
+                  className="mt-1.5 -ml-2 flex min-h-10 w-[calc(100%+0.5rem)] items-center gap-2.5 rounded-full px-2 py-1 text-left text-base hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-emerald-600 dark:hover:bg-stone-800/60"
+                >
+                  <CalendarDays className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+                  <span className={`truncate ${formData.expiresOn ? "text-stone-900 dark:text-stone-100" : "text-stone-400"}`}>
+                    {formData.expiresOn ? formatDisplay(formData.expiresOn) : "No expiration"}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <Collapse open={panel === "location"}>
+              <div
+                id="inventory-location-options"
+                role="radiogroup"
+                aria-labelledby="inventory-location-label"
+                className="grid grid-cols-3 gap-1.5 border-t border-stone-200 p-2 dark:border-stone-800"
+              >
+                {locations.map((location) => {
+                  const selected = location.id === formData.locationId;
+                  return (
+                    <button
+                      key={location.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        setFormData({ ...formData, locationId: location.id });
+                        setPanel(null);
+                      }}
+                      className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-medium ${
+                        selected
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+                          : "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800/60"
+                      }`}
+                    >
+                      <LocationIcon id={location.id} className="h-4 w-4" />
+                      {location.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </Collapse>
+
+            <Collapse open={panel === "expires"}>
+              <div id="inventory-expires-calendar" className="border-t border-stone-200 p-4 dark:border-stone-800">
+                <div className="mb-4 flex flex-wrap gap-1.5">
+                  {EXPIRY_SHORTCUTS.map((shortcut) => (
+                    <button
+                      key={shortcut.label}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, expiresOn: daysFromTodayISO(shortcut.days) });
+                        setPanel(null);
+                      }}
+                      className="min-h-9 rounded-full border border-stone-200 px-3 text-sm text-stone-700 hover:border-emerald-300 hover:bg-emerald-50 dark:border-stone-700 dark:text-stone-300 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/40"
+                    >
+                      {shortcut.label}
+                    </button>
+                  ))}
+                  {formData.expiresOn && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, expiresOn: "" });
+                        setPanel(null);
+                      }}
+                      className="min-h-9 rounded-full px-3 text-sm text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800"
+                    >
+                      No expiration
+                    </button>
+                  )}
+                </div>
+                {/* Remount on open so it starts on the selected month. */}
+                <Calendar
+                  key={panel === "expires" ? "open" : "closed"}
+                  size="comfortable"
+                  value={formData.expiresOn}
+                  onSelect={(expiresOn) => {
+                    setFormData({ ...formData, expiresOn });
+                    setPanel(null);
+                  }}
+                />
+              </div>
+            </Collapse>
+          </div>
+
+          <section>
+            <h3 id="inventory-category-label" className={`${eyebrowClassName} mb-2 px-1`}>Category</h3>
+            <div className="rounded-2xl border border-stone-200 dark:border-stone-800">
+              <button
+                type="button"
+                aria-label={`Category: ${categoryLabel || "none"}`}
+                aria-expanded={panel === "category"}
+                aria-controls="inventory-category-options"
+                onClick={() => {
+                  if (panel !== "category") setCategoryQuery("");
+                  togglePanel("category");
+                }}
+                className={`flex min-h-14 w-full items-center gap-3 rounded-2xl px-4 text-left text-base focus-visible:outline-2 focus-visible:outline-emerald-600 ${
+                  panel === "category" ? "rounded-b-none bg-stone-50 dark:bg-stone-900/50" : "hover:bg-stone-50 dark:hover:bg-stone-900/40"
+                }`}
+              >
+                <Tag className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} aria-hidden="true" />
+                <span className={`flex-1 truncate ${categoryLabel ? "text-stone-900 dark:text-stone-100" : "text-stone-400"}`}>
+                  {categoryLabel || "Select category"}
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300 ${panel === "category" ? "rotate-180" : ""}`} strokeWidth={1.75} />
+              </button>
+
+              <Collapse open={panel === "category"}>
+                <div className="border-t border-stone-200 dark:border-stone-800">
+                  <div className="p-3">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+                      <input
+                        type="search"
+                        value={categoryQuery}
+                        onChange={(event) => setCategoryQuery(event.target.value)}
+                        placeholder="Search categories"
+                        aria-label="Search categories"
+                        className="h-10 w-full rounded-xl border border-stone-200 bg-white pl-9 pr-3 text-base text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-100"
+                      />
+                    </div>
+                  </div>
+                  <div
+                    id="inventory-category-options"
+                    role="listbox"
+                    aria-labelledby="inventory-category-label"
+                    className="max-h-56 overflow-y-auto overscroll-contain border-t border-stone-200 px-2 py-1 dark:border-stone-800"
+                  >
+                    {filteredCategories.length === 0 ? (
+                      <p className="px-3 py-3 text-sm text-stone-500 dark:text-stone-400">No matching categories</p>
+                    ) : (
+                      filteredCategories.map((option) => {
+                        const selected = option.value === selectedCategory;
+                        return (
+                          <button
+                            key={option.value || "none"}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            onClick={() => {
+                              setSelectedCategory(option.value);
+                              if (option.value !== INVENTORY_CUSTOM_CATEGORY_VALUE) setPanel(null);
+                            }}
+                            className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm ${
+                              selected
+                                ? "bg-emerald-100 font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+                                : "text-stone-700 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800/60"
+                            }`}
+                          >
+                            <span className="truncate">{option.label}</span>
+                            {selected && <Check className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </Collapse>
+
+              <Collapse open={selectedCategory === INVENTORY_CUSTOM_CATEGORY_VALUE}>
+                <div className="border-t border-stone-200 p-3 dark:border-stone-800">
+                  <input
+                    type="text"
+                    value={customCategory}
+                    onChange={(event) => setCustomCategory(event.target.value)}
+                    placeholder="Name your category"
+                    aria-label="Custom category"
+                    className="h-10 w-full rounded-xl bg-stone-100 px-3 text-base text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:bg-stone-900 dark:text-stone-100"
+                  />
+                </div>
+              </Collapse>
+            </div>
+          </section>
+
+          <section>
+            <h3 className={`${eyebrowClassName} mb-2 px-1`}>Optional details</h3>
+            <div className="divide-y divide-stone-200 rounded-2xl border border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+              <label className="flex items-start gap-3 px-4 py-3 focus-within:bg-stone-50 dark:focus-within:bg-stone-900/40 first:rounded-t-2xl">
+                <NotebookPen className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} aria-hidden="true" />
+                <span className="sr-only">Notes</span>
+                <textarea id="inventory-notes"
+                  value={formData.notes}
+                  onChange={(event) =>
+                    setFormData({ ...formData, notes: event.target.value })
+                  }
+                  rows={formData.notes ? 3 : 1}
+                  placeholder="Add a note"
+                  className="min-h-6 w-full resize-none bg-transparent text-base text-stone-900 placeholder:text-stone-400 focus:outline-none dark:text-stone-100"
+                />
               </label>
-              <UnitPicker id="inventory-unit"
-                value={formData.unit}
-                onChange={(unit) => setFormData({ ...formData, unit })}
-                ingredientName={formData.name}
-                className="w-full"
-              />
+              <div className="flex items-center gap-3 px-4 py-2 focus-within:bg-stone-50 dark:focus-within:bg-stone-900/40 last:rounded-b-2xl">
+                <ScanBarcode className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} aria-hidden="true" />
+                <input id="inventory-barcode"
+                  type="text"
+                  inputMode="numeric"
+                  aria-label="Barcode"
+                  value={formData.barcode}
+                  onChange={(event) =>
+                    setFormData({ ...formData, barcode: event.target.value })
+                  }
+                  onKeyDown={(event) => {
+                    // Enter looks the code up instead of submitting the form.
+                    if (event.key === "Enter" && formData.barcode.trim()) {
+                      event.preventDefault();
+                      void lookUp(formData.barcode);
+                    }
+                  }}
+                  placeholder="Barcode (UPC/EAN)"
+                  className="min-h-10 w-full min-w-0 bg-transparent text-base tabular-nums text-stone-900 placeholder:text-stone-400 focus:outline-none dark:text-stone-100"
+                />
+                {lookingUp ? (
+                  <span className="flex shrink-0 items-center gap-1.5 px-2 text-sm text-stone-500" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden="true" />
+                    Looking up…
+                  </span>
+                ) : formData.barcode.trim() && formData.barcode.trim() !== lookedUpCode ? (
+                  <button
+                    type="button"
+                    onClick={() => void lookUp(formData.barcode)}
+                    className="min-h-9 shrink-0 rounded-full px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                  >
+                    Look up
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setScanning(true)}
+                  className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                >
+                  <ScanLine className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                  Scan
+                </button>
+              </div>
+              <div className="last:rounded-b-2xl">
+                <button
+                  type="button"
+                  aria-expanded={nutritionOpen}
+                  aria-controls="inventory-nutrition"
+                  onClick={() => setNutritionOpen((open) => !open)}
+                  className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-stone-50 dark:hover:bg-stone-900/40"
+                >
+                  <Apple className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} aria-hidden="true" />
+                  <span className={`flex-1 text-base ${nutritionCount ? "text-stone-900 dark:text-stone-100" : "text-stone-400"}`}>
+                    {nutritionCount ? `Nutrition facts · ${nutritionCount} of ${NUTRIENT_FIELDS.length}` : "Add nutrition facts"}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300 ${nutritionOpen ? "rotate-180" : ""}`} strokeWidth={1.75} />
+                </button>
+                <Collapse open={nutritionOpen}>
+                  <div id="inventory-nutrition" className="border-t border-stone-200 p-4 dark:border-stone-800">
+                    <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
+                      Per 100 g, as printed on the label. Recipes use these to estimate their nutrition.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {NUTRIENT_FIELDS.map(({ key, label, unit }) => (
+                        <label key={key} className="rounded-xl bg-stone-100 px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500/30 dark:bg-stone-900">
+                          <span className="block text-[11px] text-stone-500 dark:text-stone-400">{label}</span>
+                          <span className="flex items-baseline gap-1">
+                            <input
+                              value={nutrition[key]}
+                              onChange={(event) => setNutrition((previous) => ({ ...previous, [key]: event.target.value }))}
+                              inputMode="decimal"
+                              placeholder="—"
+                              className="w-full min-w-0 bg-transparent text-base font-semibold tabular-nums text-stone-900 placeholder:text-stone-400 focus:outline-none dark:text-stone-100"
+                            />
+                            <span className="text-xs text-stone-500">{unit}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </Collapse>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label htmlFor="inventory-quantity" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                Quantity *
-              </label>
-              <input id="inventory-quantity"
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={formData.quantity}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    quantity: parseFloat(event.target.value) || 0,
-                  })
-                }
-                className={inputClassName}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                Expiration Date
-              </label>
-              <DatePicker
-                value={formData.expiresOn}
-                onChange={(expiresOn) =>
-                  setFormData({ ...formData, expiresOn })
-                }
-                placeholder="No expiration"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Category
-            </label>
-            <SearchableSelect
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              options={categorySelectOptions}
-              placeholder="Select category"
-              searchPlaceholder="Search categories..."
-              emptyMessage="No matching categories"
-              ariaLabel="Select pantry item category"
-            />
-            {selectedCategory === INVENTORY_CUSTOM_CATEGORY_VALUE && (
-              <input
-                type="text"
-                value={customCategory}
-                onChange={(event) => setCustomCategory(event.target.value)}
-                placeholder="Enter custom category"
-                className={`${inputClassName} mt-2`}
-              />
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="inventory-notes" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Notes
-            </label>
-            <textarea id="inventory-notes"
-              value={formData.notes}
-              onChange={(event) =>
-                setFormData({ ...formData, notes: event.target.value })
-              }
-              rows={2}
-              className={textareaClassName}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="inventory-barcode" className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Barcode
-            </label>
-            <input id="inventory-barcode"
-              type="text"
-              value={formData.barcode}
-              onChange={(event) =>
-                setFormData({ ...formData, barcode: event.target.value })
-              }
-              placeholder="UPC/EAN"
-              className={inputClassName}
-            />
-          </div>
-
-          {prefillData?.foodFacts && !item && (
+          {scanned.foodFacts && (
             <div className="rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40 p-3 space-y-2">
               <p className="text-sm font-medium text-stone-800 dark:text-stone-100">
-                Scanned Food Facts
+                Food facts
+              </p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Its nutrition is filled in under Nutrition facts below.
               </p>
               <div className="flex flex-wrap gap-2 text-xs text-stone-700 dark:text-stone-300">
-                {prefillData.foodFacts.brand && (
+                {scanned.foodFacts.brand && (
                   <span className="px-2 py-1 rounded bg-stone-200/80 dark:bg-stone-800">
-                    Brand: {prefillData.foodFacts.brand}
+                    Brand: {scanned.foodFacts.brand}
                   </span>
                 )}
-                {prefillData.foodFacts.nutriscoreGrade && (
+                {scanned.foodFacts.nutriscoreGrade && (
                   <span className="px-2 py-1 rounded bg-stone-200/80 dark:bg-stone-800">
-                    Nutri-Score {prefillData.foodFacts.nutriscoreGrade.toUpperCase()}
+                    Nutri-Score {scanned.foodFacts.nutriscoreGrade.toUpperCase()}
                   </span>
                 )}
-                {prefillData.foodFacts.novaGroup && (
+                {scanned.foodFacts.novaGroup && (
                   <span className="px-2 py-1 rounded bg-stone-200/80 dark:bg-stone-800">
-                    NOVA {prefillData.foodFacts.novaGroup}
+                    NOVA {scanned.foodFacts.novaGroup}
                   </span>
                 )}
               </div>
 
-              {prefillData.foodFacts.nutritionPer100g && (
-                <div className="text-xs text-stone-700 dark:text-stone-300 grid grid-cols-2 gap-x-3 gap-y-1">
-                  {prefillData.foodFacts.nutritionPer100g.energyKcal !== undefined && (
-                    <span>
-                      Energy: {prefillData.foodFacts.nutritionPer100g.energyKcal} kcal
-                    </span>
-                  )}
-                  {prefillData.foodFacts.nutritionPer100g.fatG !== undefined && (
-                    <span>Fat: {prefillData.foodFacts.nutritionPer100g.fatG} g</span>
-                  )}
-                  {prefillData.foodFacts.nutritionPer100g.carbsG !== undefined && (
-                    <span>Carbs: {prefillData.foodFacts.nutritionPer100g.carbsG} g</span>
-                  )}
-                  {prefillData.foodFacts.nutritionPer100g.sugarsG !== undefined && (
-                    <span>Sugars: {prefillData.foodFacts.nutritionPer100g.sugarsG} g</span>
-                  )}
-                  {prefillData.foodFacts.nutritionPer100g.proteinG !== undefined && (
-                    <span>Protein: {prefillData.foodFacts.nutritionPer100g.proteinG} g</span>
-                  )}
-                  {prefillData.foodFacts.nutritionPer100g.saltG !== undefined && (
-                    <span>Salt: {prefillData.foodFacts.nutritionPer100g.saltG} g</span>
-                  )}
-                </div>
-              )}
-
-              {prefillData.foodFacts.allergensTags &&
-                prefillData.foodFacts.allergensTags.length > 0 && (
+              {scanned.foodFacts.allergensTags &&
+                scanned.foodFacts.allergensTags.length > 0 && (
                   <p className="text-xs text-stone-700 dark:text-stone-300">
                     Allergens:{" "}
-                    {prefillData.foodFacts.allergensTags.map(formatTag).join(", ")}
+                    {scanned.foodFacts.allergensTags.map(formatTag).join(", ")}
                   </p>
                 )}
 
-              {prefillData.foodFacts.ingredientsText && (
+              {scanned.foodFacts.ingredientsText && (
                 <p className="text-xs text-stone-700 dark:text-stone-300">
-                  Ingredients: {prefillData.foodFacts.ingredientsText.slice(0, 180)}
-                  {prefillData.foodFacts.ingredientsText.length > 180 ? "..." : ""}
+                  Ingredients: {scanned.foodFacts.ingredientsText.slice(0, 180)}
+                  {scanned.foodFacts.ingredientsText.length > 180 ? "..." : ""}
                 </p>
               )}
 
-              {prefillData.attribution && (
+              {scanned.attribution && (
                 <p className="text-[11px] text-stone-500 dark:text-stone-400">
                   Data source:{" "}
                   <a
-                    href={prefillData.attribution.url}
+                    href={scanned.attribution.url}
                     target="_blank"
                     rel="noreferrer"
                     className="underline underline-offset-2"
                   >
-                    {prefillData.attribution.label}
+                    {scanned.attribution.label}
                   </a>{" "}
-                  ({prefillData.attribution.license})
+                  ({scanned.attribution.license})
                 </p>
               )}
             </div>
           )}
 
-          <div className="flex gap-3 pt-3 sm:pt-4">
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900"
+              className="min-h-11 flex-1 rounded-xl px-4 py-2 font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-900"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="min-h-11 flex-[2] rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white shadow-sm shadow-emerald-900/20 hover:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Saving…" : item ? "Save changes" : "Add to kitchen"}
             </button>
           </div>
         </form>
+      {scanning && (
+        <BarcodeScanner
+          isOpen
+          onClose={() => setScanning(false)}
+          onScan={(code) => void lookUp(code)}
+        />
+      )}
       <AlertModal
         isOpen={alertModal.isOpen}
         onClose={() =>

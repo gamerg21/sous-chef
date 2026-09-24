@@ -4,11 +4,27 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@/lib/kitchen/client";
 import { api } from "@/lib/kitchen/api";
 import type { Id } from "@/server/kitchen/_generated/dataModel";
-import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Shield, Search, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Modal } from "@/components/ui/modal";
+import { PageLoader } from "@/components/ui/page-loader";
+import {
+  EmptyState,
+  IconBadge,
+  PageContainer,
+  PageHeader,
+  Pill,
+  Section,
+  buttonClassName,
+  cardClassName,
+  cx,
+  eyebrowClassName,
+  fieldClassName,
+  iconButtonClassName,
+  rowsClassName,
+} from "@/components/ui/kit";
 
 interface AdminUser {
   id: Id<"users">;
@@ -123,180 +139,153 @@ export default function AdminUsersClient() {
 
   if (usersData === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <PageLoader />
     );
   }
 
+  const addButton = (label: string) => (
+    <button type="button" onClick={handleAddUser} className={buttonClassName("primary")}>
+      <Plus className="h-4 w-4" />
+      {label}
+    </button>
+  );
+
   return (
     <>
-      <div className="p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
-                App Administration
-              </h1>
-              <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
-                Manage all users across the application
-              </p>
-            </div>
-            <button
-              onClick={handleAddUser}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add User
-            </button>
-          </div>
+      <PageContainer width="5xl">
+        <PageHeader
+          eyebrow="Admin"
+          title="App Administration"
+          description="Manage all users across the application"
+          actions={addButton("Add User")}
+        />
 
-          <div className="mb-6">
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search by name or email..."
-                  className="w-full pl-10 pr-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-md bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
-              >
-                Search
-              </button>
-            </form>
+        <form onSubmit={handleSearch} role="search" className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" aria-hidden="true" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by name or email..."
+              aria-label="Search by name or email"
+              className={cx(fieldClassName, "pl-10")}
+            />
           </div>
+          <button type="submit" className={cx(buttonClassName("secondary"), "min-h-11")}>
+            Search
+          </button>
+        </form>
 
-          {users.length === 0 ? (
-            <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-12 text-center">
-              <User className="w-12 h-12 mx-auto mb-4 text-stone-400" />
-              <h3 className="text-lg font-medium text-stone-900 dark:text-stone-100 mb-2">
-                {searchQuery ? "No users found" : "No users yet"}
-              </h3>
-              <p className="text-stone-600 dark:text-stone-400 mb-4">
-                {searchQuery
+        {users.length === 0 ? (
+          <div className={cardClassName}>
+            <EmptyState
+              icon={searchQuery ? Search : Users}
+              title={searchQuery ? "No users found" : "No users yet"}
+              description={
+                searchQuery
                   ? "Try adjusting your search query."
-                  : "Create the first user in the application."}
-              </p>
-              {!searchQuery && (
-                <button
-                  onClick={handleAddUser}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Your First User
-                </button>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden mb-4">
-                <div className="divide-y divide-stone-200 dark:divide-stone-800">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="p-4 hover:bg-stone-50 dark:hover:bg-stone-900/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center text-stone-600 dark:text-stone-400 font-medium shrink-0">
-                            {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium text-stone-900 dark:text-stone-100 truncate">
-                                {user.name || "Unnamed User"}
-                              </p>
-                              {user.isAppAdmin && (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400">
-                                  <Shield className="w-3 h-3" />
-                                  App Admin
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-stone-600 dark:text-stone-400 truncate">
-                              {user.email}
-                            </p>
-                            {user.households.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {user.households.slice(0, 3).map((h) => (
-                                  <span
-                                    key={h.householdId}
-                                    className="text-xs px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-900 text-stone-600 dark:text-stone-400"
-                                  >
-                                    {h.householdName} ({h.role})
-                                  </span>
-                                ))}
-                                {user.households.length > 3 && (
-                                  <span className="text-xs px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-900 text-stone-600 dark:text-stone-400">
-                                    +{user.households.length - 3} more
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors shrink-0"
-                              aria-label="More actions"
-                            >
-                              <MoreHorizontal className="w-4 h-4" strokeWidth={1.75} />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                              <Pencil className="w-4 h-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => handleDeleteUser(user.id, user.name || user.email)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  : "Create the first user in the application."
+              }
+              action={!searchQuery ? addButton("Add Your First User") : undefined}
+            />
+          </div>
+        ) : (
+          <Section title="Users" aside={searchQuery ? `Results for “${searchQuery}”` : undefined}>
+            <ul className={cx(cardClassName, rowsClassName)}>
+              {users.map((user) => (
+                <li key={user.id} className="flex min-h-16 items-center gap-3 px-4 py-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
                   >
-                    Previous
-                  </button>
-                  <span className="text-sm text-stone-600 dark:text-stone-400">
-                    Page {page} of {totalPages}
+                    {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                   </span>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="truncate font-medium text-stone-900 dark:text-stone-100">
+                        {user.name || "Unnamed User"}
+                      </p>
+                      {user.isAppAdmin && (
+                        <Pill tone="info">
+                          <Shield className="h-3 w-3" aria-hidden="true" />
+                          App Admin
+                        </Pill>
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-stone-500 dark:text-stone-400">
+                      {user.email}
+                    </p>
+                    {user.households.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {user.households.slice(0, 3).map((h) => (
+                          <Pill key={h.householdId}>
+                            {h.householdName} ({h.role})
+                          </Pill>
+                        ))}
+                        {user.households.length > 3 && (
+                          <Pill>+{user.households.length - 3} more</Pill>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={iconButtonClassName}
+                        aria-label="More actions"
+                      >
+                        <MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                        <Pencil className="w-4 h-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => handleDeleteUser(user.id, user.name || user.email)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </li>
+              ))}
+            </ul>
+
+            {totalPages > 1 && (
+              <nav aria-label="Pagination" className="mt-4 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className={cx(buttonClassName("secondary"), "min-h-11")}
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  Previous
+                </button>
+                <span className="text-sm tabular-nums text-stone-600 dark:text-stone-400">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className={cx(buttonClassName("secondary"), "min-h-11")}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </nav>
+            )}
+          </Section>
+        )}
+      </PageContainer>
 
       {showAddModal && (
         <AppUserModal
@@ -388,83 +377,87 @@ function AppUserModal({ user, onSave, onClose }: AppUserModalProps) {
 
   return (
     <Modal isOpen onClose={onClose} title={user ? "Edit User" : "Add User"}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Email *
+            <label htmlFor="admin-user-email" className={eyebrowClassName}>
+              Email
             </label>
             <input
+              id="admin-user-email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={cx(fieldClassName, "mt-1.5")}
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Name *
+            <label htmlFor="admin-user-name" className={eyebrowClassName}>
+              Name
             </label>
             <input
+              id="admin-user-name"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
+              className={cx(fieldClassName, "mt-1.5")}
               required
             />
           </div>
+        </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isAppAdmin}
-                onChange={(e) => setFormData({ ...formData, isAppAdmin: e.target.checked })}
-                className="w-4 h-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                App Administrator
-              </span>
-            </label>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 ml-6">
+        <label className={cx(cardClassName, "flex min-h-16 cursor-pointer items-center gap-3 p-4 hover:bg-stone-50 dark:hover:bg-stone-900/60")}>
+          <IconBadge icon={Shield} tone={formData.isAppAdmin ? "info" : "neutral"} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-stone-900 dark:text-stone-100">
+              App Administrator
+            </span>
+            <span className="block text-xs text-stone-500 dark:text-stone-400">
               Grant full administrative access to the application
-            </p>
-          </div>
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={formData.isAppAdmin}
+            onChange={(e) => setFormData({ ...formData, isAppAdmin: e.target.checked })}
+            className="peer sr-only"
+          />
+          {/* Visual switch mirroring the (visually hidden) checkbox. */}
+          <span
+            aria-hidden="true"
+            className="relative h-6 w-11 shrink-0 rounded-full bg-stone-300 transition-colors peer-checked:bg-emerald-600 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-600 dark:bg-stone-700 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"
+          />
+        </label>
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              {user ? "New Password (leave blank to keep current)" : "Password *"}
-            </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
-              required={!user}
-              minLength={8}
-            />
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              Minimum 8 characters
-            </p>
-          </div>
+        <div>
+          <label htmlFor="admin-user-password" className={eyebrowClassName}>
+            {user ? "New Password (leave blank to keep current)" : "Password *"}
+          </label>
+          <input
+            id="admin-user-password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            className={cx(fieldClassName, "mt-1.5")}
+            aria-describedby="admin-user-password-help"
+            required={!user}
+            minLength={8}
+          />
+          <p id="admin-user-password-help" className="mt-1.5 px-1 text-xs text-stone-500 dark:text-stone-400">
+            Minimum 8 characters
+          </p>
+        </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={onClose} className={cx(buttonClassName("secondary"), "min-h-11 flex-1")}>
+            Cancel
+          </button>
+          <button type="submit" disabled={saving} className={cx(buttonClassName("primary"), "min-h-11 flex-1")}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </form>
       <AlertModal
         isOpen={alertModal.isOpen}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import { X, Camera, AlertCircle, RefreshCcw } from "lucide-react";
+import { IconBadge, buttonClassName, cx, eyebrowClassName, headingFont, iconButtonClassName } from "@/components/ui/kit";
 
 export interface BarcodeScannerProps {
   isOpen: boolean;
@@ -134,72 +135,72 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div className="bg-white dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800 w-full max-w-2xl mx-4 shadow-xl overflow-hidden">
+    <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="barcode-scanner-title"
+        className="animate-pop-in w-full max-w-2xl overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl dark:border-stone-800 dark:bg-stone-950"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-800">
-          <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            Scan Barcode
-          </h2>
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-5">
+          <div className="min-w-0">
+            <p className={eyebrowClassName}>Barcode</p>
+            <h2
+              id="barcode-scanner-title"
+              className="mt-0.5 text-xl font-semibold tracking-tight text-stone-900 dark:text-stone-100"
+              style={headingFont}
+            >
+              Scan Barcode
+            </h2>
+          </div>
+          <div className="flex items-center gap-1">
             {videoDevices.length > 1 && (
-              <button
-                type="button"
-                onClick={handleSwitchCamera}
-                className="inline-flex items-center gap-2 rounded-md border border-stone-200 dark:border-stone-800 px-3 py-1.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-900 transition-colors"
-              >
-                <RefreshCcw className="w-4 h-4" />
+              <button type="button" onClick={handleSwitchCamera} className={buttonClassName("ghost", "sm")}>
+                <RefreshCcw className="h-4 w-4" strokeWidth={1.75} />
                 Switch camera
               </button>
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-md hover:bg-stone-100 dark:hover:bg-stone-900 text-stone-600 dark:text-stone-400 transition-colors"
-              aria-label="Close scanner"
-            >
-              <X className="w-5 h-5" />
+            <button type="button" onClick={onClose} className={cx(iconButtonClassName, "-mr-2 h-11 w-11")} aria-label="Close scanner">
+              <X className="h-5 w-5" strokeWidth={1.75} />
             </button>
           </div>
         </div>
 
         {/* Scanner area */}
-        <div className="relative bg-black p-4">
-          {error ? (
-            <div className="flex flex-col items-center justify-center py-12 px-4">
-              <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
-              <p className="text-center text-stone-100 mb-4">{error}</p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          ) : (
-            <>
-              <video
-                ref={videoRef}
-                className="w-full h-auto max-h-[60vh] object-contain"
-                playsInline
-                muted
-              />
-            </>
-          )}
+        <div className="px-5">
+          <div className="relative overflow-hidden rounded-2xl bg-black">
+            {error ? (
+              <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                <IconBadge icon={AlertCircle} tone="warning" size="lg" />
+                <p className="mt-4 max-w-sm text-sm text-stone-200">{error}</p>
+                <button type="button" onClick={onClose} className={cx(buttonClassName("primary"), "mt-5")}>
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <video ref={videoRef} className="h-auto max-h-[60vh] w-full object-contain" playsInline muted />
+                {/* Decorative framing guide over the live feed. */}
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="h-2/5 w-3/4 rounded-2xl border-2 border-white/70 shadow-[0_0_0_9999px_rgb(0_0_0/0.25)]" />
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Instructions */}
-        {!error && (
-          <div className="p-4 bg-stone-50 dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800">
-            <div className="flex items-start gap-3">
-              <Camera className="w-5 h-5 text-stone-500 dark:text-stone-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-stone-600 dark:text-stone-400">
-                <p className="font-medium mb-1">Position the barcode within the frame</p>
-                <p>Make sure the barcode is clearly visible and well-lit</p>
-              </div>
+        {!error ? (
+          <div className="flex items-start gap-3 p-5">
+            <IconBadge icon={Camera} tone="success" />
+            <div className="text-sm">
+              <p className="font-medium text-stone-900 dark:text-stone-100">Position the barcode within the frame</p>
+              <p className="mt-0.5 text-stone-600 dark:text-stone-400">Make sure the barcode is clearly visible and well-lit</p>
             </div>
           </div>
+        ) : (
+          <div className="h-5" />
         )}
       </div>
     </div>

@@ -1,10 +1,143 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation } from "@/lib/kitchen/client";
 import { api } from "@/lib/kitchen/api";
 import { useRouter } from "next/navigation";
-import { User, Settings, Save, Loader2 } from "lucide-react";
+import {
+  AtSign,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Clock,
+  Droplet,
+  Image as ImageIcon,
+  Loader2,
+  Ruler,
+  Save,
+  Scale,
+} from "lucide-react";
+import { Collapse } from "@/components/ui/collapse";
+import { PageLoader } from "@/components/ui/page-loader";
+import {
+  IconBadge,
+  PageHeader,
+  Section,
+  SegmentedControl,
+  bareInputClassName,
+  buttonClassName,
+  cardClassName,
+  cx,
+  eyebrowClassName,
+  headingFont,
+  heroCardClassName,
+  heroInputClassName,
+  optionClassName,
+  rowsClassName,
+} from "@/components/ui/kit";
+
+type Preferences = {
+  measurementSystem: string;
+  defaultWeightUnit: string;
+  defaultVolumeUnit: string;
+  timezone: string;
+  dateFormat: string;
+};
+
+const WEIGHT_UNITS = [
+  { value: "g", label: "g", name: "Grams (g)" },
+  { value: "kg", label: "kg", name: "Kilograms (kg)" },
+  { value: "oz", label: "oz", name: "Ounces (oz)" },
+  { value: "lb", label: "lb", name: "Pounds (lb)" },
+];
+
+const VOLUME_UNITS = [
+  { value: "ml", label: "Milliliters (ml)" },
+  { value: "l", label: "Liters (l)" },
+  { value: "cup", label: "Cups" },
+  { value: "tbsp", label: "Tablespoons (tbsp)" },
+  { value: "tsp", label: "Teaspoons (tsp)" },
+];
+
+const DATE_FORMATS = [
+  { value: "YYYY-MM-DD", label: "YYYY-MM-DD" },
+  { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
+  { value: "MM-DD-YYYY", label: "MM-DD-YYYY" },
+];
+
+function initials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function FormNotice({ tone, children }: { tone: "error" | "success"; children: ReactNode }) {
+  return (
+    <p
+      role={tone === "error" ? "alert" : "status"}
+      className={cx(
+        "animate-fade-in rounded-xl px-3 py-2 text-sm",
+        tone === "error"
+          ? "bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200"
+          : "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+/** Settings row: badge, label and description on the left, control on the right (stacked on phones). */
+function SettingRow({
+  icon,
+  label,
+  labelId,
+  description,
+  children,
+}: {
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: ReactNode;
+  labelId?: string;
+  description?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <IconBadge icon={icon} tone="neutral" />
+        <div className="min-w-0">
+          <p id={labelId} className="text-sm font-medium text-stone-900 dark:text-stone-100">
+            {label}
+          </p>
+          {description && <p className="text-xs text-stone-500 dark:text-stone-400">{description}</p>}
+        </div>
+      </div>
+      <div className="sm:shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function SaveButton({ saving, label }: { saving: boolean; label: string }) {
+  return (
+    <button type="submit" disabled={saving} className={buttonClassName("primary")}>
+      {saving ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Saving...
+        </>
+      ) : (
+        <>
+          <Save className="h-4 w-4" />
+          {label}
+        </>
+      )}
+    </button>
+  );
+}
 
 export default function AccountPageClient() {
   const router = useRouter();
@@ -22,15 +155,11 @@ export default function AccountPageClient() {
   const [preferencesSaving, setPreferencesSaving] = useState(false);
 
   if (!profileData || !preferencesData) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
-    );
+    return <PageLoader rows={4} />;
   }
 
   const profile = profileData.user;
-  const preferences = {
+  const preferences: Preferences = {
     measurementSystem: preferencesData.preferences?.measurementSystem || "metric",
     defaultWeightUnit: preferencesData.preferences?.defaultWeightUnit || "g",
     defaultVolumeUnit: preferencesData.preferences?.defaultVolumeUnit || "ml",
@@ -92,35 +221,33 @@ export default function AccountPageClient() {
     }
   };
 
+  const displayName = profile.name || profile.email;
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-2">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">
-                Account & Preferences
-              </h1>
-              <p className="text-sm text-stone-600 dark:text-stone-400">
-                Manage your profile information and application preferences.
-              </p>
-            </div>
-          </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Account & Preferences"
+        description="Manage your profile information and application preferences."
+      />
 
-          <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="w-5 h-5 text-stone-500 dark:text-stone-400" />
-              <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-                Profile Information
-              </h2>
-            </div>
-
-            <form key={profileFormKey} onSubmit={handleProfileSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                >
+      <Section title="Profile Information">
+        <form key={profileFormKey} onSubmit={handleProfileSubmit} className="space-y-3">
+          <div className={heroCardClassName}>
+            <div className="flex items-center gap-4 p-4">
+              <span
+                aria-hidden="true"
+                className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-lg font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+                style={headingFont}
+              >
+                {profile.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-supplied avatar URL
+                  <img src={profile.image} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials(displayName) || "?"
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <label htmlFor="name" className={eyebrowClassName}>
                   Name
                 </label>
                 <input
@@ -129,235 +256,221 @@ export default function AccountPageClient() {
                   name="name"
                   defaultValue={profile.name || ""}
                   required
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  placeholder="Your name"
+                  className={cx(heroInputClassName, "mt-0.5")}
+                  style={headingFont}
                 />
               </div>
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                >
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  defaultValue={profile.email}
-                  required
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                />
-                {!profile.emailVerified && (
-                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                    Email not verified. Check your inbox for a verification link.
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="image"
-                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                >
-                  Avatar URL (optional)
-                </label>
-                <input
-                  type="url"
-                  id="image"
-                  name="image"
-                  defaultValue={profile.image || ""}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                />
-              </div>
-
-              {profileError && (
-                <div className="rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3">
-                  <p className="text-sm text-red-800 dark:text-red-200">
-                    {profileError}
-                  </p>
-                </div>
-              )}
-
-              {profileSuccess && (
-                <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3">
-                  <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                    Profile updated successfully!
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={profileSaving}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {profileSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Profile
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-
-          <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="w-5 h-5 text-stone-500 dark:text-stone-400" />
-              <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
-                Preferences
-              </h2>
             </div>
 
-            <form
-              key={preferencesFormKey}
-              onSubmit={handlePreferencesSubmit}
-              className="space-y-4"
+            <div className={cx(rowsClassName, "border-t border-stone-200 dark:border-stone-800")}>
+              <div className="flex items-start gap-3 p-4">
+                <IconBadge icon={AtSign} tone="neutral" size="sm" />
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="email" className={eyebrowClassName}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    defaultValue={profile.email}
+                    required
+                    className={cx(bareInputClassName, "mt-1")}
+                  />
+                  {!profile.emailVerified && (
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      Email not verified. Check your inbox for a verification link.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4">
+                <IconBadge icon={ImageIcon} tone="neutral" size="sm" />
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="image" className={eyebrowClassName}>
+                    Avatar URL (optional)
+                  </label>
+                  <input
+                    type="url"
+                    id="image"
+                    name="image"
+                    defaultValue={profile.image || ""}
+                    placeholder="https://example.com/avatar.jpg"
+                    className={cx(bareInputClassName, "mt-1")}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {profileError && <FormNotice tone="error">{profileError}</FormNotice>}
+          {profileSuccess && <FormNotice tone="success">Profile updated successfully!</FormNotice>}
+
+          <div className="flex justify-end">
+            <SaveButton saving={profileSaving} label="Save Profile" />
+          </div>
+        </form>
+      </Section>
+
+      <Section title="Preferences">
+        <PreferencesForm
+          key={preferencesFormKey}
+          preferences={preferences}
+          onSubmit={handlePreferencesSubmit}
+          saving={preferencesSaving}
+          error={preferencesError}
+          success={preferencesSuccess}
+        />
+      </Section>
+    </div>
+  );
+}
+
+/**
+ * Choices are controlled locally and mirrored into hidden inputs, so the parent
+ * still reads every value from FormData on submit.
+ */
+function PreferencesForm({
+  preferences,
+  onSubmit,
+  saving,
+  error,
+  success,
+}: {
+  preferences: Preferences;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  saving: boolean;
+  error: string | null;
+  success: boolean;
+}) {
+  const [measurementSystem, setMeasurementSystem] = useState(preferences.measurementSystem);
+  const [weightUnit, setWeightUnit] = useState(preferences.defaultWeightUnit);
+  const [volumeUnit, setVolumeUnit] = useState(preferences.defaultVolumeUnit);
+  const [dateFormat, setDateFormat] = useState(preferences.dateFormat);
+  const [volumeOpen, setVolumeOpen] = useState(false);
+
+  const volumeLabel = VOLUME_UNITS.find((unit) => unit.value === volumeUnit)?.label ?? volumeUnit;
+  const weightName = WEIGHT_UNITS.find((unit) => unit.value === weightUnit)?.name;
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <input type="hidden" name="measurementSystem" value={measurementSystem} />
+      <input type="hidden" name="defaultWeightUnit" value={weightUnit} />
+      <input type="hidden" name="defaultVolumeUnit" value={volumeUnit} />
+      <input type="hidden" name="dateFormat" value={dateFormat} />
+
+      <div className={cx(cardClassName, rowsClassName)}>
+        <SettingRow icon={Ruler} label="Measurement System" description="Used when scaling and converting recipes">
+          <SegmentedControl
+            label="Measurement System"
+            value={measurementSystem}
+            onChange={setMeasurementSystem}
+            options={[
+              { value: "metric", label: "Metric" },
+              { value: "imperial", label: "Imperial" },
+            ]}
+          />
+        </SettingRow>
+
+        <SettingRow icon={Scale} label="Default Weight Unit" description={weightName}>
+          <SegmentedControl
+            label="Default Weight Unit"
+            value={weightUnit}
+            onChange={setWeightUnit}
+            options={WEIGHT_UNITS.map(({ value, label }) => ({ value, label }))}
+          />
+        </SettingRow>
+
+        <div>
+          <button
+            type="button"
+            aria-expanded={volumeOpen}
+            aria-controls="volume-unit-options"
+            onClick={() => setVolumeOpen((open) => !open)}
+            className="flex min-h-16 w-full items-center gap-3 p-4 text-left hover:bg-stone-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-stone-900/40"
+          >
+            <IconBadge icon={Droplet} tone="neutral" />
+            <span id="volume-unit-label" className="min-w-0 flex-1 text-sm font-medium text-stone-900 dark:text-stone-100">
+              Default Volume Unit
+            </span>
+            <span className="truncate text-sm text-stone-600 dark:text-stone-300">{volumeLabel}</span>
+            <ChevronDown
+              className={cx("h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300", volumeOpen && "rotate-180")}
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+          </button>
+          <Collapse open={volumeOpen}>
+            <div
+              id="volume-unit-options"
+              role="radiogroup"
+              aria-labelledby="volume-unit-label"
+              className="grid gap-1 border-t border-stone-200 p-2 sm:grid-cols-2 dark:border-stone-800"
             >
-              <div>
-                <label
-                  htmlFor="measurementSystem"
-                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                >
-                  Measurement System
-                </label>
-                <select
-                  id="measurementSystem"
-                  name="measurementSystem"
-                  defaultValue={preferences.measurementSystem}
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                >
-                  <option value="metric">Metric</option>
-                  <option value="imperial">Imperial</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="defaultWeightUnit"
-                    className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
+              {VOLUME_UNITS.map((unit) => {
+                const selected = unit.value === volumeUnit;
+                return (
+                  <button
+                    key={unit.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => {
+                      setVolumeUnit(unit.value);
+                      setVolumeOpen(false);
+                    }}
+                    className={optionClassName(selected)}
                   >
-                    Default Weight Unit
-                  </label>
-                  <select
-                    id="defaultWeightUnit"
-                    name="defaultWeightUnit"
-                    defaultValue={preferences.defaultWeightUnit}
-                    className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  >
-                    <option value="g">Grams (g)</option>
-                    <option value="kg">Kilograms (kg)</option>
-                    <option value="oz">Ounces (oz)</option>
-                    <option value="lb">Pounds (lb)</option>
-                  </select>
-                </div>
+                    <span className="flex-1">{unit.label}</span>
+                    {selected && <Check className="h-4 w-4" strokeWidth={2} aria-hidden="true" />}
+                  </button>
+                );
+              })}
+            </div>
+          </Collapse>
+        </div>
 
-                <div>
-                  <label
-                    htmlFor="defaultVolumeUnit"
-                    className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                  >
-                    Default Volume Unit
-                  </label>
-                  <select
-                    id="defaultVolumeUnit"
-                    name="defaultVolumeUnit"
-                    defaultValue={preferences.defaultVolumeUnit}
-                    className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  >
-                    <option value="ml">Milliliters (ml)</option>
-                    <option value="l">Liters (l)</option>
-                    <option value="cup">Cups</option>
-                    <option value="tbsp">Tablespoons (tbsp)</option>
-                    <option value="tsp">Teaspoons (tsp)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="timezone"
-                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                >
-                  Timezone (optional)
-                </label>
-                <input
-                  type="text"
-                  id="timezone"
-                  name="timezone"
-                  defaultValue={preferences.timezone}
-                  placeholder="America/New_York"
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                />
-                <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-                  IANA timezone identifier (e.g., America/New_York, Europe/London)
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="dateFormat"
-                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
-                >
-                  Date Format (optional)
-                </label>
-                <select
-                  id="dateFormat"
-                  name="dateFormat"
-                  defaultValue={preferences.dateFormat}
-                  className="w-full rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 px-3 py-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                >
-                  <option value="YYYY-MM-DD">YYYY-MM-DD (default)</option>
-                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                  <option value="MM-DD-YYYY">MM-DD-YYYY</option>
-                </select>
-              </div>
-
-              {preferencesError && (
-                <div className="rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3">
-                  <p className="text-sm text-red-800 dark:text-red-200">
-                    {preferencesError}
-                  </p>
-                </div>
-              )}
-
-              {preferencesSuccess && (
-                <div className="rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3">
-                  <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                    Preferences updated successfully!
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={preferencesSaving}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {preferencesSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save Preferences
-                  </>
-                )}
-              </button>
-            </form>
+        <div className="flex items-start gap-3 p-4">
+          <IconBadge icon={Clock} tone="neutral" />
+          <div className="min-w-0 flex-1">
+            <label htmlFor="timezone" className="text-sm font-medium text-stone-900 dark:text-stone-100">
+              Timezone (optional)
+            </label>
+            <input
+              type="text"
+              id="timezone"
+              name="timezone"
+              defaultValue={preferences.timezone}
+              placeholder="America/New_York"
+              aria-describedby="timezone-help"
+              className={cx(bareInputClassName, "mt-1")}
+            />
+            <p id="timezone-help" className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+              IANA timezone identifier (e.g., America/New_York, Europe/London)
+            </p>
           </div>
         </div>
+
+        <SettingRow icon={CalendarDays} label="Date Format (optional)" description={dateFormat === "YYYY-MM-DD" ? "YYYY-MM-DD (default)" : undefined}>
+          <SegmentedControl
+            label="Date Format"
+            value={dateFormat}
+            onChange={setDateFormat}
+            options={DATE_FORMATS}
+            className="max-w-full overflow-x-auto"
+          />
+        </SettingRow>
       </div>
-    </div>
+
+      {error && <FormNotice tone="error">{error}</FormNotice>}
+      {success && <FormNotice tone="success">Preferences updated successfully!</FormNotice>}
+
+      <div className="flex justify-end">
+        <SaveButton saving={saving} label="Save Preferences" />
+      </div>
+    </form>
   );
 }

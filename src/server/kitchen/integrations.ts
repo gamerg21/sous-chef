@@ -17,7 +17,7 @@ export const list = query({
       .collect();
 
     return {
-      integrations: integrations.map((i) => ({
+      integrations: integrations.filter((i) => i.provider !== "open_food_facts").map((i) => ({
         id: i._id,
         name: i.name,
         description: i.description,

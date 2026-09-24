@@ -1,10 +1,22 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, Plus, Search, Upload } from 'lucide-react'
+import { BookOpen, Download, Plus, Search, Upload } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe } from './types'
 import { cx } from './utils'
 import { RecipeCard } from './RecipeCard'
+import {
+  buttonClassName,
+  cardClassName,
+  chipClassName,
+  EmptyState,
+  fieldClassName,
+  PageContainer,
+  PageHeader,
+  Section,
+  SegmentedControl,
+  Stat,
+} from '@/components/ui/kit'
 
 export type RecipeSort = 'recently-updated' | 'time-asc' | 'title-asc'
 
@@ -88,213 +100,121 @@ export function RecipeLibraryView(props: RecipeLibraryViewProps) {
   const empty = derived.list.length === 0
   const showSearchEmpty = Boolean(effectiveQuery.trim()) && empty
 
+  const setTag = (tag: string | 'all') => {
+    if (onSetTag) onSetTag(tag)
+    else setLocalTag(tag)
+  }
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-6xl mx-auto space-y-5">
-          {/* Header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">Recipes</h1>
-              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Save recipes you love and see what you can make with what’s in your kitchen.
-              </p>
-            </div>
+    <PageContainer width="6xl">
+      <PageHeader
+        title="Recipes"
+        description="Save recipes you love and see what you can make with what’s in your kitchen."
+        actions={
+          <>
+            <button type="button" onClick={onExportAll} className={buttonClassName('ghost')}>
+              <Download className="h-4 w-4" strokeWidth={1.75} />
+              Export
+            </button>
+            <button type="button" onClick={onImportRecipe} className={buttonClassName('secondary')}>
+              <Upload className="h-4 w-4" strokeWidth={1.75} />
+              Import
+            </button>
+            <button type="button" onClick={onCreateRecipe} className={buttonClassName('primary')}>
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              New recipe
+            </button>
+          </>
+        }
+      />
 
-            <div className="flex flex-wrap items-center gap-2 sm:pt-1">
-              <button
-                type="button"
-                onClick={onImportRecipe}
-                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-              >
-                <Upload className="w-4 h-4" strokeWidth={1.75} />
-                Import
+      <div className={cx(cardClassName, 'grid grid-cols-3 divide-x divide-stone-200 dark:divide-stone-800')}>
+        <Stat label="Recipes" value={derived.total} />
+        <Stat label="Favorites" value={derived.favorites} />
+        <Stat label="In your kitchen" value={pantrySnapshot?.length ?? 0} />
+      </div>
+
+      <div className="space-y-3">
+        <label className="relative block">
+          <span className="sr-only">Search recipes</span>
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+          <input
+            type="search"
+            value={effectiveQuery}
+            onChange={(e) => {
+              if (onSearchChange) onSearchChange(e.target.value)
+              else setLocalQuery(e.target.value)
+            }}
+            placeholder="Search recipes…"
+            className={cx(fieldClassName, 'pl-10')}
+          />
+        </label>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 py-0.5" role="group" aria-label="Filter by tag">
+            <button type="button" aria-pressed={effectiveTag === 'all'} onClick={() => setTag('all')} className={cx(chipClassName(effectiveTag === 'all'), 'shrink-0')}>
+              All
+            </button>
+            {suggestedTags.slice(0, 8).map((t) => (
+              <button key={t} type="button" aria-pressed={t === effectiveTag} onClick={() => setTag(t)} className={cx(chipClassName(t === effectiveTag), 'shrink-0')}>
+                {t}
               </button>
-              <button
-                type="button"
-                onClick={onCreateRecipe}
-                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
-              >
-                <Plus className="w-4 h-4" strokeWidth={1.75} />
-                New recipe
-              </button>
-              <button
-                type="button"
-                onClick={onExportAll}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-              >
-                <Download className="w-4 h-4" strokeWidth={1.75} />
-                Export
-              </button>
-            </div>
+            ))}
           </div>
-
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
-              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Recipes</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.total}</div>
-              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Saved recipes</div>
-            </div>
-            <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-3 sm:p-4">
-              <div className="text-xs uppercase tracking-wide text-amber-800 dark:text-amber-200">Favorites</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.favorites}</div>
-              <div className="hidden sm:block mt-1 text-sm text-amber-900/80 dark:text-amber-200/80">Pinned for fast access</div>
-            </div>
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
-              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">In your kitchen</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">
-                {pantrySnapshot?.length ?? 0}
-              </div>
-              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Ingredients in your inventory</div>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="space-y-3">
-            {/* Filters (own row) */}
-            <div className="flex items-center gap-2 overflow-x-auto py-1 -mx-1 px-1">
-              <button
-                type="button"
-                onClick={() => {
-                  if (onSetTag) onSetTag('all')
-                  else setLocalTag('all')
-                }}
-                className={cx(
-                  'shrink-0 px-3 py-1.5 text-sm rounded-full border transition-colors',
-                  effectiveTag === 'all'
-                    ? 'border-stone-900 bg-stone-900 text-stone-100 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                    : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                )}
-              >
-                All
-              </button>
-              {suggestedTags.slice(0, 8).map((t) => {
-                const active = t === effectiveTag
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      if (onSetTag) onSetTag(t)
-                      else setLocalTag(t)
-                    }}
-                    className={cx(
-                      'shrink-0 px-3 py-1.5 text-sm rounded-full border transition-colors',
-                      active
-                        ? 'border-stone-900 bg-stone-900 text-stone-100 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                        : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                    )}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Search (own row, full width) */}
-            <div className="relative w-full">
-              <Search
-                className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2"
-                strokeWidth={1.75}
-              />
-              <input
-                value={effectiveQuery}
-                onChange={(e) => {
-                  if (onSearchChange) onSearchChange(e.target.value)
-                  else setLocalQuery(e.target.value)
-                }}
-                placeholder="Search recipes…"
-                className="w-full pl-9 pr-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              />
-            </div>
-
-            {/* Sort (own row, full width) */}
-            <div className="w-full inline-flex rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-1">
-              {([
-                { id: 'recently-updated', label: 'Recent' },
-                { id: 'time-asc', label: 'Fast' },
-                { id: 'title-asc', label: 'A–Z' },
-              ] as const).map((opt) => {
-                const active = opt.id === effectiveSort
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      if (onSetSort) onSetSort(opt.id)
-                      else setLocalSort(opt.id)
-                    }}
-                    className={cx(
-                      'flex-1 px-3 py-1.5 text-sm rounded-md transition-colors',
-                      active
-                        ? 'bg-stone-900 text-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                        : 'text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* List */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Library</h2>
-              <span className="text-sm text-stone-500 dark:text-stone-400">{derived.list.length} shown</span>
-            </div>
-
-            {empty ? (
-              <div className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 bg-white/60 dark:bg-stone-950/40 p-8 text-center">
-                <div className="mx-auto max-w-sm">
-                  <div className="text-base font-medium text-stone-900 dark:text-stone-100">
-                    {showSearchEmpty ? 'No matching recipes' : 'No recipes yet'}
-                  </div>
-                  <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-                    {showSearchEmpty ? 'Try a different search term, or clear filters.' : 'Start by importing a recipe or creating your first one.'}
-                  </p>
-                  <div className="mt-5 flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={onImportRecipe}
-                      className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                    >
-                      <Upload className="w-4 h-4" strokeWidth={1.75} />
-                      Import
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onCreateRecipe}
-                      className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" strokeWidth={1.75} />
-                      New recipe
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {derived.list.map((r) => (
-                  <RecipeCard
-                    key={r.id}
-                    recipe={r}
-                    pantrySnapshot={pantrySnapshot}
-                    onOpen={onOpenRecipe}
-                    onEdit={onEditRecipe}
-                    onToggleFavorite={onToggleFavorite}
-                    onDelete={onDeleteRecipe}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <SegmentedControl
+            label="Sort recipes"
+            className="shrink-0 self-start sm:self-auto"
+            value={effectiveSort}
+            onChange={(next) => {
+              if (onSetSort) onSetSort(next)
+              else setLocalSort(next)
+            }}
+            options={[
+              { value: 'recently-updated', label: 'Recent' },
+              { value: 'time-asc', label: 'Fast' },
+              { value: 'title-asc', label: 'A–Z' },
+            ]}
+          />
         </div>
       </div>
-    </div>
+
+      <Section title="Library" aside={`${derived.list.length} shown`}>
+        {empty ? (
+          <div className={cardClassName}>
+            <EmptyState
+              icon={showSearchEmpty ? Search : BookOpen}
+              title={showSearchEmpty ? 'No matching recipes' : 'No recipes yet'}
+              description={showSearchEmpty ? 'Try a different search term, or clear filters.' : 'Start by importing a recipe or creating your first one.'}
+              action={
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button type="button" onClick={onImportRecipe} className={buttonClassName('secondary')}>
+                    <Upload className="h-4 w-4" strokeWidth={1.75} />
+                    Import
+                  </button>
+                  <button type="button" onClick={onCreateRecipe} className={buttonClassName('primary')}>
+                    <Plus className="h-4 w-4" strokeWidth={2} />
+                    New recipe
+                  </button>
+                </div>
+              }
+            />
+          </div>
+        ) : (
+          <div className="stagger grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {derived.list.map((r) => (
+              <RecipeCard
+                key={r.id}
+                recipe={r}
+                pantrySnapshot={pantrySnapshot}
+                onOpen={onOpenRecipe}
+                onEdit={onEditRecipe}
+                onToggleFavorite={onToggleFavorite}
+                onDelete={onDeleteRecipe}
+              />
+            ))}
+          </div>
+        )}
+      </Section>
+    </PageContainer>
   )
 }
-
-

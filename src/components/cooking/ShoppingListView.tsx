@@ -1,8 +1,22 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Barcode, Plus, Search, ShoppingCart } from 'lucide-react'
+import { Barcode, PackageCheck, Plus, Search, ShoppingCart } from 'lucide-react'
 import type { ShoppingListItem } from './types'
 import { ShoppingListItemRow } from './ShoppingListItemRow'
-import { cx } from './utils'
+import {
+  EmptyState,
+  IconBadge,
+  PageContainer,
+  PageHeader,
+  Section,
+  Stat,
+  bareInputClassName,
+  buttonClassName,
+  cardClassName,
+  cx,
+  headingFont,
+  iconButtonClassName,
+  rowsClassName,
+} from '../ui/kit'
 
 export interface ShoppingListViewProps {
   items: ShoppingListItem[]
@@ -147,155 +161,169 @@ export function ShoppingListView(props: ShoppingListViewProps) {
 
   const empty = derived.filteredCount === 0
   const showSearchEmpty = Boolean(effectiveQuery.trim()) && empty
+  const left = derived.total - derived.checked
+  const progress = derived.total ? Math.round((derived.checked / derived.total) * 100) : 0
+  const stockable = Math.min(derived.checked, 100)
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-6xl mx-auto space-y-5">
-          {/* Header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <PageContainer width="4xl">
+      <PageHeader
+        eyebrow="Groceries"
+        title="Shopping list"
+        description="One shared list for the household. Add items from recipes or scan as you shop."
+        actions={
+          <>
+            <button type="button" onClick={onScanBarcode} className={cx(buttonClassName('secondary'), 'min-h-11')}>
+              <Barcode className="h-4 w-4" strokeWidth={1.75} />
+              Scan
+            </button>
+            <button type="button" onClick={onAddItem} className={cx(buttonClassName('primary'), 'min-h-11')}>
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              Add item
+            </button>
+          </>
+        }
+      />
+
+      {derived.total > 0 && (
+        <div className={cardClassName}>
+          <div className="grid grid-cols-3 divide-x divide-stone-200 dark:divide-stone-800">
+            <Stat label="To buy" value={left} />
+            <Stat label="In cart" value={derived.checked} />
+            <Stat label="Total" value={derived.total} />
+          </div>
+          <div className="border-t border-stone-200 px-4 py-3 dark:border-stone-800">
+            <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+              <span>{left === 0 ? 'Everything is in the cart' : `${left} ${left === 1 ? 'item' : 'items'} to go`}</span>
+              <span className="tabular-nums">{progress}%</span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Shopping progress"
+              aria-valuemin={0}
+              aria-valuemax={derived.total}
+              aria-valuenow={derived.checked}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800"
+            >
+              <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-out" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick add sits above search, like the top of a paper list. */}
+      <div className={cx(cardClassName, rowsClassName)}>
+        <div className="flex items-center gap-1 pr-2">
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-t-2xl px-4 text-left hover:bg-stone-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-stone-900/40"
+          >
+            <IconBadge icon={Plus} size="sm" />
+            <span className="truncate text-base text-stone-400">Add an item…</span>
+          </button>
+          <button type="button" onClick={onScanBarcode} className={cx(iconButtonClassName, 'h-11 w-11')} aria-label="Scan a barcode" title="Scan a barcode">
+            <Barcode className="h-5 w-5" strokeWidth={1.75} />
+          </button>
+        </div>
+        <label className="flex min-h-12 items-center gap-3 px-4 focus-within:bg-stone-50 dark:focus-within:bg-stone-900/40 last:rounded-b-2xl">
+          <Search className="h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+          <input
+            type="search"
+            value={effectiveQuery}
+            onChange={(e) => {
+              if (onSearchChange) onSearchChange(e.target.value)
+              else setLocalQuery(e.target.value)
+            }}
+            placeholder="Search shopping list…"
+            aria-label="Search shopping list"
+            className={cx(bareInputClassName, 'min-h-12')}
+          />
+        </label>
+      </div>
+
+      {/* List */}
+      {empty ? (
+        <div className={cardClassName}>
+          <EmptyState
+            icon={showSearchEmpty ? Search : ShoppingCart}
+            title={showSearchEmpty ? 'No matching items' : 'Your shopping list is empty'}
+            description={
+              showSearchEmpty
+                ? 'Try a different search term, or clear the query.'
+                : 'Add items manually, or generate a list from a recipe you want to cook.'
+            }
+            action={
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button type="button" onClick={onAddItem} className={cx(buttonClassName('primary'), 'min-h-11')}>
+                  <Plus className="h-4 w-4" strokeWidth={2} />
+                  Add item
+                </button>
+                <button type="button" onClick={onScanBarcode} className={cx(buttonClassName('secondary'), 'min-h-11')}>
+                  <Barcode className="h-4 w-4" strokeWidth={1.75} />
+                  Scan
+                </button>
+              </div>
+            }
+          />
+        </div>
+      ) : (
+        <div className="stagger space-y-6">
+          {categories.map((c) => {
+            const list = derived.byCategory[c]
+            if (!list?.length) return null
+            const remaining = list.filter((it) => !it.checked).length
+            return (
+              <Section
+                key={c}
+                id={`shopping-${c.replace(/\W+/g, '-').toLowerCase()}`}
+                title={c}
+                aside={remaining === 0 ? 'All in cart' : `${remaining} of ${list.length} left`}
+              >
+                <div className={cx(cardClassName, rowsClassName)} data-category={c}>
+                  {list.map((it, index) => (
+                    <AnimatedListItem
+                      key={it.id}
+                      item={it}
+                      index={index}
+                      onToggle={onToggleItem}
+                      onEdit={onEditItem}
+                      onRemove={onRemoveItem}
+                      isDeleting={deletingItems.has(it.id)}
+                    />
+                  ))}
+                </div>
+              </Section>
+            )
+          })}
+        </div>
+      )}
+
+      {derived.checked > 0 && (
+        <div className={cx(cardClassName, 'animate-fade-in flex flex-col gap-3 p-4 sm:flex-row sm:items-center')}>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <IconBadge icon={PackageCheck} />
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">
-                Shopping list
-              </h1>
-              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                One shared list for the household. Add items from recipes or scan as you shop.
+              <p className="font-semibold text-stone-900 dark:text-stone-100" style={headingFont}>
+                {derived.checked} checked off
+              </p>
+              <p className="text-sm text-stone-500 dark:text-stone-400">
+                {onStockChecked ? `Ready to stock · ${stockable} ${stockable === 1 ? 'purchase' : 'purchases'}` : 'Ready to put away'}
               </p>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2 sm:pt-1">
-              <button
-                type="button"
-                onClick={onScanBarcode}
-                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-              >
-                <Barcode className="w-4 h-4" strokeWidth={1.75} />
-                Scan
-              </button>
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
-              >
-                <Plus className="w-4 h-4" strokeWidth={1.75} />
-                Add item
-              </button>
-            </div>
           </div>
-
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
-              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Items</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.total}</div>
-              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Across all categories</div>
-            </div>
-            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 p-3 sm:p-4">
-              <div className="text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Checked off</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.checked}</div>
-              <div className="hidden sm:block mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Ready to put away</div>
-            </div>
-            <button
-              type="button"
-              onClick={onClearChecked}
-              className={cx(
-                'text-left rounded-lg border p-3 sm:p-4 transition-colors',
-                derived.checked > 0
-                  ? 'border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-900/40 hover:bg-stone-200/70 dark:hover:bg-stone-900/60'
-                  : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 opacity-70 cursor-not-allowed'
-              )}
-              disabled={derived.checked === 0}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Action</div>
-                  <div className="mt-2 text-base font-semibold text-stone-900 dark:text-stone-100">Clear checked</div>
-                </div>
-                <ShoppingCart className="hidden sm:block w-5 h-5 text-stone-500 dark:text-stone-400" strokeWidth={1.75} />
-              </div>
-              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Keeps the list tidy while you shop</div>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <button type="button" onClick={onClearChecked} className={cx(buttonClassName('ghost'), 'min-h-11 flex-1 sm:flex-none')}>
+              Clear checked
             </button>
+            {onStockChecked && (
+              <button type="button" onClick={onStockChecked} className={cx(buttonClassName('primary'), 'min-h-11 flex-[2] sm:flex-none')}>
+                Stock purchases
+              </button>
+            )}
           </div>
-
-          {derived.checked > 0 && onStockChecked && <button type="button" onClick={onStockChecked} className="min-h-11 w-full rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800">Put groceries away · {Math.min(derived.checked, 100)} {derived.checked === 1 ? 'purchase' : 'purchases'}</button>}
-
-          {/* Controls */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" strokeWidth={1.75} />
-            <input
-              value={effectiveQuery}
-              onChange={(e) => {
-                if (onSearchChange) onSearchChange(e.target.value)
-                else setLocalQuery(e.target.value)
-              }}
-              placeholder="Search shopping list…"
-              className="w-full pl-9 pr-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            />
-          </div>
-
-          {/* List */}
-          {empty ? (
-            <div className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 bg-white/60 dark:bg-stone-950/40 p-8 text-center">
-              <div className="mx-auto max-w-sm">
-                <div className="text-base font-medium text-stone-900 dark:text-stone-100">
-                  {showSearchEmpty ? 'No matching items' : 'Your shopping list is empty'}
-                </div>
-                <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-                  {showSearchEmpty
-                    ? 'Try a different search term, or clear the query.'
-                    : 'Add items manually, or generate a list from a recipe you want to cook.'}
-                </p>
-                <div className="mt-5 flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={onAddItem}
-                    className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" strokeWidth={1.75} />
-                    Add item
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onScanBarcode}
-                    className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                  >
-                    <Barcode className="w-4 h-4" strokeWidth={1.75} />
-                    Scan
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {categories.map((c) => {
-                const list = derived.byCategory[c]
-                if (!list?.length) return null
-                return (
-                  <div key={c} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">{c}</h2>
-                      <span className="text-sm text-stone-500 dark:text-stone-400">{list.length}</span>
-                    </div>
-                    <div className="flex flex-col gap-3" data-category={c}>
-                      {list.map((it, index) => (
-                        <AnimatedListItem
-                          key={it.id}
-                          item={it}
-                          index={index}
-                          onToggle={onToggleItem}
-                          onEdit={onEditItem}
-                          onRemove={onRemoveItem}
-                          isDeleting={deletingItems.has(it.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
-      </div>
-    </div>
+      )}
+    </PageContainer>
   )
 }

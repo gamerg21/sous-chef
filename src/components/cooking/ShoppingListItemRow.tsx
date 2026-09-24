@@ -1,7 +1,9 @@
+import { unitLabel } from '@/lib/units'
 import { useState, useEffect } from 'react'
 import { Check, Pencil, Trash2 } from 'lucide-react'
 import type { ShoppingListItem } from './types'
 import { cx } from './utils'
+import { Pill, iconButtonClassName } from '../ui/kit'
 
 export interface ShoppingListItemRowProps {
   item: ShoppingListItem
@@ -32,88 +34,81 @@ export function ShoppingListItemRow({ item, onToggle, onEdit, onRemove, isDeleti
     }
   }, [checked, wasChecked])
 
+  const amount = typeof item.quantity === 'number' ? `${item.quantity} ${unitLabel(item.unit, item.quantity)}`.trim() : null
+
   return (
     <div
       className={cx(
-        'rounded-lg border p-4 flex items-start justify-between gap-4',
-        'transition-[opacity,transform,background-color,border-color] duration-300 ease-in-out',
-        isDeleting
-          ? 'opacity-0 scale-95 -translate-x-4 pointer-events-none'
-          : 'opacity-100 scale-100 translate-x-0',
-        checked
-          ? 'border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/30'
-          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950'
+        'flex items-center gap-2 py-1 pl-2 pr-2 sm:pr-3',
+        'transition-[opacity,translate] duration-300 ease-in-out',
+        isDeleting ? 'pointer-events-none -translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
       )}
     >
-      <button 
-        type="button" 
+      <button
+        type="button"
         role="checkbox"
         aria-checked={checked}
         aria-label={item.name}
-        onClick={() => onToggle?.(item.id)} 
-        className="flex items-start gap-3 text-left min-w-0 group"
+        onClick={() => onToggle?.(item.id)}
+        className="group flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left focus-visible:outline-2 focus-visible:outline-emerald-600"
       >
         <span
+          aria-hidden="true"
           className={cx(
-            'mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center shrink-0',
-            'transition-[transform,background-color,border-color,box-shadow] duration-300 ease-in-out',
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
+            'transition-[transform,background-color,border-color] duration-300 ease-in-out',
             isAnimating && checked ? 'scale-110' : 'scale-100',
             checked
-              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-              : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-transparent group-hover:border-emerald-400 dark:group-hover:border-emerald-500'
+              ? 'border-emerald-600 bg-emerald-600 text-white'
+              : 'border-stone-300 bg-white text-transparent group-hover:border-emerald-400 dark:border-stone-600 dark:bg-stone-950 dark:group-hover:border-emerald-500'
           )}
         >
-          <Check 
-            className={cx(
-              'w-3.5 h-3.5 transition-[opacity,transform] duration-300 ease-in-out',
-              checked ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-            )} 
-            strokeWidth={2.5} 
+          <Check
+            className={cx('h-3.5 w-3.5 transition-[opacity,transform] duration-300 ease-in-out', checked ? 'scale-100 opacity-100' : 'scale-0 opacity-0')}
+            strokeWidth={3}
           />
         </span>
-        <span className="min-w-0">
-          <div 
-            className={cx(
-              'font-medium transition-[color,text-decoration] duration-300 ease-in-out',
-              checked 
-                ? 'text-stone-500 line-through' 
-                : 'text-stone-900 dark:text-stone-100'
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span
+              className={cx(
+                'truncate text-base font-medium transition-colors duration-300',
+                checked ? 'text-stone-400 line-through decoration-stone-300 dark:text-stone-500 dark:decoration-stone-600' : 'text-stone-900 dark:text-stone-100'
+              )}
+            >
+              {item.name}
+            </span>
+            {amount && (
+              <span className={cx('text-sm tabular-nums', checked ? 'text-stone-400 dark:text-stone-500' : 'text-stone-500 dark:text-stone-400')}>{amount}</span>
             )}
-          >
-            {item.name}
-          </div>
-          <div className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">
-            {item.category ? <span>{item.category}</span> : <span>Other</span>}
-            {typeof item.quantity === 'number' ? (
-              <span>
-                {' '}
-                • {item.quantity} {item.unit ?? ''}
-              </span>
-            ) : null}
-            {item.source === 'from-recipe' ? <span> • from recipe</span> : item.source === 'low-stock' ? <span> • low stock</span> : null}
-            {item.note ? <span> • {item.note}</span> : null}
-          </div>
+          </span>
+          {(item.source === 'from-recipe' || item.source === 'low-stock' || item.note) && (
+            <span className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+              {item.source === 'from-recipe' ? (
+                <Pill tone="success">From recipe</Pill>
+              ) : item.source === 'low-stock' ? (
+                <Pill tone="warning">Low stock</Pill>
+              ) : null}
+              {item.note && <span className="truncate text-sm text-stone-500 dark:text-stone-400">{item.note}</span>}
+            </span>
+          )}
         </span>
       </button>
 
-      <div className="shrink-0 flex items-center gap-1">
+      <div className="flex shrink-0 items-center">
         {onEdit ? (
-          <button
-            type="button"
-            onClick={() => onEdit(item.id)}
-            className="min-h-11 min-w-11 p-2 rounded-md text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-[color,background-color,transform] duration-200 ease-in-out hover:scale-110"
-            aria-label={`Edit ${item.name}`} title="Edit"
-          >
-            <Pencil className="w-4 h-4" strokeWidth={1.75} />
+          <button type="button" onClick={() => onEdit(item.id)} className={cx(iconButtonClassName, 'h-11 w-11')} aria-label={`Edit ${item.name}`} title="Edit">
+            <Pencil className="h-4 w-4" strokeWidth={1.75} />
           </button>
         ) : null}
         <button
           type="button"
           onClick={() => onRemove?.(item.id)}
-          className="min-h-11 min-w-11 p-2 rounded-md text-stone-400 hover:text-red-600 dark:text-stone-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-[color,background-color,transform] duration-200 ease-in-out hover:scale-110"
-          aria-label={`Remove ${item.name}`} title="Remove"
+          className={cx(iconButtonClassName, 'h-11 w-11 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400')}
+          aria-label={`Remove ${item.name}`}
+          title="Remove"
         >
-          <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
         </button>
       </div>
     </div>

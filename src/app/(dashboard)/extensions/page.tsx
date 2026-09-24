@@ -7,6 +7,9 @@ import { api } from "@/lib/kitchen/api";
 import { useRouter } from "next/navigation";
 import { ExtensionCard } from "@/components/community";
 import type { ExtensionListing } from "@/components/community/types";
+import { PageLoader } from "@/components/ui/page-loader";
+import { cardClassName, chipClassName, cx, EmptyState, fieldClassName, PageContainer, PageHeader, rowsClassName, Section } from "@/components/ui/kit";
+import { Puzzle, Search, SearchX } from "lucide-react";
 
 export default function ExtensionsPage() {
   const router = useRouter();
@@ -43,96 +46,89 @@ export default function ExtensionsPage() {
   }, [category, extensions, query]);
 
   if (extensionsData === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Loading...</p>
-      </div>
-    );
+    return <PageLoader />;
   }
 
+  const hasFilters = Boolean(query) || category !== "all";
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold text-stone-900 dark:text-stone-100">Extension catalog</h1>
-          <p className="mt-2 text-stone-600 dark:text-stone-400">
+    <PageContainer width="4xl">
+      <PageHeader
+        eyebrow="Extensions"
+        title="Extension catalog"
+        description={
+          <>
             A preview of add-ons planned for Sous Chef. None can be installed yet, and nothing in your kitchen
             depends on them. Working features live in{" "}
-            <Link href="/settings/ai" className="text-emerald-700 underline dark:text-emerald-300">
-              AI settings
+            <Link href="/settings/integrations" className="text-emerald-700 underline dark:text-emerald-300">
+              Integrations
             </Link>
             .
-          </p>
-        </div>
+          </>
+        }
+      />
 
-        {extensions.length > 0 ? (
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <label htmlFor="extension-search" className="sr-only">
-                Search the catalog
-              </label>
-              <input
-                id="extension-search"
-                type="search"
-                placeholder="Search the catalog…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="w-full min-h-11 px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              />
-            </div>
-            <div className="flex gap-2 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setCategory("all")}
-                className={`min-h-11 px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                  category === "all"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800"
-                }`}
-              >
-                All
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`min-h-11 px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                    category === cat
-                      ? "bg-emerald-600 text-white"
-                      : "bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+      {extensions.length > 0 ? (
+        <div className="space-y-3">
+          <div className="relative">
+            <label htmlFor="extension-search" className="sr-only">
+              Search the catalog
+            </label>
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+            <input
+              id="extension-search"
+              type="search"
+              placeholder="Search the catalog…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className={cx(fieldClassName, "pl-10")}
+            />
           </div>
-        ) : null}
-
-        {filteredExtensions.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredExtensions.map((extension) => (
-              <ExtensionCard
-                key={extension.id}
-                extension={extension as ExtensionListing}
-                onOpen={handleOpenExtension}
-              />
+          <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 py-1">
+            <button
+              type="button"
+              aria-pressed={category === "all"}
+              onClick={() => setCategory("all")}
+              className={cx(chipClassName(category === "all"), "shrink-0")}
+            >
+              All
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                aria-pressed={category === cat}
+                onClick={() => setCategory(cat)}
+                className={cx(chipClassName(category === cat), "shrink-0")}
+              >
+                {cat}
+              </button>
             ))}
           </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 p-8 text-center">
-            <p className="text-stone-700 dark:text-stone-300">
-              {query || category !== "all"
-                ? "No listings match your filters."
-                : "No extensions are listed on this instance."}
-            </p>
-            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-              Third-party grocery, calendar, and device integrations are future work.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      ) : null}
+
+      <Section title="Listings" aside={extensions.length > 0 ? `${filteredExtensions.length} of ${extensions.length}` : undefined}>
+        <div className={cx(cardClassName, "overflow-hidden")}>
+          {filteredExtensions.length > 0 ? (
+            <div className={cx("stagger", rowsClassName)}>
+              {filteredExtensions.map((extension) => (
+                <ExtensionCard
+                  key={extension.id}
+                  extension={extension as ExtensionListing}
+                  onOpen={handleOpenExtension}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={hasFilters ? SearchX : Puzzle}
+              title={hasFilters ? "No listings match your filters." : "No extensions are listed on this instance."}
+              description="Third-party grocery, calendar, and device integrations are future work."
+            />
+          )}
+        </div>
+      </Section>
+    </PageContainer>
   );
 }

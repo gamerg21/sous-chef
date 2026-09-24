@@ -1,6 +1,8 @@
-import { AlertTriangle, CalendarClock, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import type { InventoryItem, KitchenLocation } from './types'
 import { formatDate, formatQuantity, itemExpiryStatus } from './utils'
+import { locationIcon } from './LocationTabs'
+import { IconBadge, Pill, cx, iconButtonClassName } from '@/components/ui/kit'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,10 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ')
-}
 
 export interface InventoryItemRowProps {
   item: InventoryItem
@@ -25,110 +23,86 @@ export interface InventoryItemRowProps {
 export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove, isDeleting = false }: InventoryItemRowProps) {
   const status = itemExpiryStatus(item)
   const formattedExpiry = formatDate(item.expiresOn, dateFormat ?? 'YYYY-MM-DD')
-  const statusPill =
-    status === 'expired'
-      ? { label: 'Expired', cls: 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200' }
-      : status === 'soon'
-        ? { label: 'Soon', cls: 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200' }
-        : status === 'ok'
-          ? { label: 'Fresh', cls: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' }
-          : null
+  const outOfStock = item.quantity <= 0
+  // The badge tone mirrors the most urgent state so the list scans at a glance.
+  const badgeTone = status === 'expired' ? 'danger' : status === 'soon' || outOfStock ? 'warning' : 'success'
+  const facts = item.foodFacts
+  const factChips = [
+    facts?.nutriscoreGrade && `Nutri-Score ${facts.nutriscoreGrade.toUpperCase()}`,
+    facts?.novaGroup && `NOVA ${facts.novaGroup}`,
+    facts?.allergensTags && facts.allergensTags.length > 0 && `Allergens: ${facts.allergensTags.length}`,
+  ].filter(Boolean) as string[]
 
   return (
     <div
       className={cx(
-        'rounded-lg border p-4 flex gap-4 items-start',
-        'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950',
-        'transition-[opacity,transform] duration-300 ease-in-out',
-        isDeleting
-          ? 'opacity-0 scale-95 -translate-x-4 pointer-events-none'
-          : 'opacity-100 scale-100 translate-x-0'
+        'flex items-start gap-3 px-4 py-3.5 sm:gap-4',
+        'transition-[opacity,translate] duration-300 ease-in-out',
+        isDeleting ? 'pointer-events-none -translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
       )}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <h3 className="font-medium text-stone-900 dark:text-stone-100 truncate">{item.name}</h3>
-              {status === 'expired' && (
-                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" strokeWidth={1.75} />
-              )}
-              {status === 'soon' && (
-                <CalendarClock className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" strokeWidth={1.75} />
-              )}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
-              <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60 text-stone-700 dark:text-stone-200">
-                {formatQuantity(item.quantity, item.unit)}
-              </span>
-              {location && <span className="text-xs">• {location.name}</span>}
-              {item.category && <span className="text-xs">• {item.category}</span>}
-            </div>
-          </div>
+      <div className="pt-0.5">
+        <IconBadge icon={locationIcon(item.locationId)} tone={badgeTone} />
+      </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {statusPill && (
-              <span className={cx('text-[11px] font-medium px-2 py-1 rounded-full', statusPill.cls)}>
-                {statusPill.label}
-              </span>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                  aria-label="More actions"
-                >
-                  <MoreHorizontal className="w-4 h-4" strokeWidth={1.75} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit?.(item.id)}>
-                  <Pencil className="w-4 h-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={() => onRemove?.(item.id)}>
-                  <Trash2 className="w-4 h-4" />
-                  Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h3 className="min-w-0 truncate text-base font-medium text-stone-900 dark:text-stone-100">{item.name}</h3>
+          {outOfStock && <Pill tone="warning">Out of stock</Pill>}
+          {status === 'expired' && <Pill tone="danger">Expired</Pill>}
+          {status === 'soon' && <Pill tone="warning">Expires soon</Pill>}
         </div>
 
-        {formattedExpiry && (
-          <div className="mt-3 text-xs text-stone-500 dark:text-stone-400">
-            Expires on <span className="font-mono">{formattedExpiry}</span>
-          </div>
-        )}
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-stone-500 dark:text-stone-400">
+          {!outOfStock && (
+            <span className="font-medium tabular-nums text-stone-700 dark:text-stone-300">{formatQuantity(item.quantity, item.unit)}</span>
+          )}
+          {[location?.name, item.category].filter(Boolean).map((part, index) => (
+            <span key={index} className="flex items-center gap-x-1.5">
+              {(index > 0 || !outOfStock) && <span aria-hidden="true">·</span>}
+              {part}
+            </span>
+          ))}
+          {formattedExpiry && (
+            <span className="flex items-center gap-x-1.5">
+              <span aria-hidden="true">·</span>
+              <span className={cx(status === 'expired' && 'text-rose-700 dark:text-rose-300', status === 'soon' && 'text-amber-700 dark:text-amber-300')}>
+                Expires <span className="tabular-nums">{formattedExpiry}</span>
+              </span>
+            </span>
+          )}
+        </div>
 
-        {item.notes && (
-          <div className="mt-2 text-sm text-stone-600 dark:text-stone-300 line-clamp-2">{item.notes}</div>
-        )}
+        {item.notes && <p className="mt-1.5 line-clamp-2 text-sm text-stone-600 dark:text-stone-300">{item.notes}</p>}
 
-        {item.foodFacts && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
-            {item.foodFacts.nutriscoreGrade && (
-              <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60">
-                Nutri-Score {item.foodFacts.nutriscoreGrade.toUpperCase()}
-              </span>
-            )}
-            {item.foodFacts.novaGroup && (
-              <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60">
-                NOVA {item.foodFacts.novaGroup}
-              </span>
-            )}
-            {item.foodFacts.allergensTags && item.foodFacts.allergensTags.length > 0 && (
-              <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-900/60">
-                Allergens: {item.foodFacts.allergensTags.length}
-              </span>
-            )}
+        {factChips.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {factChips.map((chip) => (
+              <Pill key={chip}>{chip}</Pill>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Intentionally no always-visible row actions; actions live in the "..." overflow menu above. */}
+      {/* Intentionally no always-visible row actions; they live in the overflow menu. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className={cx(iconButtonClassName, '-mr-2 h-11 w-11')} aria-label="More actions">
+            <MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onEdit?.(item.id)}>
+            <Pencil className="w-4 h-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onClick={() => onRemove?.(item.id)}>
+            <Trash2 className="w-4 h-4" />
+            Remove
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

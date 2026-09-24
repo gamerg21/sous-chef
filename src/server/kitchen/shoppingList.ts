@@ -188,8 +188,13 @@ export const stockChecked = mutation({
       if (!location || location.householdId !== list.householdId) throw new Error('Choose a storage location in this kitchen');
       const food = await ctx.db.query('foodItems').withIndex('by_name', q => q.eq('name', item.name)).first();
       const foodItemId = food?._id ?? await ctx.db.insert('foodItems', { name: item.name });
-      // Separate batches preserve each purchase's expiry and location.
-      await ctx.db.insert('inventoryItems', { householdId: list.householdId, foodItemId, locationId: purchase.locationId, quantity: purchase.quantity, unit: purchase.unit.trim(), expiresOn: purchase.expiresOn, category: item.category, notes: item.note });
+      // An empty placeholder (added from a recipe before it was bought) is filled
+      // in place. Otherwise separate batches preserve each purchase's expiry and location.
+      const unit = purchase.unit.trim();
+      const placeholder = (await ctx.db.query('inventoryItems').withIndex('by_foodItemId', q => q.eq('foodItemId', foodItemId)).collect())
+        .find(row => row.householdId === list.householdId && row.quantity <= 0 && row.unit.trim().toLowerCase() === unit.toLowerCase());
+      if (placeholder) await ctx.db.patch(placeholder._id, { quantity: purchase.quantity, unit, locationId: purchase.locationId, expiresOn: purchase.expiresOn, category: placeholder.category ?? item.category });
+      else await ctx.db.insert('inventoryItems', { householdId: list.householdId, foodItemId, locationId: purchase.locationId, quantity: purchase.quantity, unit, expiresOn: purchase.expiresOn, category: item.category, notes: item.note });
       await ctx.db.delete(item._id);
       stocked++;
     }

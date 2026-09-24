@@ -1,7 +1,5 @@
-"use client";
-
-import AccountPageClient from "./AccountPageClient";
+import { redirect } from 'next/navigation';
 
 export default function AccountPage() {
-  return <AccountPageClient />;
+  redirect('/settings/account');
 }

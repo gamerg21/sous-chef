@@ -1,7 +1,7 @@
 'use client'
 
 import { Modal } from './modal'
-import { cx } from '../cooking/utils'
+import { buttonClassName, cx } from './kit'
 
 export interface ConfirmModalProps {
   isOpen: boolean
@@ -31,26 +31,16 @@ export function ConfirmModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="space-y-4">
-        <p className="text-stone-700 dark:text-stone-300">{message}</p>
-        
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-          >
+      <div className="space-y-5">
+        <p className="text-base text-stone-600 dark:text-stone-300">{message}</p>
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose} className={cx(buttonClassName('ghost'), 'min-h-11 flex-1')}>
             {cancelText}
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className={cx(
-              'px-4 py-2 rounded-md text-white text-sm font-medium transition-colors',
-              confirmVariant === 'danger'
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-emerald-600 hover:bg-emerald-700'
-            )}
+            className={cx(buttonClassName(confirmVariant === 'danger' ? 'danger' : 'primary'), 'min-h-11 flex-[2]')}
           >
             {confirmText}
           </button>
@@ -59,5 +49,3 @@ export function ConfirmModal({
     </Modal>
   )
 }
-
-

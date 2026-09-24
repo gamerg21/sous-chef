@@ -1,7 +1,8 @@
 'use client'
 
 import { Modal } from './modal'
-import { cx } from '../cooking/utils'
+import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react'
+import { IconBadge, buttonClassName, cx } from './kit'
 
 export interface AlertModalProps {
   isOpen: boolean
@@ -20,39 +21,21 @@ export function AlertModal({
   variant = 'info',
   buttonText = 'OK',
 }: AlertModalProps) {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'success':
-        return 'bg-emerald-600 hover:bg-emerald-700'
-      case 'error':
-        return 'bg-red-600 hover:bg-red-700'
-      case 'warning':
-        return 'bg-amber-600 hover:bg-amber-700'
-      default:
-        return 'bg-stone-600 hover:bg-stone-700'
-    }
-  }
+  const icon =
+    variant === 'success' ? CheckCircle2 : variant === 'error' ? XCircle : variant === 'warning' ? AlertTriangle : Info
+  const tone = variant === 'success' ? 'success' : variant === 'error' ? 'danger' : variant === 'warning' ? 'warning' : 'info'
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="space-y-4">
-        <p className="text-stone-700 dark:text-stone-300">{message}</p>
-        
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className={cx(
-              'px-4 py-2 rounded-md text-white text-sm font-medium transition-colors',
-              getVariantStyles()
-            )}
-          >
-            {buttonText}
-          </button>
+      <div className="space-y-5">
+        <div className="flex items-start gap-3">
+          <IconBadge icon={icon} tone={tone} />
+          <p className="pt-1.5 text-base text-stone-700 dark:text-stone-300">{message}</p>
         </div>
+        <button type="button" onClick={onClose} className={cx(buttonClassName(variant === 'error' ? 'secondary' : 'primary'), 'min-h-11 w-full')}>
+          {buttonText}
+        </button>
       </div>
     </Modal>
   )
 }
-
-

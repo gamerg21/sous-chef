@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, SearchX, Users } from 'lucide-react'
+import { cardClassName, chipClassName, EmptyState, fieldClassName, PageContainer, PageHeader, rowsClassName, Section, SegmentedControl } from '@/components/ui/kit'
 import type { CommunityRecipe } from './types'
 import { cx } from './utils'
 import { CommunityFeedRecipeCard } from './CommunityFeedRecipeCard'
@@ -74,137 +75,86 @@ export function CommunityRecipeFeedView(props: CommunityRecipeFeedViewProps) {
   const empty = derived.list.length === 0
   const showSearchEmpty = Boolean(effectiveQuery.trim()) && empty
 
+  const setTag = (tag: string | 'all') => {
+    if (onSetTag) onSetTag(tag)
+    else setLocalTag(tag)
+  }
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-6xl mx-auto space-y-5">
-          {/* Header */}
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">Community</h1>
-            <p className="text-sm text-stone-600 dark:text-stone-400">
-              Browse recipes shared on this Sous Chef instance and save copies into your private library.
-            </p>
-          </div>
+    <PageContainer width="5xl">
+      <PageHeader
+        eyebrow="Recipe community"
+        title="Community"
+        description="Browse recipes shared on this Sous Chef instance and save copies into your private library."
+      />
 
-          {/* Controls (stacked rows like Recipes) */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 overflow-x-auto py-1 -mx-1 px-1">
-              <button
-                type="button"
-                onClick={() => {
-                  if (onSetTag) onSetTag('all')
-                  else setLocalTag('all')
-                }}
-                className={cx(
-                  'shrink-0 px-3 py-1.5 text-sm rounded-full border transition-colors',
-                  effectiveTag === 'all'
-                    ? 'border-stone-900 bg-stone-900 text-stone-100 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                    : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                )}
-              >
-                All
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+          <input
+            value={effectiveQuery}
+            onChange={(e) => {
+              if (onSearchChange) onSearchChange(e.target.value)
+              else setLocalQuery(e.target.value)
+            }}
+            aria-label="Search community recipes"
+            placeholder="Search community recipes…"
+            className={cx(fieldClassName, 'pl-10')}
+          />
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 py-1">
+            <button type="button" aria-pressed={effectiveTag === 'all'} onClick={() => setTag('all')} className={cx(chipClassName(effectiveTag === 'all'), 'shrink-0')}>
+              All
+            </button>
+            {suggestedTags.slice(0, 10).map((t) => (
+              <button key={t} type="button" aria-pressed={t === effectiveTag} onClick={() => setTag(t)} className={cx(chipClassName(t === effectiveTag), 'shrink-0')}>
+                {t}
               </button>
-              {suggestedTags.slice(0, 10).map((t) => {
-                const active = t === effectiveTag
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      if (onSetTag) onSetTag(t)
-                      else setLocalTag(t)
-                    }}
-                    className={cx(
-                      'shrink-0 px-3 py-1.5 text-sm rounded-full border transition-colors',
-                      active
-                        ? 'border-stone-900 bg-stone-900 text-stone-100 dark:border-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                        : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                    )}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="relative w-full">
-              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" strokeWidth={1.75} />
-              <input
-                value={effectiveQuery}
-                onChange={(e) => {
-                  if (onSearchChange) onSearchChange(e.target.value)
-                  else setLocalQuery(e.target.value)
-                }}
-                placeholder="Search community recipes…"
-                className="w-full pl-9 pr-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              />
-            </div>
-
-            <div className="w-full inline-flex rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-1">
-              {([
-                { id: 'trending', label: 'Trending' },
-                { id: 'recent', label: 'Recent' },
-                { id: 'title-asc', label: 'A–Z' },
-              ] as const).map((opt) => {
-                const active = opt.id === effectiveSort
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      if (onSetSort) onSetSort(opt.id)
-                      else setLocalSort(opt.id)
-                    }}
-                    className={cx(
-                      'flex-1 px-3 py-1.5 text-sm rounded-md transition-colors',
-                      active
-                        ? 'bg-stone-900 text-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                        : 'text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
+            ))}
           </div>
 
-          {/* List */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Feed</h2>
-              <span className="text-sm text-stone-500 dark:text-stone-400">{derived.list.length} shown</span>
-            </div>
-
-            {empty ? (
-              <div className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 bg-white/60 dark:bg-stone-950/40 p-8 text-center">
-                <div className="mx-auto max-w-sm">
-                  <div className="text-base font-medium text-stone-900 dark:text-stone-100">
-                    {showSearchEmpty ? 'No matching recipes' : 'Nothing here yet'}
-                  </div>
-                  <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-                    {showSearchEmpty ? 'Try a different search term, or clear filters.' : 'Check back later for new community recipes.'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {derived.list.map((r) => (
-                  <CommunityFeedRecipeCard
-                    key={r.id}
-                    recipe={r}
-                    onOpen={onOpenRecipe}
-                    onLike={onLike}
-                    onSaveToLibrary={onSaveToLibrary}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <SegmentedControl
+            label="Sort recipes"
+            value={effectiveSort}
+            onChange={(next) => {
+              if (onSetSort) onSetSort(next)
+              else setLocalSort(next)
+            }}
+            options={[
+              { value: 'trending', label: 'Trending' },
+              { value: 'recent', label: 'Recent' },
+              { value: 'title-asc', label: 'A–Z' },
+            ]}
+            className="shrink-0 self-start sm:self-auto"
+          />
         </div>
       </div>
-    </div>
+
+      <Section title="Feed" aside={`${derived.list.length} shown`}>
+        <div className={cx(cardClassName, 'overflow-hidden')}>
+          {empty ? (
+            <EmptyState
+              icon={showSearchEmpty ? SearchX : Users}
+              title={showSearchEmpty ? 'No matching recipes' : 'Nothing here yet'}
+              description={showSearchEmpty ? 'Try a different search term, or clear filters.' : 'Check back later for new community recipes.'}
+            />
+          ) : (
+            <div className={cx('stagger', rowsClassName)}>
+              {derived.list.map((r) => (
+                <CommunityFeedRecipeCard
+                  key={r.id}
+                  recipe={r}
+                  onOpen={onOpenRecipe}
+                  onLike={onLike}
+                  onSaveToLibrary={onSaveToLibrary}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </Section>
+    </PageContainer>
   )
 }
-
-

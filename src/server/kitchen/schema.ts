@@ -2,6 +2,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 
+export const nutritionPer100g = v.object({
+  energyKcal: v.optional(v.number()),
+  proteinG: v.optional(v.number()),
+  carbsG: v.optional(v.number()),
+  fatG: v.optional(v.number()),
+  sugarsG: v.optional(v.number()),
+  fiberG: v.optional(v.number()),
+  saltG: v.optional(v.number()),
+});
+
 export default defineSchema({
   users: defineTable({ name: v.optional(v.string()), email: v.optional(v.string()), image: v.optional(v.string()), emailVerificationTime: v.optional(v.number()), demoExpiresAt: v.optional(v.number()) }).index("email", ["email"]),
 
@@ -70,6 +80,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
     photoUrl: v.optional(v.string()),
     barcode: v.optional(v.string()),
+    // Hand-entered facts per 100 g; shared by every batch of the same food.
+    nutritionPer100g: v.optional(nutritionPer100g),
   })
     .index("by_householdId", ["householdId"])
     .index("by_locationId", ["locationId"])

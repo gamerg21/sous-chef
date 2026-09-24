@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CommunityRecipeFeedView } from "@/components/community";
 import type { CommunityRecipe } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function CommunityRecipesPage() {
   const router = useRouter();
@@ -66,14 +67,12 @@ export default function CommunityRecipesPage() {
 
   if (recipesData === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Loading...</p>
-      </div>
+      <PageLoader />
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <CommunityRecipeFeedView
         recipes={recipes}
         searchQuery={query}
@@ -91,6 +90,6 @@ export default function CommunityRecipesPage() {
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </>
   );
 }

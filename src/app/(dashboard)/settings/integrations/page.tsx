@@ -1,0 +1,159 @@
+"use client";
+
+import { ConvexError } from "convex/values";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useMutation, useAction } from "@/lib/kitchen/client";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/kitchen/api";
+import type { Id } from "@/server/kitchen/_generated/dataModel";
+import { IntegrationsSettingsView } from "@/components/community";
+import type { AiSettings, Integration } from "@/components/community/types";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { PageLoader } from "@/components/ui/page-loader";
+
+export default function IntegrationsPage() {
+  const router = useRouter();
+  const integrationsData = useQuery(api.integrations.list, {});
+  const aiSettingsData = useQuery(api.aiProviders.list, {});
+  const disconnectIntegration = useMutation(api.integrations.disconnect);
+  const configureAiProvider = useAction(api.aiProviders.configure);
+  const testAiProvider = useAction(api.aiProviders.test);
+
+  const integrations = useMemo<Integration[]>(
+    () => (integrationsData?.integrations || []) as Integration[],
+    [integrationsData?.integrations]
+  );
+  const aiSettings = (aiSettingsData || null) as AiSettings | null;
+
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    variant?: "success" | "error" | "info" | "warning";
+  }>({ isOpen: false, message: "", variant: "error" });
+  const [integrationToDisconnect, setIntegrationToDisconnect] = useState<Id<"integrations"> | null>(null);
+
+  const handleDisconnectIntegration = useCallback((id: string) => {
+    setIntegrationToDisconnect(id as Id<"integrations">);
+  }, []);
+
+  const handleConfirmDisconnect = useCallback(async () => {
+    const id = integrationToDisconnect;
+    if (!id) return;
+
+    try {
+      await disconnectIntegration({ integrationId: id });
+      setAlertModal({ isOpen: true, message: "Integration disconnected!", variant: "success" });
+      setIntegrationToDisconnect(null);
+    } catch (error) {
+      console.error("Error disconnecting integration:", error);
+      setAlertModal({
+        isOpen: true,
+        message: "Failed to disconnect integration. Please try again.",
+        variant: "error",
+      });
+      setIntegrationToDisconnect(null);
+    }
+  }, [integrationToDisconnect, disconnectIntegration]);
+
+  const handleSelectActiveProvider = useCallback(
+    async (providerId: string) => {
+      try {
+        await configureAiProvider({ providerId, isActive: true });
+      } catch (error) {
+        console.error("Error setting active provider:", error);
+        setAlertModal({
+          isOpen: true,
+          message: "Failed to set active provider. Please try again.",
+          variant: "error",
+        });
+      }
+    },
+    [configureAiProvider]
+  );
+
+  const handleSaveApiKey = useCallback(
+    async (providerId: string, key: string, model: string) => {
+      try {
+        await configureAiProvider({ providerId, apiKey: key.trim() || undefined, model, isActive: true });
+        setAlertModal({ isOpen: true, message: "Provider settings saved.", variant: "success" });
+        return true;
+      } catch (error) {
+        setAlertModal({
+          isOpen: true,
+          message: error instanceof ConvexError && typeof error.data === "string" ? error.data : "Failed to save provider settings. Please try again.",
+          variant: "error",
+        });
+        return false;
+      }
+    },
+    [configureAiProvider]
+  );
+
+  const handleTestAiConnection = useCallback(async () => {
+    if (!aiSettings?.activeProviderId) {
+      setAlertModal({ isOpen: true, message: "Please select an active provider first.", variant: "warning" });
+      return;
+    }
+
+    try {
+      const data = await testAiProvider({
+        providerId: aiSettings.activeProviderId,
+      });
+
+      if (data.success) {
+        setAlertModal({ isOpen: true, message: "Connection test successful!", variant: "success" });
+      } else {
+        setAlertModal({
+          isOpen: true,
+          message: `Connection test failed: ${data.error || "Unknown error"}`,
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Error testing AI connection:", error);
+      setAlertModal({
+        isOpen: true,
+        message: "Failed to test AI connection. Please try again.",
+        variant: "error",
+      });
+    }
+  }, [aiSettings, testAiProvider]);
+
+  if (integrationsData === undefined || aiSettingsData === undefined) {
+    return <PageLoader rows={3} />;
+  }
+
+  return (
+    <div className="w-full">
+      <IntegrationsSettingsView
+        embedded
+        integrations={integrations}
+        ai={aiSettings || { keyMode: "bring-your-own", providers: [], activeProviderId: undefined }}
+        onOpenExtensionCatalog={() => router.push("/extensions")}
+        onDisconnectIntegration={handleDisconnectIntegration}
+        onSelectActiveProvider={handleSelectActiveProvider}
+        onSaveApiKey={handleSaveApiKey}
+        onTestAiConnection={handleTestAiConnection}
+      />
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() =>
+          setAlertModal({ isOpen: false, message: "", variant: "error" })
+        }
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
+      <ConfirmModal
+        isOpen={integrationToDisconnect !== null}
+        onClose={() => setIntegrationToDisconnect(null)}
+        onConfirm={handleConfirmDisconnect}
+        title="Disconnect integration"
+        message="Are you sure you want to disconnect this integration?"
+        confirmText="Disconnect"
+        cancelText="Cancel"
+        confirmVariant="danger"
+      />
+    </div>
+  );
+}

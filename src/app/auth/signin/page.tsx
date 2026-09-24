@@ -1,5 +1,8 @@
 "use client";
-import { BrandLogo } from "@/components/BrandLogo";
+import { Loader2 } from "lucide-react";
+import { AppSplash } from "@/components/ui/page-loader";
+import { eyebrowClassName } from "@/components/ui/kit";
+import { AuthCard, AuthMessage, authInputClassName, authLinkClassName, authSubmitClassName } from "../auth-card";
 
 import { useAuthActions } from "@/lib/kitchen/client";
 import { useKitchenAuth } from "@/lib/kitchen/client";
@@ -56,101 +59,65 @@ export default function SignIn() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-        <div className="text-stone-600 dark:text-stone-400">Redirecting...</div>
-      </div>
-    );
+  if (authLoading || isAuthenticated) {
+    return <AppSplash />;
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+    <AuthCard
+      title="Sign in to Sous Chef"
+      description="Sign in with your email and password"
+      footer={
+        <p>
+          Don&apos;t have an account?{" "}
+          <Link href="/auth/signup" className={authLinkClassName}>
+            Sign up
+          </Link>
+        </p>
+      }
+    >
+      <form className="space-y-5" onSubmit={handlePasswordSubmit}>
         <div>
-          <div className="mb-5 flex justify-center"><BrandLogo size={72} /></div>
-          <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
-            Sign in to Sous Chef
-          </h1>
-          <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            Sign in with your email and password
-          </p>
+          <label htmlFor="email-password" className={eyebrowClassName}>Email address</label>
+          <input
+            id="email-password"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={authInputClassName}
+            placeholder="Email address"
+          />
         </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handlePasswordSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email-password" className="sr-only">Email address</label>
-              <input
-                id="email-password"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-                placeholder="Password"
-              />
-            </div>
-          </div>
-
-          {message && (
-            <div className={`rounded-md p-3 text-sm ${
-              message.includes("Error")
-                ? "bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800"
-                : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-            }`}>
-              {message}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-            >
-              {isLoading ? "Signing in..." : "Sign in"}
-            </button>
-          </div>
-
-          <div className="text-center text-sm" style={{ fontFamily: 'var(--font-body)' }}>
-            <Link href="/auth/forgot-password" className="font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor="password" className={eyebrowClassName}>Password</label>
+            <Link href="/auth/forgot-password" className="text-xs font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-300">
               Forgot your password?
             </Link>
           </div>
-        </form>
-
-        <div className="text-center text-sm" style={{ fontFamily: 'var(--font-body)' }}>
-          <span className="text-stone-600 dark:text-stone-400">Don&apos;t have an account? </span>
-          <Link href="/auth/signup" className="font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
-            Sign up
-          </Link>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={authInputClassName}
+            placeholder="Password"
+          />
         </div>
-      </div>
-    </div>
+
+        <AuthMessage message={message} />
+
+        <button type="submit" disabled={isLoading} className={authSubmitClassName}>
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {isLoading ? "Signing in..." : "Sign in"}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

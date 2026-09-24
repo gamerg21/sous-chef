@@ -61,6 +61,8 @@ export interface InventoryItem {
   notes?: string
   photoUrl?: string
   barcode?: string
+  /** Hand-entered nutrition per 100 g, shared by batches of the same food. */
+  nutritionPer100g?: NutritionPer100g | null
   foodFacts?: FoodFacts
 }
 

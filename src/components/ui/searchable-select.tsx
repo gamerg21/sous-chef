@@ -158,7 +158,7 @@ export function SearchableSelect({
           <div
             ref={panelRef}
             className={cx(
-              "fixed z-[10000] rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg",
+              "animate-pop-in fixed z-[10000] rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg",
               panelClassName
             )}
             style={{

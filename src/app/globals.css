@@ -14,6 +14,13 @@ body {
   font-family: var(--font-body);
 }
 
+/* Reserve scrollbar space so pages don't shift sideways as their height changes.
+   The page scrolls on small screens; on desktop only the main pane does. */
+#main-content { scrollbar-gutter: stable; }
+@media (max-width: 63.999rem) {
+  html { scrollbar-gutter: stable; }
+}
+
 /* Avoid input zoom and undersized controls on phones. */
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]), select, textarea {
@@ -26,3 +33,119 @@ body {
 
 button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------------
+   Motion. Short, eased, and fully disabled for prefers-reduced-motion.
+   --------------------------------------------------------------------------- */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* Entry animations never extend past an element's final box: moving content
+   down or growing it would briefly overflow the page and flash a scrollbar. */
+@keyframes page-in {
+  from { opacity: 0; }
+}
+@keyframes rise-in {
+  from { opacity: 0; scale: 0.98; }
+}
+@keyframes pop-in {
+  from { opacity: 0; scale: 0.96; translate: 0 -4px; }
+  to { opacity: 1; scale: 1; translate: 0 0; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; scale: 0.96; translate: 0 12px; }
+  to { opacity: 1; scale: 1; translate: 0 0; }
+}
+@keyframes dialog-out {
+  to { opacity: 0; scale: 0.97; translate: 0 8px; }
+}
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes breathe { 50% { scale: 0.92; opacity: 0.7; } }
+@keyframes progress-trickle {
+  0% { scale: 0 1; }
+  20% { scale: 0.4 1; }
+  60% { scale: 0.7 1; }
+  100% { scale: 0.9 1; }
+}
+
+.animate-page-in { animation: page-in 260ms var(--ease-out) backwards; }
+.animate-rise-in { animation: rise-in 320ms var(--ease-out) backwards; }
+.animate-pop-in { animation: pop-in 160ms var(--ease-out) backwards; }
+.animate-fade-in { animation: fade-in 200ms ease-out backwards; }
+.animate-breathe { animation: breathe 1.6s ease-in-out infinite; }
+
+/* Entry animations use backwards fill so no transform lingers afterwards (a
+   lingering translate would become the containing block for fixed children). */
+
+/* Children fade up one after another; later items share the last delay. */
+.stagger > * { transform-origin: top; animation: rise-in 320ms var(--ease-out) backwards; }
+.stagger > :nth-child(2) { animation-delay: 30ms; }
+.stagger > :nth-child(3) { animation-delay: 60ms; }
+.stagger > :nth-child(4) { animation-delay: 90ms; }
+.stagger > :nth-child(5) { animation-delay: 120ms; }
+.stagger > :nth-child(6) { animation-delay: 150ms; }
+.stagger > :nth-child(7) { animation-delay: 180ms; }
+.stagger > :nth-child(n + 8) { animation-delay: 210ms; }
+
+/* Hoverable cards lift slightly. */
+.lift {
+  transition: translate 180ms var(--ease-out), box-shadow 180ms var(--ease-out), border-color 180ms ease;
+}
+@media (hover: hover) {
+  .lift:hover { translate: 0 -2px; box-shadow: 0 8px 24px -12px rgb(28 25 23 / 0.18); }
+}
+
+.skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, rgb(231 229 228 / 0.7) 25%, rgb(245 245 244) 50%, rgb(231 229 228 / 0.7) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@media (prefers-color-scheme: dark) {
+  .skeleton { background-image: linear-gradient(90deg, rgb(41 37 36 / 0.7) 25%, rgb(68 64 60 / 0.7) 50%, rgb(41 37 36 / 0.7) 75%); }
+}
+
+.nav-progress {
+  transform-origin: left;
+  animation: progress-trickle 8s cubic-bezier(0.1, 0.7, 0.3, 1) both;
+}
+.nav-progress[data-state="done"] {
+  scale: 1 1;
+  animation: fade-out 250ms ease 150ms both;
+  transition: scale 150ms ease-out;
+}
+
+/* Modal enter/exit, including the native backdrop. */
+dialog[open] > * { animation: dialog-in 220ms var(--ease-out) backwards; }
+dialog[open]::backdrop { animation: fade-in 200ms ease-out backwards; }
+dialog[data-closing] > * { animation: dialog-out 150ms ease-in both; }
+dialog[data-closing]::backdrop { animation: fade-out 150ms ease-in both; }
+@media (max-width: 639px) {
+  @keyframes dialog-in { from { opacity: 0; translate: 0 24px; } }
+}
+
+/* Tactile press feedback on every enabled button. Unlayered so it keeps the
+   colour transitions that Tailwind utilities would otherwise set alone. */
+@media (prefers-reduced-motion: no-preference) {
+  :where(button, [role="button"], summary):not(:disabled) {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, translate, rotate, scale;
+    transition-timing-function: var(--tw-ease, var(--ease-out));
+    transition-duration: var(--tw-duration, 150ms);
+  }
+  :where(button, [role="button"], summary):not(:disabled):active { scale: 0.97; }
+  /* Scaling full-width nav rows resamples their text and looks blurry. */
+  nav button:not(:disabled):active { scale: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::backdrop {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

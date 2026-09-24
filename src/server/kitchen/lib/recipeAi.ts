@@ -54,9 +54,9 @@ export async function generateRecipeWithProvider(provider: string, model: string
   } catch { throw new Error('The AI provider could not be reached in time. Please try again.'); }
   if (!response.ok) {
     // Provider bodies can echo credentials or prompts. Never expose or log them.
-    if (response.status === 401 || response.status === 403) throw new Error('The provider rejected this key or model. Check AI settings.');
+    if (response.status === 401 || response.status === 403) throw new Error('The provider rejected this key or model. Check Integrations.');
     if (response.status === 429) throw new Error('The provider rate limit or credit limit was reached. Check your provider account.');
-    throw new Error(`The provider could not generate a recipe (HTTP ${response.status}). Check the model in AI settings.`);
+    throw new Error(`The provider could not generate a recipe (HTTP ${response.status}). Check the model in Integrations.`);
   }
   if (!response.body) throw new Error('The provider returned no recipe.');
   const reader = response.body.getReader(); const decoder = new TextDecoder(); let raw = '', bytes = 0;

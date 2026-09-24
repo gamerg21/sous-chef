@@ -4,17 +4,57 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@/lib/kitchen/client";
 import { api } from "@/lib/kitchen/api";
 import type { Id } from "@/server/kitchen/_generated/dataModel";
-import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Crown } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Shield, User, Crown, Home, Users } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Modal } from "@/components/ui/modal";
+import { PageLoader } from "@/components/ui/page-loader";
+import {
+  EmptyState,
+  PageHeader,
+  Pill,
+  Section,
+  SegmentedControl,
+  buttonClassName,
+  cardClassName,
+  cx,
+  eyebrowClassName,
+  fieldClassName,
+  iconButtonClassName,
+  rowsClassName,
+  type Tone,
+} from "@/components/ui/kit";
 
 interface HouseholdUser {
   id: Id<"users">;
   email: string;
   name: string | null;
   role: "owner" | "admin" | "member";
+}
+
+const ROLE_META: Record<string, { tone: Tone; icon: typeof User; description: string }> = {
+  owner: { tone: "warning", icon: Crown, description: "Transfers ownership of this household to them." },
+  admin: { tone: "success", icon: Shield, description: "Can manage members and household settings." },
+  member: { tone: "neutral", icon: User, description: "Can use the kitchen: inventory, recipes, and lists." },
+};
+
+function MemberAvatar({ name, email }: { name: string | null; email: string }) {
+  const letters = (name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("");
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+    >
+      {(letters || email[0] || "?").toUpperCase()}
+    </span>
+  );
 }
 
 export default function HouseholdUsersClient() {
@@ -120,147 +160,100 @@ export default function HouseholdUsersClient() {
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case "owner":
-        return <Crown className="w-4 h-4 text-amber-600" />;
-      case "admin":
-        return <Shield className="w-4 h-4 text-emerald-600" />;
-      default:
-        return <User className="w-4 h-4 text-stone-500" />;
-    }
-  };
-
-  const getRoleBadge = (role: string) => {
-    const badges = {
-      owner: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400",
-      admin: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
-      member: "bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300",
-    };
-    return badges[role as keyof typeof badges] || badges.member;
-  };
-
   if (households === undefined || (householdId && usersData === undefined)) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
-    );
+    return <PageLoader rows={3} />;
   }
 
   if (!householdId) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">
-          No household found. Visit the dashboard first to set one up.
-        </div>
+      <div className={cardClassName}>
+        <EmptyState
+          icon={Home}
+          title="No household found"
+          description="No household found. Visit the dashboard first to set one up."
+        />
       </div>
     );
   }
 
+  const addButton = (label: string) => (
+    <button type="button" onClick={handleAddUser} className={buttonClassName("primary")}>
+      <Plus className="h-4 w-4" />
+      {label}
+    </button>
+  );
+
   return (
     <>
-      <div className="p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
-                Household Users
-              </h1>
-              <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
-                Manage users who have access to your household
-              </p>
-            </div>
-            <button
-              onClick={handleAddUser}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add User
-            </button>
-          </div>
+      <div className="space-y-6">
+        <PageHeader
+          title="Household members"
+          description="Manage users who have access to your household"
+          actions={addButton("Add User")}
+        />
 
-          {users.length === 0 ? (
-            <div className="bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-lg p-12 text-center">
-              <User className="w-12 h-12 mx-auto mb-4 text-stone-400" />
-              <h3 className="text-lg font-medium text-stone-900 dark:text-stone-100 mb-2">
-                No users yet
-              </h3>
-              <p className="text-stone-600 dark:text-stone-400 mb-4">
-                Add users to your household to collaborate on inventory, recipes, and shopping lists.
-              </p>
-              <button
-                onClick={handleAddUser}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Your First User
-              </button>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden">
-              <div className="divide-y divide-stone-200 dark:divide-stone-800">
-                {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className="p-4 hover:bg-stone-50 dark:hover:bg-stone-900/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center text-stone-600 dark:text-stone-400 font-medium">
-                          {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-stone-900 dark:text-stone-100 truncate">
-                              {user.name || "Unnamed User"}
-                            </p>
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${getRoleBadge(
-                                user.role
-                              )}`}
-                            >
-                              {getRoleIcon(user.role)}
-                              {user.role}
-                            </span>
-                          </div>
-                          <p className="text-sm text-stone-600 dark:text-stone-400 truncate">
-                            {user.email}
-                          </p>
-                        </div>
+        {users.length === 0 ? (
+          <div className={cardClassName}>
+            <EmptyState
+              icon={Users}
+              title="No users yet"
+              description="Add users to your household to collaborate on inventory, recipes, and shopping lists."
+              action={addButton("Add Your First User")}
+            />
+          </div>
+        ) : (
+          <Section title="Members" aside={`${users.length} ${users.length === 1 ? "person" : "people"}`}>
+            <ul className={cx(cardClassName, rowsClassName, "stagger")}>
+              {users.map((user) => {
+                const role = ROLE_META[user.role] ?? ROLE_META.member;
+                return (
+                  <li key={user.id} className="flex min-h-16 items-center gap-3 px-4 py-3">
+                    <MemberAvatar name={user.name} email={user.email} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate font-medium text-stone-900 dark:text-stone-100">
+                          {user.name || "Unnamed User"}
+                        </p>
+                        <Pill tone={role.tone} className="shrink-0 capitalize">
+                          <role.icon className="h-3 w-3" aria-hidden="true" />
+                          {user.role}
+                        </Pill>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="h-9 w-9 inline-flex items-center justify-center rounded-md border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                            aria-label="More actions"
-                          >
-                            <MoreHorizontal className="w-4 h-4" strokeWidth={1.75} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                            <Pencil className="w-4 h-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => handleDeleteUser(user.id, user.name || user.email)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Remove
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <p className="truncate text-sm text-stone-500 dark:text-stone-400">
+                        {user.email}
+                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={iconButtonClassName}
+                          aria-label="More actions"
+                        >
+                          <MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => handleDeleteUser(user.id, user.name || user.email)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+        )}
       </div>
 
       {showAddModal && (
@@ -338,64 +331,57 @@ function UserModal({ user, onSave, onClose }: UserModalProps) {
 
   return (
     <Modal isOpen onClose={onClose} title={user ? "Edit User" : "Add User"}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
-              required
-              disabled={!!user}
-            />
-            {user ? (
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                Email cannot be changed
-              </p>
-            ) : (
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                The person must already have a Sous Chef account with this email
-              </p>
-            )}
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label htmlFor="member-email" className={eyebrowClassName}>
+            Email
+          </label>
+          <input
+            id="member-email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className={cx(fieldClassName, "mt-1.5")}
+            placeholder="name@example.com"
+            aria-describedby="member-email-help"
+            required
+            disabled={!!user}
+          />
+          <p id="member-email-help" className="mt-1.5 px-1 text-xs text-stone-500 dark:text-stone-400">
+            {user
+              ? "Email cannot be changed"
+              : "The person must already have a Sous Chef account with this email"}
+          </p>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-              Role *
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value as typeof formData.role })
-              }
-              className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100"
-              required
-            >
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
-              {user && <option value="owner">Owner (transfer ownership)</option>}
-            </select>
-          </div>
+        <div>
+          <span className={eyebrowClassName}>Role</span>
+          <SegmentedControl
+            label="Role"
+            value={formData.role}
+            onChange={(role) => setFormData({ ...formData, role })}
+            className="mt-1.5 w-full [&>button]:flex-1"
+            options={[
+              { value: "member", label: "Member", icon: User },
+              { value: "admin", label: "Admin", icon: Shield },
+              ...(user ? [{ value: "owner" as const, label: "Owner", icon: Crown }] : []),
+            ]}
+          />
+          <p className="mt-1.5 px-1 text-xs text-stone-500 dark:text-stone-400">
+            {formData.role === "owner"
+              ? "Owner (transfer ownership). " + ROLE_META.owner.description
+              : ROLE_META[formData.role].description}
+          </p>
+        </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-900"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={onClose} className={cx(buttonClassName("secondary"), "min-h-11 flex-1")}>
+            Cancel
+          </button>
+          <button type="submit" disabled={saving} className={cx(buttonClassName("primary"), "min-h-11 flex-1")}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </form>
       <AlertModal
         isOpen={alertModal.isOpen}

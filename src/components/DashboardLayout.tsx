@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/kitchen/api";
 import { DashboardPrewarm } from "./DashboardPrewarm";
 import { UpdateNotice } from "./SystemUpdates";
+import { AppSplash } from "./ui/page-loader";
 import AppShell from "./shell/AppShell";
 import type { Id } from "@/server/kitchen/_generated/dataModel";
 
@@ -89,9 +90,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (isLoading || (isAuthenticated && !authReady)) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <AppSplash />
     );
   }
 
@@ -102,9 +101,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (!profile || !households) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <AppSplash />
     );
   }
 

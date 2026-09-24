@@ -8,6 +8,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublishRecipeView } from "@/components/community";
 import { AlertModal } from "@/components/ui/alert-modal";
+import { PageLoader } from "@/components/ui/page-loader";
+import { buttonClassName, cardClassName, cx, EmptyState, PageContainer, rowsClassName, StatusDot } from "@/components/ui/kit";
+import { Share2 } from "lucide-react";
 
 export default function PublishRecipePage() {
   const router = useRouter();
@@ -89,69 +92,84 @@ export default function PublishRecipePage() {
 
   if (!recipeId) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-stone-600 dark:text-stone-400 mb-4">No recipe selected</p>
-          <button
-            onClick={() => router.push("/recipes")}
-            className="text-emerald-600 hover:text-emerald-700"
-          >
-            Go to Recipes
-          </button>
+      <PageContainer width="3xl">
+        <div className={cardClassName}>
+          <EmptyState
+            icon={Share2}
+            title="No recipe selected"
+            description="Open a recipe in your library and choose Share to publish it."
+            action={
+              <button type="button" onClick={() => router.push("/recipes")} className={buttonClassName("primary")}>
+                Go to Recipes
+              </button>
+            }
+          />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (recipe === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Loading...</p>
-      </div>
+      <PageLoader />
     );
   }
 
   if (!recipeData) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-stone-600 dark:text-stone-400 mb-4">Recipe not found</p>
-          <button
-            onClick={() => router.push("/recipes")}
-            className="text-emerald-600 hover:text-emerald-700"
-          >
-            Go to Recipes
-          </button>
+      <PageContainer width="3xl">
+        <div className={cardClassName}>
+          <EmptyState
+            icon={Share2}
+            title="Recipe not found"
+            description="It may have been deleted from your library."
+            action={
+              <button type="button" onClick={() => router.push("/recipes")} className={buttonClassName("primary")}>
+                Go to Recipes
+              </button>
+            }
+          />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {!connection?.connected && <p className="mb-4">To publish, <Link href="/community/connect" className="underline">connect your community account</Link>.</p>}
+  const notice = (!connection?.connected || isPublished) && (
+    <div className={cx(cardClassName, rowsClassName, "overflow-hidden")}>
+      {!connection?.connected && (
+        <div className="flex items-center gap-3 px-4 py-3">
+          <StatusDot tone="warning" />
+          <p className="min-w-0 flex-1 text-sm text-stone-700 dark:text-stone-300">
+            To publish, <Link href="/community/connect" className="font-medium text-emerald-700 underline underline-offset-2 dark:text-emerald-400">connect your community account</Link>.
+          </p>
+        </div>
+      )}
       {isPublished && (
-        <div className="max-w-2xl mx-auto mb-4 flex items-center justify-between gap-3 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3">
-          <p className="text-sm text-emerald-800 dark:text-emerald-300">
+        <div className="flex flex-wrap items-center gap-3 bg-emerald-50/60 px-4 py-3 dark:bg-emerald-950/20">
+          <StatusDot tone="success" />
+          <p className="min-w-0 flex-1 text-sm text-emerald-900 dark:text-emerald-200">
             This recipe is currently shared with the connected recipe community
             {recipeData?.publicationVisibility === "unlisted" ? " (unlisted)" : ""}.
           </p>
-          <button
-            type="button"
-            onClick={handleUnpublish}
-            className="shrink-0 px-3 py-1.5 rounded-md border border-emerald-300 dark:border-emerald-800 text-sm font-medium text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
-          >
+          <button type="button" onClick={handleUnpublish} className={buttonClassName("secondary", "sm")}>
             Unpublish
           </button>
         </div>
       )}
+    </div>
+  );
+
+  return (
+    <>
       <PublishRecipeView
         draft={{
           title: recipeData.title,
           description: recipeData.description,
           tags: recipeData.tags || [],
+          photoUrl: recipeData.photoUrl ?? undefined,
           visibility: "public",
         }}
+        notice={notice}
         onPublish={handlePublish}
         onBack={() => router.back()}
       />
@@ -163,6 +181,6 @@ export default function PublishRecipePage() {
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </>
   );
 }

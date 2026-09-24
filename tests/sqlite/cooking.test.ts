@@ -251,6 +251,34 @@ test('purchase stocking preserves batches, consumes list items once, and rejects
 });
 
 
+test('stocking a purchase fills an empty pantry placeholder instead of adding a batch', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const placeholder = await addInventory(t, kitchen, 'Basil', 0, 'bunch');
+  const { id } = await kitchen.asUser.mutation(api.shoppingList.addItem, { name: 'Basil', quantity: 2, unit: 'bunch' });
+  await kitchen.asUser.mutation(api.shoppingList.updateItem, { id, checked: true });
+  await kitchen.asUser.mutation(api.shoppingList.stockChecked, { items: [{ id, quantity: 2, unit: 'Bunch', locationId: kitchen.locationId, expectedName: 'Basil', expectedQuantity: 2, expectedUnit: 'bunch' }] });
+  const inventory = await t.run(ctx => ctx.db.query('inventoryItems').withIndex('by_householdId', q => q.eq('householdId', kitchen.householdId)).collect());
+  expect(inventory).toHaveLength(1);
+  expect(inventory[0]).toMatchObject({ _id: placeholder, quantity: 2 });
+});
+
+test('nutrition entered for a pantry item applies to every batch of that food in the household only', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const other = await setupKitchen(t);
+  const first = await addInventory(t, kitchen, 'Rice', 1, 'kg');
+  const second = await addInventory(t, kitchen, 'Rice', 0, 'kg');
+  const foreign = await addInventory(t, other, 'Rice', 2, 'kg');
+  await kitchen.asUser.mutation(api.inventory.update, { id: first, nutritionPer100g: { energyKcal: 360, carbsG: 80 } });
+  const read = async (id: Id<'inventoryItems'>) => (await t.run(ctx => ctx.db.get(id)))?.nutritionPer100g;
+  expect(await read(second)).toEqual({ energyKcal: 360, carbsG: 80 });
+  expect(await read(foreign)).toBeUndefined();
+  await expect(kitchen.asUser.mutation(api.inventory.update, { id: first, nutritionPer100g: { energyKcal: -1 } })).rejects.toThrow('Nutrition values');
+  await kitchen.asUser.mutation(api.inventory.update, { id: second, nutritionPer100g: null });
+  expect(await read(first)).toBeUndefined();
+});
+
 test('editor payload creates and edits a complete recipe, including clearing optional fields', async () => {
   const t = newTest();
   const kitchen = await setupKitchen(t);
@@ -272,14 +300,14 @@ test('pantry idea preparation requires configuration and limits usage within the
   const other = await setupKitchen(t);
   await addInventory(t, kitchen, 'Milk', 1, 'l');
   await addInventory(t, other, 'Private ingredient', 4, 'each');
-  await expect(kitchen.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('AI settings');
+  await expect(kitchen.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('in Integrations');
   await t.run(ctx => ctx.db.insert('aiProviderSettings', { householdId: kitchen.householdId, providerId: 'openai', providerName: 'OpenAI', model: 'test-model', apiKey: 'test-only', status: 'ready', isActive: true }));
   const prepared = await kitchen.asUser.mutation(internal.recipeIdeas.prepare, {});
   expect(prepared.pantry).toEqual([{ name: 'Milk', quantity: 1, unit: 'l' }]);
   await kitchen.asUser.mutation(internal.recipeIdeas.prepare, {});
   await kitchen.asUser.mutation(internal.recipeIdeas.prepare, {});
   await expect(kitchen.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('Wait a minute');
-  await expect(other.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('AI settings');
+  await expect(other.asUser.mutation(internal.recipeIdeas.prepare, {})).rejects.toThrow('in Integrations');
   const publicSettings = await kitchen.asUser.query(api.aiProviders.list, {});
   expect(JSON.stringify(publicSettings)).not.toContain('test-only');
   expect(publicSettings.providers[0]).toMatchObject({ model: 'test-model', hasKey: true });

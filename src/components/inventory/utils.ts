@@ -1,10 +1,11 @@
+import { unitLabel } from '@/lib/units'
 import type { InventoryItem, QuantityUnit } from './types'
 
 export function formatQuantity(quantity: number, unit: QuantityUnit): string {
   if (unit === 'count') return `${quantity}`
   // Avoid trailing .0 for common decimal inputs
   const q = Number.isInteger(quantity) ? `${quantity}` : `${quantity}`
-  return `${q} ${unit}`
+  return `${q} ${unitLabel(unit, quantity)}`
 }
 
 export function parseISODate(value?: string): Date | null {

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BrandLogo } from '@/components/BrandLogo'
 import { Menu } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -9,6 +9,8 @@ import MainNav, { type NavigationItem } from './MainNav'
 import UserMenu, { type ShellUser } from './UserMenu'
 import HouseholdSwitcher from './HouseholdSwitcher'
 import { Modal } from '../ui/modal'
+import { NavigationProgress, startNavigationProgress } from './NavigationProgress'
+import { usePrewarmRoute } from '@/lib/kitchen/prewarm'
 
 export interface AppShellProps {
   children: ReactNode
@@ -206,17 +208,26 @@ function AppShellInternal({
   const router = useRouter()
   const pathname = usePathname()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  // Highlight the destination immediately; it only applies until the path changes.
+  const [pendingNav, setPendingNav] = useState<{ from: string; href: string } | null>(null)
+  const activePath = pendingNav?.from === pathname ? pendingNav.href : pathname
+  const prewarm = usePrewarmRoute()
+  const mainRef = useRef<HTMLElement>(null)
+
+  // On desktop <main> is the scroll container, which Next.js doesn't reset.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 })
+  }, [pathname])
 
   const accent = useMemo(() => accentClasses(tokens?.colors?.primary), [tokens?.colors?.primary])
   const neutral = useMemo(() => neutralClasses(tokens?.colors?.neutral), [tokens?.colors?.neutral])
 
   const headingFont = tokens?.typography?.heading || 'var(--font-heading)'
   const bodyFont = tokens?.typography?.body || 'var(--font-body)'
-  const monoFont = tokens?.typography?.mono || 'var(--font-mono)'
 
   const navItems: NavigationItem[] = navigationItems.map(item => ({
     ...item,
-    isActive: item.isActive ?? (pathname === item.href || pathname.startsWith(item.href + '/'))
+    isActive: item.isActive ?? (activePath === item.href || activePath.startsWith(item.href + '/'))
   }))
 
   const shellUser: ShellUser | undefined = user
@@ -224,12 +235,17 @@ function AppShellInternal({
   const prefetchRoute = useCallback(
     (href: string) => {
       router.prefetch(href)
+      prewarm(href)
     },
-    [router]
+    [router, prewarm]
   )
 
   const handleNavigate = (href: string) => {
     setMobileNavOpen(false)
+    if (href !== pathname) {
+      setPendingNav({ from: pathname, href })
+      startNavigationProgress(href)
+    }
     router.push(href)
   }
 
@@ -240,6 +256,8 @@ function AppShellInternal({
         fontFamily: bodyFont,
       }}
     >
+      <NavigationProgress />
+
       {/* Mobile top bar */}
       <div className={cx('lg:hidden sticky top-0 z-40', neutral.panelBg, 'border-b', neutral.panelBorder)}>
         <div className="h-14 px-4 flex items-center gap-3">
@@ -261,9 +279,6 @@ function AppShellInternal({
           <div className="min-w-0">
             <div className="text-sm font-semibold" style={{ fontFamily: headingFont }}>
               {brand?.name || 'Sous Chef'}
-            </div>
-            <div className={cx('text-xs', neutral.muted)} style={{ fontFamily: monoFont }}>
-              Household Kitchen
             </div>
           </div>
         </div>
@@ -319,33 +334,25 @@ function AppShellInternal({
         <aside className={cx('hidden lg:block w-64 shrink-0 border-r h-dvh', neutral.panelBorder, neutral.panelBg)}>
           <div className="h-full flex flex-col overflow-hidden">
             <div className={cx('px-5 py-5 border-b', neutral.panelBorder)}>
-              <div className="flex items-center justify-between gap-3">
-                <BrandLogo size={44} decorative />
-                <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <BrandLogo size={40} decorative />
+                <div className="min-w-0 flex-1">
                   <div className="text-base font-semibold" style={{ fontFamily: headingFont }}>
                     {brand?.name || 'Sous Chef'}
                   </div>
-                  <div className={cx('text-xs mt-1', neutral.muted)} style={{ fontFamily: monoFont }}>
-                    Household Kitchen
-                  </div>
+                  {households && households.length > 0 && (
+                    <HouseholdSwitcher
+                      compact
+                      households={households}
+                      currentHouseholdId={currentHouseholdId}
+                      onHouseholdChange={onHouseholdChange}
+                      accent={accent}
+                      neutral={neutral}
+                    />
+                  )}
                 </div>
-                <span className={cx('text-[11px] px-2 py-1 rounded-full', accent.pill)} style={{ fontFamily: monoFont }}>
-                  Beta
-                </span>
               </div>
             </div>
-
-            {households && households.length > 0 && (
-              <div className={cx('px-3 py-3 border-b', neutral.panelBorder)}>
-                <HouseholdSwitcher
-                  households={households}
-                  currentHouseholdId={currentHouseholdId}
-                  onHouseholdChange={onHouseholdChange}
-                  accent={accent}
-                  neutral={neutral}
-                />
-              </div>
-            )}
 
             <div className="flex-1 overflow-y-auto px-3 py-3">
               <MainNav
@@ -371,7 +378,7 @@ function AppShellInternal({
           </div>
         </aside>
 
-        <main id="main-content" className="flex-1 min-w-0 lg:h-dvh lg:overflow-y-auto">
+        <main ref={mainRef} id="main-content" className="flex-1 min-w-0 lg:h-dvh lg:overflow-y-auto">
           <div className="min-h-full">{children}</div>
         </main>
       </div>

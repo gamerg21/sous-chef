@@ -151,7 +151,7 @@ export function DropdownMenuContent({ align = "start", children }: DropdownMenuC
   const content = (
     <div
       ref={contentRef}
-      className="dropdown-menu-content fixed z-[9999] min-w-[8rem] rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg"
+      className={`dropdown-menu-content animate-pop-in fixed z-[9999] min-w-[8rem] rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg ${align === "end" ? "origin-top-right" : align === "center" ? "origin-top" : "origin-top-left"}`}
       style={{ top: `${position.top}px`, left: `${position.left}px` }}
     >
       {children}
@@ -194,7 +194,7 @@ export function DropdownMenuItem({
     <button
       type="button"
       onClick={handleClick}
-      className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${variantClasses[variant]}`}
+      className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors ${variantClasses[variant]}`}
     >
       {children}
     </button>

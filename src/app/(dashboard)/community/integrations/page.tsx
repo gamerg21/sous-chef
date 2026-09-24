@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function CommunityIntegrationsPage() {
-  redirect("/settings/ai");
+  redirect("/settings/integrations");
 }

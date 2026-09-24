@@ -1,3 +1,15 @@
+## 0.9.0 — A livelier, clearer kitchen
+
+- New design language across the app: grouped cards, section labels, inline expanding menus instead of dropdowns, and a shared UI kit (`src/components/ui/kit.tsx`).
+- Smooth motion: page transitions, animated modals and menus, press feedback, staggered lists, skeleton loading, and a sliding sidebar highlight. Respects reduced-motion settings.
+- Faster navigation: main pages prefetch their data in the background; a progress bar appears only for slow page loads.
+- Redesigned Add/Edit item: inline location, unit, category, and calendar drawers with expiry shortcuts; scan or look up barcodes inside the form.
+- Redesigned recipe editor: add ingredients from your pantry first, or create new ones inline, tracked at zero stock and optionally added to the shopping list. Stocking a purchase fills that placeholder instead of duplicating it.
+- Redesigned recipe page with a readiness bar and a nutrition panel estimated from pantry items, listing which ingredients couldn't be counted and why.
+- Pantry items can store nutrition per 100 g; barcode nutrition from Open Food Facts is now read correctly.
+- Units read naturally with amounts ("2 cups", "½ cup"); recipe visibility controls removed.
+- Shopping items support notes; "What can I cook?" gains a readiness filter.
+
 ## 0.8.0 — SQLite kitchens and optional community (not yet published)
 
 - Private kitchens now run on local SQLite with local sessions, photos, and encrypted keys.

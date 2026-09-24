@@ -1,5 +1,7 @@
 "use client";
-import { BrandLogo } from "@/components/BrandLogo";
+import { Loader2 } from "lucide-react";
+import { eyebrowClassName } from "@/components/ui/kit";
+import { AuthCard, AuthMessage, authInputClassName, authQuietLinkClassName, authSubmitClassName } from "../auth-card";
 
 import { useAuthActions } from "@/lib/kitchen/client";
 
@@ -80,74 +82,49 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-sm dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-        <div>
-          <div className="mb-5 flex justify-center"><BrandLogo size={72} /></div>
-          <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
-            Reset your password
-          </h1>
-          <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            {delivery?.mode === 'operator' ? 'Email delivery isn’t enabled on this instance. You can request a recovery link from the instance owner.' : 'Enter your email address to request a password reset link.'}
-          </p>
-        </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="email" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="relative block w-full rounded-md border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-3 py-2 text-stone-900 dark:text-stone-50 placeholder-stone-500 dark:placeholder-stone-400 focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors"
-              placeholder="Email address"
-            />
-          </div>
-
-          {message && (
-            <div
-              role="status"
-              className={`rounded-md p-3 text-sm ${
-                message.includes("Error")
-                  ? "bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800"
-                  : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-              }`}
-            >
-              {message}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading || !delivery}
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-            >
-              {isLoading ? "Requesting…" : delivery?.mode === 'operator' ? "Request recovery link" : "Send reset link"}
-            </button>
-          </div>
-        </form>
-
-        {/* Sign in link */}
-        <div className="text-center text-sm" style={{ fontFamily: 'var(--font-body)' }}>
-          <Link
-            href="/auth/signin"
-            className="font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
-          >
+    <AuthCard
+      title="Reset your password"
+      description={delivery?.mode === 'operator' ? 'Email delivery isn’t enabled on this instance. You can request a recovery link from the instance owner.' : 'Enter your email address to request a password reset link.'}
+      footer={
+        <>
+          <Link href="/auth/signin" className={authQuietLinkClassName}>
             Back to sign in
           </Link>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            Without email delivery, the server operator can reset your password locally.
+          </p>
+        </>
+      }
+    >
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="email" className={eyebrowClassName}>
+            Email address
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={authInputClassName}
+            placeholder="Email address"
+          />
         </div>
 
-        <p className="text-center text-xs text-stone-500 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-          Without email delivery, the server operator can reset your password locally.
-        </p>
-      </div>
-    </div>
+        <AuthMessage message={message} role="status" />
+
+        <button
+          type="submit"
+          disabled={isLoading || !delivery}
+          className={authSubmitClassName}
+        >
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {isLoading ? "Requesting…" : delivery?.mode === 'operator' ? "Request recovery link" : "Send reset link"}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

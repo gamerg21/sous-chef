@@ -1,15 +1,38 @@
-import { useMemo, useState } from 'react'
-import { ArrowLeft, Globe, Lock, ShieldCheck } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { ArrowLeft, Check, ChefHat, Globe, Lock, Plus, ShieldCheck, X } from 'lucide-react'
+import {
+  bareInputClassName,
+  buttonClassName,
+  cardClassName,
+  eyebrowClassName,
+  headingFont,
+  heroCardClassName,
+  heroInputClassName,
+  IconBadge,
+  optionClassName,
+  PageContainer,
+  PageHeader,
+  Pill,
+  rowsClassName,
+  Section,
+} from '@/components/ui/kit'
 import type { CommunityRecipeListing } from './types'
 import { cx } from './utils'
 
 export interface PublishRecipeViewProps {
   draft?: Partial<CommunityRecipeListing> | null
+  /** Status banners (connection, current publication) shown under the header. */
+  notice?: ReactNode
   onBack?: () => void
   onPublish?: (next: { title: string; description?: string; tags: string[]; visibility: 'public' | 'unlisted' }) => void
 }
 
-export function PublishRecipeView({ draft, onBack, onPublish }: PublishRecipeViewProps) {
+const visibilityOptions = [
+  { value: 'public', icon: Globe, label: 'Public', hint: 'Discoverable in search and recommended lists.' },
+  { value: 'unlisted', icon: Lock, label: 'Unlisted', hint: 'Only people with the link can view it.' },
+] as const
+
+export function PublishRecipeView({ draft, notice, onBack, onPublish }: PublishRecipeViewProps) {
   const [title, setTitle] = useState(draft?.title ?? 'My Best Weeknight Pasta')
   const [description, setDescription] = useState(
     draft?.description ?? 'A fast, flexible base recipe — works with almost any veg and pantry sauce.'
@@ -28,202 +51,189 @@ export function PublishRecipeView({ draft, onBack, onPublish }: PublishRecipeVie
     [title, description, tags, visibility]
   )
 
+  const addTag = () => {
+    const next = tagInput.trim()
+    if (!next) return
+    setTags((prev) => (prev.includes(next) ? prev : [...prev, next]))
+    setTagInput('')
+  }
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
-              Back
-            </button>
+    <PageContainer width="5xl">
+      <PageHeader
+        back={
+          <button
+            type="button"
+            onClick={onBack}
+            className="-ml-2 inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-900 dark:hover:text-stone-100"
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+            Back
+          </button>
+        }
+        eyebrow="Share with the community"
+        title="Publish recipe"
+        description="Upload a copy to the connected recipe community. Public recipes appear in search; unlisted recipes are reachable only by link. Your pantry and private notes stay local."
+      />
+
+      {notice}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="space-y-6 lg:col-span-3">
+          <Section title="Listing">
+            <div className={cx(heroCardClassName, rowsClassName)}>
+              <div className="px-4 py-4">
+                <label htmlFor="publish-title" className={eyebrowClassName}>
+                  Title
+                </label>
+                <input
+                  id="publish-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={cx(heroInputClassName, 'mt-1')}
+                  style={headingFont}
+                  placeholder="Recipe title"
+                />
+              </div>
+              <div className="px-4 py-4">
+                <label htmlFor="publish-description" className={eyebrowClassName}>
+                  Description
+                </label>
+                <textarea
+                  id="publish-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className={cx(bareInputClassName, 'mt-1 min-h-20 resize-y leading-relaxed')}
+                  placeholder="What makes this recipe great?"
+                />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Tags" aside={tags.length > 0 ? `${tags.length} added` : undefined}>
+            <div className={cx(cardClassName, rowsClassName)}>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3">
+                  {tags.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-emerald-50 pl-3 pr-2 text-sm text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-950"
+                      title="Remove tag"
+                    >
+                      {t}
+                      <X className="h-3.5 w-3.5 opacity-60" strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 py-1.5 pl-4 pr-1.5">
+                <input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addTag()
+                    }
+                  }}
+                  aria-label="Add a tag"
+                  className={cx(bareInputClassName, 'min-h-10')}
+                  placeholder="Add a tag (e.g. Vegetarian)"
+                />
+                <button type="button" onClick={addTag} className={buttonClassName('soft', 'sm')}>
+                  <Plus className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                  Add
+                </button>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Visibility">
+            <div className={cx(cardClassName, 'space-y-1 p-1.5')} role="radiogroup" aria-label="Visibility">
+              {visibilityOptions.map(({ value, icon, label, hint }) => {
+                const selected = visibility === value
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setVisibility(value)}
+                    className={cx(optionClassName(selected), 'min-h-14 py-2')}
+                  >
+                    <IconBadge icon={icon} tone={selected ? 'success' : 'neutral'} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium text-stone-900 dark:text-stone-100">{label}</span>
+                      <span className="block text-xs font-normal text-stone-600 dark:text-stone-400">{hint}</span>
+                    </span>
+                    {selected && <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={2.25} aria-hidden="true" />}
+                  </button>
+                )
+              })}
+            </div>
+          </Section>
+
+          <div className={cx(cardClassName, 'flex items-start gap-3 p-4')}>
+            <IconBadge icon={ShieldCheck} tone="neutral" />
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-stone-900 dark:text-stone-100">What gets shared</div>
+              <p className="mt-0.5 text-sm text-stone-600 dark:text-stone-400">
+                Title, description, tags, servings, time, ingredients, steps, source link, and the recipe photo. Private notes,
+                inventory links, and household details stay in your kitchen.
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Form */}
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
-              <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">Publish recipe</h1>
-              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Upload a copy to the connected recipe community. Public recipes appear in search; unlisted recipes are reachable only by link. Your pantry and private notes stay local.
-              </p>
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" onClick={onBack} className={buttonClassName('ghost')}>
+              Cancel
+            </button>
+            <button type="button" onClick={() => onPublish?.(preview)} className={cx(buttonClassName('primary'), 'px-6')}>
+              Publish
+            </button>
+          </div>
+        </div>
 
-              <div className="mt-5 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-900 dark:text-stone-100">Title</label>
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                    placeholder="Recipe title"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-900 dark:text-stone-100">Description</label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="min-h-28 w-full px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                    placeholder="What makes this recipe great?"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-900 dark:text-stone-100">Tags</label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                      placeholder="Add a tag (e.g. Vegetarian)"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = tagInput.trim()
-                        if (!next) return
-                        setTags((prev) => (prev.includes(next) ? prev : [...prev, next]))
-                        setTagInput('')
-                      }}
-                      className="inline-flex items-center justify-center px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm font-medium text-stone-800 dark:text-stone-100 hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {tags.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
-                        className="rounded-full border border-stone-200 dark:border-stone-800 px-2 py-1 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                        title="Remove tag"
-                      >
-                        {t}
-                        <span className="ml-1 text-stone-400">×</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-900 dark:text-stone-100">Visibility</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setVisibility('public')}
-                      className={cx(
-                        'text-left rounded-lg border p-4 transition-colors',
-                        visibility === 'public'
-                          ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20'
-                          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-emerald-700 dark:text-emerald-300" strokeWidth={1.75} />
-                        <div className="font-medium text-stone-900 dark:text-stone-100">Public</div>
-                      </div>
-                      <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                        Discoverable in search and recommended lists.
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVisibility('unlisted')}
-                      className={cx(
-                        'text-left rounded-lg border p-4 transition-colors',
-                        visibility === 'unlisted'
-                          ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20'
-                          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-emerald-700 dark:text-emerald-300" strokeWidth={1.75} />
-                        <div className="font-medium text-stone-900 dark:text-stone-100">Unlisted</div>
-                      </div>
-                      <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                        Only people with the link can view it.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40 p-4">
-                  <div className="flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-stone-600 dark:text-stone-300 mt-0.5" strokeWidth={1.75} />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-stone-900 dark:text-stone-100">Safety & licensing</div>
-                      <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                        In implementation, add moderation/reporting, attribution, and a clear license choice.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={onBack}
-                    className="inline-flex items-center justify-center px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm font-medium text-stone-800 dark:text-stone-100 hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onPublish?.(preview)}
-                    className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-                  >
-                    Publish
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Preview */}
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Listing preview</h2>
-                <span className="text-[11px] px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-900/60 text-stone-700 dark:text-stone-200">
-                  {preview.visibility === 'public' ? 'Public' : 'Unlisted'}
-                </span>
-              </div>
-
-              <div className="mt-4 rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40 p-4">
-                <div className="text-lg font-semibold text-stone-900 dark:text-stone-100">{preview.title}</div>
-                {preview.description && (
-                  <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">{preview.description}</p>
-                )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {preview.tags.length > 0 ? (
-                    preview.tags.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded-full border border-stone-200 dark:border-stone-800 px-2 py-1 text-xs text-stone-700 dark:text-stone-200"
-                      >
-                        {t}
-                      </span>
-                    ))
+        <div className="lg:col-span-2">
+          <div className="lg:sticky lg:top-6">
+            <Section
+              title="Listing preview"
+              aside={<Pill tone={preview.visibility === 'public' ? 'success' : 'neutral'}>{preview.visibility === 'public' ? 'Public' : 'Unlisted'}</Pill>}
+            >
+              <div className={cx(cardClassName, 'overflow-hidden')}>
+                <div className="relative aspect-[16/10] bg-gradient-to-br from-emerald-50 to-stone-100 dark:from-emerald-950/40 dark:to-stone-900">
+                  {draft?.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- data or local file URL; next/image adds nothing here
+                    <img src={draft.photoUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
                   ) : (
-                    <span className="text-xs text-stone-500 dark:text-stone-500">No tags</span>
+                  <ChefHat aria-hidden="true" className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 text-emerald-600/40 dark:text-emerald-400/30" strokeWidth={1.5} />
                   )}
                 </div>
+                <div className="p-4">
+                  <div className="text-lg font-semibold leading-snug text-stone-900 dark:text-stone-100" style={headingFont}>
+                    {preview.title}
+                  </div>
+                  {preview.description && <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{preview.description}</p>}
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {preview.tags.length > 0 ? (
+                      preview.tags.map((t) => (
+                        <span key={t} className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                          {t}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-stone-500">No tags</span>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              <div className="mt-4 text-xs text-stone-500 dark:text-stone-500">
-                This preview is intentionally lightweight — the “real” publish flow would validate content, show a moderation policy,
-                and offer a link/QR share UI for unlisted recipes.
-              </div>
-            </div>
+            </Section>
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }
-
-

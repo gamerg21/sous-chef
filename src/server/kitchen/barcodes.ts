@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery } from "./_generated/server";
+import { action, query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import { getAuthUserId, resolveHouseholdId, getHouseholdMembership } from "./helpers";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 
@@ -137,6 +138,40 @@ export const saveLookup = internalMutation({
 const OFF_ATTRIBUTION = (url: string) =>
   ({ label: "Open Food Facts", url, license: "ODbL" }) as const;
 
+export const settings = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    const householdId = await resolveHouseholdId(ctx, userId);
+    if (!householdId) throw new Error("No household found");
+    const membership = await getHouseholdMembership(ctx, userId, householdId);
+    const integration = await ctx.db.query("integrations")
+      .withIndex("by_householdId_and_provider", q => q.eq("householdId", householdId).eq("provider", "open_food_facts")).first();
+    const serverEnabled = (process.env.OPEN_FOOD_FACTS_ENABLED ?? "true").toLowerCase() !== "false";
+    const enabled = integration ? integration.status === "connected" : true;
+    return { enabled, serverEnabled, effectiveEnabled: enabled && serverEnabled,
+      canManage: membership?.role === "owner" || membership?.role === "admin" };
+  },
+});
+
+export const configure = mutation({
+  args: { enabled: v.boolean() },
+  handler: async (ctx, { enabled }) => {
+    const userId = await getAuthUserId(ctx);
+    const householdId = await resolveHouseholdId(ctx, userId);
+    if (!householdId) throw new Error("No household found");
+    const membership = await getHouseholdMembership(ctx, userId, householdId);
+    if (membership?.role !== "owner" && membership?.role !== "admin") throw new Error("Only household owners and admins can change integrations");
+    const existing = await ctx.db.query("integrations")
+      .withIndex("by_householdId_and_provider", q => q.eq("householdId", householdId).eq("provider", "open_food_facts")).first();
+    const status = enabled ? "connected" : "disconnected";
+    if (existing) await ctx.db.patch(existing._id, { status });
+    else await ctx.db.insert("integrations", { householdId, provider: "open_food_facts", name: "Open Food Facts",
+      description: "Product information from barcodes", status });
+    return { success: true };
+  },
+});
+
 export const lookup = action({
   args: { code: v.string() },
   handler: async (ctx, args): Promise<BarcodeLookupResult> => {
@@ -145,6 +180,8 @@ export const lookup = action({
 
     const code = args.code.trim();
     if (!code) return { found: false, prefill: {} };
+    if (!/^\d{8,14}$/.test(code)) throw new Error("Enter a barcode with 8–14 digits");
+    const preferences = await ctx.runQuery(internal.barcodes.settings, {});
 
     const cached = await ctx.runQuery(internal.barcodes.getCached, { code });
 
@@ -181,14 +218,15 @@ export const lookup = action({
       return cachedResult(false);
     }
 
-    const enabled =
-      (process.env.OPEN_FOOD_FACTS_ENABLED ?? "true").toLowerCase() !==
-      "false";
-    if (!enabled) {
+    if (!preferences.effectiveEnabled) {
       return cached ? cachedResult(true) : { found: false, prefill: { barcode: code } };
     }
 
     try {
+      const { allowed } = await ctx.runMutation(internal.rateLimit.checkAndRecord, {
+        scope: "open-food-facts", subject: "instance", windowMs: 60000, max: 15,
+      });
+      if (!allowed) throw new Error("Too many barcode lookups. Try again in a minute.");
       const timeoutMs = Number(process.env.OPEN_FOOD_FACTS_TIMEOUT_MS ?? 2500);
       const response = await fetch(
         `${baseUrl}/api/v2/product/${encodeURIComponent(code)}.json`,
@@ -196,7 +234,7 @@ export const lookup = action({
           headers: {
             "User-Agent":
               process.env.OPEN_FOOD_FACTS_USER_AGENT ??
-              "SousChef/0.2.0 (open-source kitchen assistant)",
+              "SousChef/0.8.0 (https://github.com/gamerg21/sous-chef)",
           },
           signal: AbortSignal.timeout(timeoutMs),
         },

@@ -9,6 +9,9 @@ import { ExtensionDetailView } from "@/components/community";
 import type { ExtensionListing, InstalledExtension } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { PageLoader } from "@/components/ui/page-loader";
+import { buttonClassName, cardClassName, EmptyState, PageContainer } from "@/components/ui/kit";
+import { Puzzle } from "lucide-react";
 
 export default function ExtensionDetailPage() {
   const router = useRouter();
@@ -44,17 +47,25 @@ export default function ExtensionDetailPage() {
 
   if (extension === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Loading...</p>
-      </div>
+      <PageLoader />
     );
   }
 
   if (!extension) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Extension not found</p>
-      </div>
+      <PageContainer width="3xl">
+        <div className={cardClassName}>
+          <EmptyState
+            icon={Puzzle}
+            title="Extension not found"
+            action={
+              <button type="button" onClick={() => router.push("/extensions")} className={buttonClassName("secondary")}>
+                Back to catalog
+              </button>
+            }
+          />
+        </div>
+      </PageContainer>
     );
   }
 
@@ -67,7 +78,7 @@ export default function ExtensionDetailPage() {
     : null;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <ExtensionDetailView
         extension={extension as ExtensionListing}
         installed={installed}
@@ -92,6 +103,6 @@ export default function ExtensionDetailPage() {
         cancelText="Cancel"
         confirmVariant="danger"
       />
-    </div>
+    </>
   );
 }

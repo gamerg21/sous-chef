@@ -30,8 +30,9 @@ export function ingredientMatchStatus(
 ): IngredientMatchStatus {
   const mapping = ingredient.mapping?.inventoryItemLabel
   if (!mapping) return 'unmapped'
-  const idx = pantryIndex(pantry)
-  return idx[normalizeKey(mapping)] ? 'in-stock' : 'missing'
+  // Items kept at zero (tracked but not yet bought) count as missing.
+  const key = normalizeKey(mapping)
+  return pantry.some((p) => normalizeKey(p.name) === key && (p.quantity ?? 1) > 0) ? 'in-stock' : 'missing'
 }
 
 export function recipeMatchSummary(recipe: Recipe, pantry: PantrySnapshotItem[] = []) {

@@ -1,6 +1,32 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId, resolveHouseholdId, locationNameToId, locationIdToName } from "./helpers";
+import { nutritionPer100g } from "./schema";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+type Nutrition = typeof nutritionPer100g.type;
+
+function validateNutrition(nutrition: Nutrition) {
+  for (const value of Object.values(nutrition)) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 10000)) throw new Error("Nutrition values must be between 0 and 10,000");
+  }
+}
+
+/**
+ * Nutrition describes the food, so every batch in the household shares it.
+ * Matched by name because older data can hold duplicate food records.
+ */
+async function applyNutrition(ctx: MutationCtx, householdId: Id<"households">, foodItemId: Id<"foodItems">, nutrition: Nutrition | null) {
+  const food = await ctx.db.get(foodItemId);
+  const foods = food ? await ctx.db.query("foodItems").withIndex("by_name", (q) => q.eq("name", food.name)).collect() : [];
+  for (const { _id } of foods.length ? foods : [{ _id: foodItemId }]) {
+    const batches = await ctx.db.query("inventoryItems").withIndex("by_foodItemId", (q) => q.eq("foodItemId", _id)).collect();
+    for (const batch of batches) {
+      if (batch.householdId === householdId) await ctx.db.patch(batch._id, { nutritionPer100g: nutrition ?? undefined });
+    }
+  }
+}
 
 export const list = query({
   args: { householdId: v.optional(v.id("households")) },
@@ -81,6 +107,7 @@ export const list = query({
         photoUrl: item.photoUrl ?? undefined,
         barcode: item.barcode ?? undefined,
         foodFacts: item.barcode ? barcodeMap.get(item.barcode) : undefined,
+        nutritionPer100g: item.nutritionPer100g ?? undefined,
       });
     }
 
@@ -99,9 +126,11 @@ export const create = mutation({
     category: v.optional(v.string()),
     notes: v.optional(v.string()),
     barcode: v.optional(v.string()),
+    nutritionPer100g: v.optional(nutritionPer100g),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    if (args.nutritionPer100g) validateNutrition(args.nutritionPer100g);
     const householdId = await resolveHouseholdId(ctx, userId, args.householdId);
     if (!householdId) throw new Error("No household found");
 
@@ -136,6 +165,7 @@ export const create = mutation({
       notes: args.notes,
       barcode: args.barcode,
     });
+    if (args.nutritionPer100g) await applyNutrition(ctx, householdId, foodItemId, args.nutritionPer100g);
 
     return {
       id: itemId,
@@ -163,9 +193,11 @@ export const update = mutation({
     notes: v.optional(v.union(v.string(), v.null())),
     photoUrl: v.optional(v.union(v.string(), v.null())),
     barcode: v.optional(v.union(v.string(), v.null())),
+    nutritionPer100g: v.optional(v.union(nutritionPer100g, v.null())),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    if (args.nutritionPer100g) validateNutrition(args.nutritionPer100g);
     const item = await ctx.db.get(args.id);
     if (!item) throw new Error("Item not found");
 
@@ -215,6 +247,9 @@ export const update = mutation({
     if (args.barcode !== undefined) patch.barcode = args.barcode ?? undefined;
 
     await ctx.db.patch(args.id, patch);
+    if (args.nutritionPer100g !== undefined) {
+      await applyNutrition(ctx, householdId, (patch.foodItemId as Id<"foodItems"> | undefined) ?? item.foodItemId, args.nutritionPer100g);
+    }
     return { success: true };
   },
 });

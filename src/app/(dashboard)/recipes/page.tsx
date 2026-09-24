@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { RecipeLibraryView } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function RecipesPage() {
   const router = useRouter();
@@ -180,9 +181,7 @@ export default function RecipesPage() {
 
   if (recipesData === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <PageLoader />
     );
   }
 

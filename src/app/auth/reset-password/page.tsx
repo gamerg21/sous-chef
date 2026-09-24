@@ -1,5 +1,8 @@
 "use client";
-import { BrandLogo } from "@/components/BrandLogo";
+import { Loader2 } from "lucide-react";
+import { AppSplash } from "@/components/ui/page-loader";
+import { eyebrowClassName } from "@/components/ui/kit";
+import { AuthCard, AuthMessage, authInputClassName, authLinkClassName, authQuietLinkClassName, authSubmitClassName } from "../auth-card";
 
 import { useAuthActions } from "@/lib/kitchen/client";
 import { useKitchenAuth } from "@/lib/kitchen/client";
@@ -9,15 +12,7 @@ import { Suspense, useEffect, useState } from "react";
 import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
 function ResetPasswordFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-      <div className="w-full max-w-md space-y-8 rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-        <div className="text-center text-stone-600 dark:text-stone-400">
-          Loading...
-        </div>
-      </div>
-    </div>
-  );
+  return <AppSplash />;
 }
 
 function ResetPasswordContent() {
@@ -118,149 +113,95 @@ function ResetPasswordContent() {
   };
 
   if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-        <div className="w-full max-w-md space-y-8 rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-          <div className="text-center text-stone-600 dark:text-stone-400">
-            Loading...
-          </div>
-        </div>
-      </div>
-    );
+    return <AppSplash />;
   }
 
   if (!hasCode) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-        <div className="w-full max-w-md space-y-8 rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-          <div>
-            <div className="mb-5 flex justify-center"><BrandLogo size={72} /></div>
-          <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
-              Invalid Reset Link
-            </h1>
-            <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-              This password reset link is invalid or has expired.
-            </p>
-          </div>
-
-          <div className="text-center space-y-4">
-            <Link
-              href="/auth/forgot-password"
-              className="inline-block font-medium text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-            >
-              Request a new reset link
-            </Link>
-            <div className="text-sm">
-              <Link
-                href="/auth/signin"
-                className="text-stone-600 transition-colors hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
-              >
-                Back to sign in
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AuthCard
+        title="Invalid Reset Link"
+        description="This password reset link is invalid or has expired."
+        footer={
+          <Link href="/auth/signin" className={authQuietLinkClassName}>
+            Back to sign in
+          </Link>
+        }
+      >
+        <Link href="/auth/forgot-password" className={authSubmitClassName}>
+          Request a new reset link
+        </Link>
+      </AuthCard>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 font-sans dark:bg-stone-950">
-      <div className="w-full max-w-md space-y-8 rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <AuthCard
+      title="Reset your password"
+      description="Enter your email and choose a new password."
+      footer={
+        <Link href="/auth/signin" className={authLinkClassName}>
+          Back to sign in
+        </Link>
+      }
+    >
+      <form className="space-y-5" onSubmit={handleSubmit}>
         <div>
-          <h1 className="text-center text-3xl font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-50" style={{ fontFamily: 'var(--font-heading)' }}>
-            Reset your password
-          </h1>
-          <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400" style={{ fontFamily: 'var(--font-body)' }}>
-            Enter your email and choose a new password.
-          </p>
+          <label htmlFor="email" className={eyebrowClassName}>
+            Email address
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={authInputClassName}
+            placeholder="Email address"
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className={eyebrowClassName}>
+            New password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={authInputClassName}
+            placeholder="New password (min 8 characters)"
+          />
+        </div>
+        <div>
+          <label htmlFor="confirmPassword" className={eyebrowClassName}>
+            Confirm password
+          </label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className={authInputClassName}
+            placeholder="Confirm password"
+          />
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder-stone-500 transition-colors focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-400 sm:text-sm"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                New password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder-stone-500 transition-colors focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-400 sm:text-sm"
-                placeholder="New password (min 8 characters)"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirmPassword" className="sr-only">
-                Confirm password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="relative block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 placeholder-stone-500 transition-colors focus:z-10 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-50 dark:placeholder-stone-400 sm:text-sm"
-                placeholder="Confirm password"
-              />
-            </div>
-          </div>
+        <AuthMessage message={message} />
 
-          {message && (
-            <div
-              className={`rounded-md p-3 text-sm ${
-                message.includes("Error")
-                  ? "border border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
-                  : "border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400"
-              }`}
-            >
-              {message}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {isSubmitting ? "Resetting password..." : "Reset password"}
-            </button>
-          </div>
-        </form>
-
-        <div className="text-center text-sm" style={{ fontFamily: 'var(--font-body)' }}>
-          <Link
-            href="/auth/signin"
-            className="font-medium text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-          >
-            Back to sign in
-          </Link>
-        </div>
-      </div>
-    </div>
+        <button type="submit" disabled={isSubmitting} className={authSubmitClassName}>
+          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {isSubmitting ? "Resetting password..." : "Reset password"}
+        </button>
+      </form>
+    </AuthCard>
   );
 }
 

@@ -236,7 +236,7 @@ export function UnitPicker({
           id={listboxId}
           role="listbox"
           onPointerDown={event => event.preventDefault()}
-          className="absolute z-30 mt-1 w-full max-h-72 overflow-auto rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg py-1"
+          className="animate-pop-in origin-top absolute z-30 mt-1 w-full max-h-72 overflow-auto rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 shadow-lg py-1"
         >
           {catalogEmpty && !trimmedQuery
             ? UNSEEDED_FALLBACK.map((label, index) => (

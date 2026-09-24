@@ -1,4 +1,5 @@
-import { BadgeCheck, ChevronLeft, Star } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Info, KeyRound, Puzzle, Star, Tag, User } from 'lucide-react'
+import { buttonClassName, cardClassName, eyebrowClassName, headingFont, IconBadge, PageContainer, Pill, rowsClassName, Section } from '@/components/ui/kit'
 import type { ExtensionListing, InstalledExtension } from './types'
 import { clampRating, cx, formatPricing } from './utils'
 
@@ -9,25 +10,6 @@ export interface ExtensionDetailViewProps {
   onRemove?: (id: string) => void
 }
 
-function Stars({ value }: { value: number }) {
-  const full = Math.round(clampRating(value))
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => {
-        const active = i < full
-        return (
-          <Star
-            key={i}
-            className={cx('w-4 h-4', active ? 'text-amber-500' : 'text-stone-300 dark:text-stone-600')}
-            fill={active ? 'currentColor' : 'none'}
-            strokeWidth={1.75}
-          />
-        )
-      })}
-    </span>
-  )
-}
-
 /**
  * Catalog preview detail. Shows what a listing declares about itself and
  * states plainly that it cannot be installed yet. A kitchen that still has a
@@ -35,110 +17,106 @@ function Stars({ value }: { value: number }) {
  */
 export function ExtensionDetailView({ extension, installed, onBack, onRemove }: ExtensionDetailViewProps) {
   const isInstalled = Boolean(installed && installed.extensionId === extension.id)
+  const rating = clampRating(extension.rating)
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-4xl mx-auto space-y-5">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex min-h-11 items-center gap-2 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" strokeWidth={1.75} />
-              Back to catalog
-            </button>
-          </div>
+    <PageContainer width="4xl">
+      <button
+        type="button"
+        onClick={onBack}
+        className="-ml-2 inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-sm text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-900 dark:hover:text-stone-100"
+      >
+        <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+        Back to catalog
+      </button>
 
-          <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-100 truncate">{extension.name}</h1>
-                  {extension.author.verified && (
-                    <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-lime-100 dark:bg-lime-950/40 text-lime-900 dark:text-lime-200">
-                      <BadgeCheck className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      Verified
-                    </span>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{extension.description}</p>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-600 dark:text-stone-400">
-                  <span className="rounded-full border border-stone-200 dark:border-stone-800 px-2 py-1 text-stone-700 dark:text-stone-200">
-                    {extension.category}
-                  </span>
-                  {typeof extension.rating === 'number' && extension.rating > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 dark:bg-stone-900/60 px-2 py-1 text-stone-700 dark:text-stone-200">
-                      <Stars value={extension.rating} />
-                      <span className="tabular-nums">{extension.rating.toFixed(1)}</span>
-                    </span>
-                  ) : null}
-                  <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 dark:bg-stone-900/60 px-2 py-1 text-stone-700 dark:text-stone-200">
-                    {formatPricing(extension.pricing)}
-                  </span>
-                  <span className="text-stone-500 dark:text-stone-500">
-                    By{' '}
-                    {extension.author.url ? (
-                      <a href={extension.author.url} target="_blank" rel="noreferrer" className="underline">
-                        {extension.author.name}
-                      </a>
-                    ) : (
-                      extension.author.name
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex flex-col items-stretch gap-2 sm:items-end">
-                <span className="inline-flex items-center justify-center text-[11px] font-medium px-2 py-1 rounded-full bg-stone-100 text-stone-700 dark:bg-stone-900/60 dark:text-stone-200">
-                  Not available yet
-                </span>
-                {isInstalled && onRemove ? (
-                  <button
-                    type="button"
-                    onClick={() => onRemove(extension.id)}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                  >
-                    Remove from this kitchen
-                  </button>
-                ) : null}
-              </div>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <IconBadge icon={Puzzle} tone="info" size="lg" />
+          <div className="min-w-0">
+            <p className={cx(eyebrowClassName, 'mb-1')}>{extension.category}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-100" style={headingFont}>
+                {extension.name}
+              </h1>
+              {extension.author.verified && (
+                <Pill tone="success">
+                  <BadgeCheck className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                  Verified
+                </Pill>
+              )}
             </div>
-          </div>
-
-          <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-5">
-            <h2 className="text-base font-semibold text-amber-950 dark:text-amber-100">Catalog preview</h2>
-            <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">
-              This listing describes a planned extension. Sous Chef does not ship an adapter for it, so it cannot be
-              installed and nothing in your kitchen changes because it is listed here.
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-5">
-            <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Declared data access</h2>
-            <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-              What this listing says it would need from your household data once it exists.
-            </p>
-
-            {(extension.permissions?.length ?? 0) > 0 ? (
-              <ul className="mt-4 space-y-2">
-                {extension.permissions!.map((p) => (
-                  <li
-                    key={p}
-                    className="rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40 px-3 py-2 text-sm text-stone-800 dark:text-stone-200"
-                  >
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="mt-4 text-sm text-stone-600 dark:text-stone-400">This listing has not declared any data access.</div>
-            )}
+            <p className="mt-1.5 max-w-2xl text-base text-stone-600 dark:text-stone-400">{extension.description}</p>
           </div>
         </div>
+
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+          <Pill tone="neutral">Not available yet</Pill>
+          {isInstalled && onRemove ? (
+            <button type="button" onClick={() => onRemove(extension.id)} className={cx(buttonClassName('secondary'), 'min-h-11 text-rose-700 dark:text-rose-300')}>
+              Remove from this kitchen
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      <div className={cx(cardClassName, 'grid grid-cols-1 overflow-hidden sm:grid-cols-3')}>
+        {[
+          {
+            icon: User,
+            label: 'Author',
+            value: extension.author.url ? (
+              <a href={extension.author.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                {extension.author.name}
+              </a>
+            ) : (
+              extension.author.name
+            ),
+          },
+          { icon: Tag, label: 'Pricing', value: formatPricing(extension.pricing) },
+          {
+            icon: Star,
+            label: 'Rating',
+            value: rating > 0 ? <span className="tabular-nums">{rating.toFixed(1)} / 5</span> : '—',
+          },
+        ].map(({ icon: Icon, label, value }, index) => (
+          <div key={label} className={cx('flex items-center gap-3 border-stone-200 p-4 dark:border-stone-800', index < 2 && 'border-b sm:border-b-0 sm:border-r')}>
+            <Icon className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.75} aria-hidden="true" />
+            <div className="min-w-0">
+              <div className={eyebrowClassName}>{label}</div>
+              <div className="mt-0.5 truncate text-base font-semibold text-stone-900 dark:text-stone-100">{value}</div>
+            </div>
+          </div>
+        ))}
       </div>
-    </div>
+
+      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+        <IconBadge icon={Info} tone="warning" />
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-amber-950 dark:text-amber-100">Catalog preview</h2>
+          <p className="mt-0.5 text-sm text-amber-900 dark:text-amber-200">
+            This listing describes a planned extension. Sous Chef does not ship an adapter for it, so it cannot be
+            installed and nothing in your kitchen changes because it is listed here.
+          </p>
+        </div>
+      </div>
+
+      <Section title="Declared data access" aside="What it would need once it exists">
+        <div className={cx(cardClassName, 'overflow-hidden')}>
+          {(extension.permissions?.length ?? 0) > 0 ? (
+            <ul className={rowsClassName}>
+              {extension.permissions!.map((p) => (
+                <li key={p} className="flex items-center gap-3 px-4 py-3 text-sm text-stone-800 dark:text-stone-200">
+                  <IconBadge icon={KeyRound} tone="neutral" size="sm" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="p-4 text-sm text-stone-600 dark:text-stone-400">This listing has not declared any data access.</p>
+          )}
+        </div>
+      </Section>
+    </PageContainer>
   )
 }

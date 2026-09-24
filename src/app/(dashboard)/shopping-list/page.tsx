@@ -16,6 +16,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 import type { ShoppingItemValues } from "@/components/cooking/ShoppingItemForm";
 
 import { StockPurchasesModal } from "@/components/cooking/StockPurchasesModal";
+import { PageLoader } from "@/components/ui/page-loader";
 
 interface BarcodeLookupResponse {
   found: boolean;
@@ -167,6 +168,7 @@ export default function ShoppingListPage() {
         quantity: values.quantity ?? null,
         unit: values.unit ?? null,
         category: values.category ?? null,
+        note: values.note ?? null,
       });
     }, [updateItem]
   );
@@ -246,9 +248,7 @@ export default function ShoppingListPage() {
 
   if (shoppingListData === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-stone-600 dark:text-stone-400">Loading...</div>
-      </div>
+      <PageLoader />
     );
   }
 

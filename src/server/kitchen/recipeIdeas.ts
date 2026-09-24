@@ -16,7 +16,7 @@ export const prepare = internalMutation({
     if (!householdId) throw new ConvexError('Create a kitchen first.');
     const settings = await ctx.db.query('aiProviderSettings').withIndex('by_householdId', q => q.eq('householdId', householdId)).take(10);
     const setting = settings.find(item => item.isActive);
-    if (!setting?.apiKey || !setting.model?.trim()) throw new ConvexError('Choose a provider, API key, and model in AI settings first.');
+    if (!setting?.apiKey || !setting.model?.trim()) throw new ConvexError('Choose a provider, API key, and model in Integrations first.');
     const stock = await ctx.db.query('inventoryItems').withIndex('by_householdId', q => q.eq('householdId', householdId)).take(101);
     if (!stock.length) throw new ConvexError('Add a few pantry items first.');
     if (stock.length > 100) throw new ConvexError('Pantry ideas currently supports kitchens with up to 100 inventory batches.');
@@ -35,7 +35,7 @@ export const generate = action({
     const context: Context = await ctx.runMutation(internal.recipeIdeas.prepare, {});
     let apiKey: string;
     try { apiKey = await decryptSecret(context.apiKey); }
-    catch { throw new ConvexError('The saved provider key cannot be opened. Reconfigure it in AI settings.'); }
+    catch { throw new ConvexError('The saved provider key cannot be opened. Reconfigure it in Integrations.'); }
     try {
       const draft = await generateRecipeWithProvider(context.provider, context.model, apiKey, context.pantry, args.preferences);
       return { draft, provider: context.provider, model: context.model };

@@ -9,10 +9,15 @@ import { useRouter } from "next/navigation";
 import { CommunityHubView } from "@/components/community";
 import type { CommunityRecipeListing } from "@/components/community/types";
 import { AlertModal } from "@/components/ui/alert-modal";
+import { PageLoader } from "@/components/ui/page-loader";
+import { cardClassName, IconBadge, rowsClassName, StatusDot, cx } from "@/components/ui/kit";
+import { ChevronRight, Download, UserRound } from "lucide-react";
 
 export default function CommunityPage() {
   const router = useRouter();
   const communityData = useQuery(api.community.listRecipes, { limit: 6, sort: "popular" });
+  // Local query only; the status card still renders if it has not resolved yet.
+  const connection = useQuery(api.community.connection, {});
   const saveRecipe = useMutation(api.community.saveRecipe);
 
   const featuredRecipes = useMemo<CommunityRecipeListing[]>(
@@ -25,6 +30,7 @@ export default function CommunityPage() {
         tags: recipe.tags,
         totalTimeMinutes: recipe.totalTimeMinutes,
         saves: recipe.savedCount || 0,
+        photoUrl: recipe.photoUrl,
       })),
     [communityData?.recipes]
   );
@@ -69,18 +75,50 @@ export default function CommunityPage() {
 
   if (communityData === undefined) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-stone-600 dark:text-stone-400">Loading...</p>
-      </div>
+      <PageLoader />
     );
   }
 
+  const rowLink =
+    "flex min-h-14 items-center gap-3 px-4 py-3 text-left hover:bg-stone-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:hover:bg-stone-800/40";
+  const accountConnected = connection?.connected === true;
+
+  const status = (
+    <div className={cx(cardClassName, rowsClassName, "overflow-hidden")}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <StatusDot tone={communityData.available ? "success" : "warning"} />
+        <p role={communityData.available ? undefined : "status"} className="min-w-0 flex-1 text-sm text-stone-700 dark:text-stone-300">
+          {communityData.available
+            ? "Community service is online. Shared recipes load from the connected service."
+            : "Community sharing is not connected or is temporarily unavailable. Your local recipes are ready to use."}
+        </p>
+      </div>
+      <Link className={rowLink} href="/community/connect" aria-describedby="community-account-hint">
+        <IconBadge icon={UserRound} tone={accountConnected ? "success" : "neutral"} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-stone-900 dark:text-stone-100">Connect community account</span>
+          <span id="community-account-hint" aria-hidden="true" className="block text-xs text-stone-500 dark:text-stone-400">
+            {accountConnected ? "This kitchen can publish recipes." : "Sign in to publish recipes from your library."}
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+      </Link>
+      <Link className={rowLink} href="/explore" aria-describedby="community-explore-hint">
+        <IconBadge icon={Download} tone="info" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-stone-900 dark:text-stone-100">Public recipe downloads</span>
+          <span id="community-explore-hint" aria-hidden="true" className="block text-xs text-stone-500 dark:text-stone-400">Browse without a kitchen account.</span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+      </Link>
+    </div>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-5 flex flex-wrap gap-4"><Link className="underline" href="/community/connect">Connect community account</Link><Link className="underline" href="/explore">Public recipe downloads</Link></div>
-      {!communityData.available && <p role="status" className="mb-5">Community sharing is not connected or is temporarily unavailable. Your local recipes are ready to use.</p>}
+    <>
       <CommunityHubView
         featuredRecipes={featuredRecipes}
+        status={status}
         onOpenRecipe={handleOpenRecipe}
         onSaveRecipe={handleSaveRecipe}
         onViewAllRecipes={() => router.push("/community/recipes")}
@@ -94,6 +132,6 @@ export default function CommunityPage() {
         message={alertModal.message}
         variant={alertModal.variant}
       />
-    </div>
+    </>
   );
 }

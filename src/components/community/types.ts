@@ -110,6 +110,7 @@ export interface CommunityRecipeListing {
   title: string
   authorName: string
   description?: string
+  photoUrl?: string
   tags?: string[]
   totalTimeMinutes?: number
   rating?: number

@@ -51,6 +51,10 @@ export interface PantrySnapshotItem {
   name: string
   quantity?: number
   unit?: IngredientUnit | 'count'
+  /** Hand-entered facts per 100 g. */
+  nutritionPer100g?: unknown
+  /** Barcode data, whose nutrition is used when none was entered by hand. */
+  foodFacts?: { nutritionPer100g?: unknown }
 }
 
 export interface RecipesSampleData {

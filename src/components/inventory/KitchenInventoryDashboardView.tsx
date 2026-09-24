@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Barcode, Plus, Search, Sparkles, TriangleAlert } from 'lucide-react'
+import { Check, ChevronDown, Package, Plus, ScanBarcode, Search, Tag, X } from 'lucide-react'
 import {
   INVENTORY_ALL_CATEGORIES_VALUE,
   INVENTORY_UNCATEGORIZED_LABEL,
@@ -10,12 +10,23 @@ import {
 } from './types'
 import { InventoryItemRow } from './InventoryItemRow'
 import { LocationTabs } from './LocationTabs'
-import { SearchableSelect } from '@/components/ui/searchable-select'
 import { itemExpiryStatus } from './utils'
-
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ')
-}
+import { Collapse } from '@/components/ui/collapse'
+import {
+  EmptyState,
+  PageContainer,
+  PageHeader,
+  Section,
+  SegmentedControl,
+  Stat,
+  buttonClassName,
+  cardClassName,
+  chipClassName,
+  cx,
+  fieldClassName,
+  rowsClassName,
+  type Tone,
+} from '@/components/ui/kit'
 
 export interface KitchenInventoryDashboardViewProps {
   locations: KitchenLocation[]
@@ -36,6 +47,14 @@ export interface KitchenInventoryDashboardViewProps {
   onViewExpiringSoon?: () => void
   deletingItems?: Set<string>
 }
+
+const FILTER_OPTIONS: Array<{ value: InventoryFilter; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'expiring-soon', label: 'Expiring' },
+  { value: 'low-stock', label: 'Low stock' },
+]
+
+const isLowStock = (item: InventoryItem) => (item.unit === 'count' ? item.quantity <= 2 : item.quantity <= 200)
 
 export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardViewProps) {
   const {
@@ -63,11 +82,26 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
   const [localFilter, setLocalFilter] = useState<InventoryFilter>(filter)
   const [localQuery, setLocalQuery] = useState<string>(searchQuery)
   const [localCategory, setLocalCategory] = useState<string>(selectedCategory)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [categoryQuery, setCategoryQuery] = useState('')
 
   const effectiveLocation = onSelectLocation ? selectedLocationId : localLocation
   const effectiveFilter = onChangeFilter ? filter : localFilter
   const effectiveQuery = onSearchChange ? searchQuery : localQuery
   const effectiveCategory = onSelectCategory ? selectedCategory : localCategory
+
+  const changeFilter = (next: InventoryFilter) => {
+    if (onChangeFilter) onChangeFilter(next)
+    else setLocalFilter(next)
+  }
+  const changeCategory = (next: string) => {
+    if (onSelectCategory) onSelectCategory(next)
+    else setLocalCategory(next)
+  }
+  const changeQuery = (next: string) => {
+    if (onSearchChange) onSearchChange(next)
+    else setLocalQuery(next)
+  }
 
   const locationMap = useMemo(() => {
     const map: Record<string, KitchenLocation> = {}
@@ -90,16 +124,10 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
       .sort((a, b) => a.value.localeCompare(b.value))
   }, [items, effectiveLocation])
 
-  const categoryFilterOptions = useMemo(() => {
-    return [
-      { value: INVENTORY_ALL_CATEGORIES_VALUE, label: 'All categories' },
-      ...categoryOptions.map((option) => ({
-        value: option.value,
-        label: `${option.value} (${option.count})`,
-        searchText: option.value,
-      })),
-    ]
-  }, [categoryOptions])
+  const visibleCategories = useMemo(() => {
+    const query = categoryQuery.trim().toLowerCase()
+    return query ? categoryOptions.filter((option) => option.value.toLowerCase().includes(query)) : categoryOptions
+  }, [categoryOptions, categoryQuery])
 
   useEffect(() => {
     if (effectiveCategory === INVENTORY_ALL_CATEGORIES_VALUE) return
@@ -137,7 +165,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     }
 
     if (effectiveFilter === 'low-stock') {
-      list = list.filter((i) => (i.unit === 'count' ? i.quantity <= 2 : i.quantity <= 200))
+      list = list.filter(isLowStock)
     }
 
     const expiringSoonCount = items.filter((i) => {
@@ -145,205 +173,212 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
       return s === 'soon' || s === 'expired'
     }).length
 
-    const lowStockCount = items.filter((i) => (i.unit === 'count' ? i.quantity <= 2 : i.quantity <= 200)).length
-
     return {
       list,
       expiringSoonCount,
-      lowStockCount,
+      lowStockCount: items.filter(isLowStock).length,
+      outOfStockCount: items.filter((i) => i.quantity <= 0).length,
       totalCount: items.length,
     }
   }, [items, effectiveLocation, effectiveFilter, effectiveCategory, effectiveQuery])
 
   const emptyState = derived.list.length === 0
   const showSearchEmpty = items.length > 0 && emptyState
+  const categoryActive = effectiveCategory !== INVENTORY_ALL_CATEGORIES_VALUE
+  const pickCategory = (next: string) => {
+    changeCategory(next)
+    setCategoryOpen(false)
+    setCategoryQuery('')
+  }
+
+  const stats: Array<{ label: string; value: number; tone?: Tone; hint: string; onClick?: () => void }> = [
+    { label: 'Items in stock', value: derived.totalCount, hint: 'Across pantry, fridge, and freezer' },
+    {
+      label: 'Expiring soon',
+      value: derived.expiringSoonCount,
+      tone: derived.expiringSoonCount > 0 ? 'warning' : undefined,
+      hint: 'Use these first',
+      onClick: onViewExpiringSoon,
+    },
+    {
+      label: 'Low stock',
+      value: derived.lowStockCount,
+      hint: 'For your shopping list',
+      onClick: () => changeFilter('low-stock'),
+    },
+    {
+      label: 'Out of stock',
+      value: derived.outOfStockCount,
+      tone: derived.outOfStockCount > 0 ? 'warning' : undefined,
+      hint: 'Restock or remove',
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-6xl mx-auto space-y-5">
-          {/* Header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">
-                Kitchen Inventory
-              </h1>
-              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                Know what you have, what&apos;s expiring soon, and what to use next.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 sm:pt-1">
-              <button
-                type="button"
-                onClick={onScanBarcode}
-                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-              >
-                <Barcode className="w-4 h-4" strokeWidth={1.75} />
+      <PageContainer width="5xl">
+        <PageHeader
+          eyebrow="Your kitchen"
+          title="Kitchen Inventory"
+          description="Know what you have, what's expiring soon, and what to use next."
+          actions={
+            <>
+              <button type="button" onClick={onScanBarcode} className={buttonClassName('soft')}>
+                <ScanBarcode className="h-4 w-4" strokeWidth={1.75} />
                 Scan
               </button>
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
-              >
-                <Plus className="w-4 h-4" strokeWidth={1.75} />
+              <button type="button" onClick={onAddItem} className={buttonClassName('primary')}>
+                <Plus className="h-4 w-4" strokeWidth={2} />
                 Add item
               </button>
-            </div>
+            </>
+          }
+        />
+
+        {/* One card split into tiles: the gap-px grid over a tinted background draws the dividers. */}
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 sm:grid-cols-4 dark:border-stone-800 dark:bg-stone-800">
+          {stats.map((stat) => {
+            const body = (
+              <>
+                <Stat label={stat.label} value={stat.value} tone={stat.tone} />
+                <p className="-mt-3 hidden px-4 pb-4 text-xs text-stone-500 sm:block dark:text-stone-400">{stat.hint}</p>
+              </>
+            )
+            return stat.onClick ? (
+              <button
+                key={stat.label}
+                type="button"
+                onClick={stat.onClick}
+                className="bg-white text-left transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-600 dark:bg-stone-950 dark:hover:bg-stone-900"
+              >
+                {body}
+              </button>
+            ) : (
+              <div key={stat.label} className="bg-white dark:bg-stone-950">
+                {body}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Controls */}
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+            <input
+              type="search"
+              value={effectiveQuery}
+              onChange={(e) => changeQuery(e.target.value)}
+              placeholder="Search items…"
+              aria-label="Search items"
+              className={cx(fieldClassName, 'pl-10')}
+            />
           </div>
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-3 sm:p-4">
-              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">Items in stock</div>
-              <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.totalCount}</div>
-              <div className="hidden sm:block mt-1 text-sm text-stone-600 dark:text-stone-400">Across pantry, fridge, and freezer</div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <LocationTabs
+              locations={locations}
+              value={effectiveLocation}
+              onChange={(v) => {
+                if (onSelectLocation) onSelectLocation(v)
+                else setLocalLocation(v)
+              }}
+            />
+            <SegmentedControl label="Filter inventory" options={FILTER_OPTIONS} value={effectiveFilter} onChange={changeFilter} />
             <button
               type="button"
-              onClick={onViewExpiringSoon}
-              className="text-left rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 p-3 sm:p-4 hover:bg-amber-100/70 dark:hover:bg-amber-950/30 transition-colors"
+              aria-expanded={categoryOpen}
+              aria-controls="inventory-category-options"
+              aria-label={`Filter inventory by category: ${categoryActive ? effectiveCategory : 'All categories'}`}
+              onClick={() => setCategoryOpen((open) => !open)}
+              className={cx(chipClassName(categoryActive), 'min-h-10 sm:ml-auto')}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-amber-800 dark:text-amber-200">Expiring soon</div>
-                  <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">
-                    {derived.expiringSoonCount}
-                  </div>
-                </div>
-                <TriangleAlert className="hidden sm:block w-5 h-5 text-amber-700 dark:text-amber-300" strokeWidth={1.75} />
-              </div>
-              <div className="hidden sm:block mt-1 text-sm text-amber-900/80 dark:text-amber-200/80">Use these first to reduce waste</div>
+              <Tag className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+              <span className="max-w-[12rem] truncate">{categoryActive ? effectiveCategory : 'All categories'}</span>
+              <ChevronDown className={cx('h-3.5 w-3.5 transition-transform duration-300', categoryOpen && 'rotate-180')} strokeWidth={2} aria-hidden="true" />
             </button>
-            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/20 p-3 sm:p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Low stock</div>
-                  <div className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-100">{derived.lowStockCount}</div>
-                </div>
-                <Sparkles className="hidden sm:block w-5 h-5 text-emerald-700 dark:text-emerald-300" strokeWidth={1.75} />
-              </div>
-              <div className="hidden sm:block mt-1 text-sm text-emerald-900/80 dark:text-emerald-200/80">Candidates for your shopping list</div>
-            </div>
           </div>
 
-          {/* Controls */}
-          <div className="space-y-3">
-            {/* Row 1: Location tabs */}
-            <div className="flex items-center justify-start">
-              <LocationTabs
-                locations={locations}
-                value={effectiveLocation}
-                onChange={(v) => {
-                  if (onSelectLocation) onSelectLocation(v)
-                  else setLocalLocation(v)
-                }}
-              />
-            </div>
-
-            {/* Row 2: Search + category + filters */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search
-                  className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2"
-                  strokeWidth={1.75}
-                />
-                <input
-                  value={effectiveQuery}
-                  onChange={(e) => {
-                    if (onSearchChange) onSearchChange(e.target.value)
-                    else setLocalQuery(e.target.value)
-                  }}
-                  placeholder="Search items…"
-                  className="w-full pl-9 pr-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <SearchableSelect
-                  value={effectiveCategory}
-                  onChange={(selectedValue) => {
-                    if (onSelectCategory) onSelectCategory(selectedValue)
-                    else setLocalCategory(selectedValue)
-                  }}
-                  options={categoryFilterOptions}
-                  placeholder="All categories"
-                  searchPlaceholder="Search categories..."
-                  emptyMessage="No matching categories"
-                  ariaLabel="Filter inventory by category"
-                  className="min-w-[190px] sm:w-[230px]"
-                />
-
-                <div className="inline-flex w-fit rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 p-1">
-                  {([
-                    { id: 'all', label: 'All' },
-                    { id: 'expiring-soon', label: 'Expiring' },
-                    { id: 'low-stock', label: 'Low stock' },
-                  ] as const).map((t) => {
-                    const active = t.id === effectiveFilter
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          if (onChangeFilter) onChangeFilter(t.id)
-                          else setLocalFilter(t.id)
-                        }}
-                        className={cx(
-                          'px-3 py-1.5 text-sm rounded-md transition-colors',
-                          active
-                            ? 'bg-stone-900 text-stone-100 dark:bg-stone-100 dark:text-stone-900'
-                            : 'text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-900/60'
-                        )}
-                      >
-                        {t.label}
-                      </button>
-                    )
-                  })}
+          <Collapse open={categoryOpen}>
+            <div id="inventory-category-options" className={cx(cardClassName, 'p-3')}>
+              {categoryOptions.length > 8 && (
+                <div className="relative mb-3">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" strokeWidth={1.75} aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={categoryQuery}
+                    onChange={(e) => setCategoryQuery(e.target.value)}
+                    placeholder="Search categories..."
+                    aria-label="Search categories"
+                    className={cx(fieldClassName, 'pl-10')}
+                  />
                 </div>
+              )}
+              <div role="group" aria-label="Filter inventory by category" className="flex flex-wrap gap-2">
+                {!categoryQuery.trim() && (
+                  <button type="button" aria-pressed={!categoryActive} onClick={() => pickCategory(INVENTORY_ALL_CATEGORIES_VALUE)} className={chipClassName(!categoryActive)}>
+                    {!categoryActive && <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />}
+                    All categories
+                  </button>
+                )}
+                {visibleCategories.map((option) => {
+                  const selected = option.value === effectiveCategory
+                  return (
+                    <button key={option.value} type="button" aria-pressed={selected} onClick={() => pickCategory(option.value)} className={chipClassName(selected)}>
+                      {selected && <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />}
+                      {option.value}
+                      <span className={cx('tabular-nums', selected ? 'text-emerald-100' : 'text-stone-400 dark:text-stone-500')}>{option.count}</span>
+                    </button>
+                  )
+                })}
+                {visibleCategories.length === 0 && (
+                  <p className="px-1 py-2 text-sm text-stone-500 dark:text-stone-400">No matching categories</p>
+                )}
               </div>
             </div>
-          </div>
+          </Collapse>
+        </div>
 
-          {/* List */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">Inventory</h2>
-              <span className="text-sm text-stone-500 dark:text-stone-400">{derived.list.length} shown</span>
-            </div>
-
+        <Section
+          title="Inventory"
+          id="inventory-list-heading"
+          aside={
+            <span className="flex items-center gap-2">
+              {categoryActive && (
+                <button type="button" onClick={() => changeCategory(INVENTORY_ALL_CATEGORIES_VALUE)} className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                  <X className="h-3 w-3" strokeWidth={2.25} aria-hidden="true" />
+                  Clear category
+                </button>
+              )}
+              <span>{derived.list.length} shown</span>
+            </span>
+          }
+        >
+          <div className={cx(cardClassName, 'overflow-hidden')}>
             {emptyState ? (
-              <div className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 bg-white/60 dark:bg-stone-950/40 p-8 text-center">
-                <div className="mx-auto max-w-sm">
-                  <div className="text-base font-medium text-stone-900 dark:text-stone-100">
-                    {showSearchEmpty ? 'No matching items' : 'No inventory yet'}
-                  </div>
-                  <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-                    {showSearchEmpty ? 'No items match this location or filter. Try another location or clear your filters.' : 'Your pantry, fridge, and freezer are ready. Add a few things you already have, then save a recipe to see what you can cook.'}
-                  </p>
-                  <div className="mt-5 flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={onScanBarcode}
-                      className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 text-sm font-medium hover:bg-stone-50 dark:hover:bg-stone-900/60 transition-colors"
-                    >
-                      <Barcode className="w-4 h-4" strokeWidth={1.75} />
+              <EmptyState
+                icon={showSearchEmpty ? Search : Package}
+                title={showSearchEmpty ? 'No matching items' : 'No inventory yet'}
+                description={
+                  showSearchEmpty
+                    ? 'No items match this location or filter. Try another location or clear your filters.'
+                    : 'Your pantry, fridge, and freezer are ready. Add a few things you already have, then save a recipe to see what you can cook.'
+                }
+                action={
+                  <div className="flex items-center justify-center gap-2">
+                    <button type="button" onClick={onScanBarcode} className={buttonClassName('soft')}>
+                      <ScanBarcode className="h-4 w-4" strokeWidth={1.75} />
                       Scan
                     </button>
-                    <button
-                      type="button"
-                      onClick={onAddItem}
-                      className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" strokeWidth={1.75} />
+                    <button type="button" onClick={onAddItem} className={buttonClassName('primary')}>
+                      <Plus className="h-4 w-4" strokeWidth={2} />
                       Add item
                     </button>
                   </div>
-                </div>
-              </div>
+                }
+              />
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+              <div className={cx('stagger', rowsClassName)}>
                 {derived.list.map((item) => (
                   <InventoryItemRow
                     key={item.id}
@@ -358,8 +393,8 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </Section>
+      </PageContainer>
     </div>
   )
 }

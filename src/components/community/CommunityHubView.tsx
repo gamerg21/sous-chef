@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ArrowRight, Users } from 'lucide-react'
+import { buttonClassName, cardClassName, EmptyState, PageContainer, PageHeader, Section } from '@/components/ui/kit'
 import type { CommunityRecipeListing } from './types'
 import { CommunityRecipeCard } from './CommunityRecipeCard'
 
@@ -13,6 +14,8 @@ export interface CommunityHubViewProps {
   featuredRecipesLoadMoreLabel?: string
   primaryActionLabel?: string
   featuredRecipes: CommunityRecipeListing[]
+  /** Connection/account status card rendered under the header. */
+  status?: ReactNode
   onOpenRecipe?: (id: string) => void
   onSaveRecipe?: (id: string) => void
   onViewAllRecipes?: () => void
@@ -34,6 +37,7 @@ export function CommunityHubView(props: CommunityHubViewProps) {
     featuredRecipesLoadMoreLabel = 'Load more',
     primaryActionLabel = 'Share a recipe',
     featuredRecipes,
+    status,
     onOpenRecipe,
     onSaveRecipe,
     onViewAllRecipes,
@@ -60,79 +64,72 @@ export function CommunityHubView(props: CommunityHubViewProps) {
   )
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
-      <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 dark:text-stone-100">{title}</h1>
-              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">{description}</p>
-            </div>
-            {onPublishRecipe ? (
-              <div className="flex items-center gap-2 sm:pt-1">
-                <button
-                  type="button"
-                  onClick={onPublishRecipe}
-                  className="inline-flex min-h-11 items-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
-                >
-                  {primaryActionLabel}
-                  <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
-                </button>
-              </div>
-            ) : null}
+    <PageContainer width="6xl">
+      <PageHeader
+        eyebrow="Recipe community"
+        title={title}
+        description={description}
+        actions={
+          onPublishRecipe ? (
+            <button type="button" onClick={onPublishRecipe} className={buttonClassName('primary')}>
+              {primaryActionLabel}
+              <ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </button>
+          ) : null
+        }
+      />
+
+      {status}
+
+      <Section
+        title={featuredRecipesTitle}
+        aside={
+          featuredRecipesShowViewAll && onViewAllRecipes && featuredRecipes.length > 0 ? (
+            <button
+              type="button"
+              onClick={onViewAllRecipes}
+              className="-my-2 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+            >
+              View all
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          ) : null
+        }
+      >
+        {featuredRecipes.length === 0 ? (
+          <div className={cardClassName}>
+            <EmptyState
+              icon={Users}
+              title="Nothing shared yet"
+              description="Recipes that households on this instance publish will appear here. Share one of yours to start."
+            />
           </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-100">{featuredRecipesTitle}</h2>
-              {featuredRecipesShowViewAll && onViewAllRecipes && featuredRecipes.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={onViewAllRecipes}
-                  className="min-h-11 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-                >
-                  View all
-                </button>
-              ) : null}
-            </div>
-
-            {featuredRecipes.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-stone-300 dark:border-stone-700 bg-white/60 dark:bg-stone-950/40 p-8 text-center">
-                <div className="mx-auto max-w-sm">
-                  <div className="text-base font-medium text-stone-900 dark:text-stone-100">Nothing shared yet</div>
-                  <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-                    Recipes that households on this instance publish will appear here. Share one of yours to start.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {visibleRecipes.map((r) => (
-                  <CommunityRecipeCard key={r.id} recipe={r} onOpen={onOpenRecipe} onSave={onSaveRecipe} />
-                ))}
-              </div>
-            )}
-
-            {featuredRecipesShowLoadMore && visibleFeaturedCount < featuredRecipes.length ? (
-              <div className="pt-2 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setVisibleFeaturedCount((n) => Math.min(n + featuredRecipesPageSize, featuredRecipes.length))
-                  }
-                  className="min-h-11 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-                >
-                  {featuredRecipesLoadMoreLabel}
-                </button>
-              </div>
-            ) : null}
+        ) : (
+          <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleRecipes.map((r) => (
+              <CommunityRecipeCard key={r.id} recipe={r} onOpen={onOpenRecipe} onSave={onSaveRecipe} />
+            ))}
           </div>
+        )}
 
-          <p className="max-w-3xl text-xs text-stone-500 dark:text-stone-500">
-            Sharing stays within this instance. Connecting to other Sous Chef instances is future work.
-          </p>
-        </div>
-      </div>
-    </div>
+        {featuredRecipesShowLoadMore && visibleFeaturedCount < featuredRecipes.length ? (
+          <div className="flex justify-center pt-4">
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleFeaturedCount((n) => Math.min(n + featuredRecipesPageSize, featuredRecipes.length))
+              }
+              className={buttonClassName('secondary')}
+            >
+              {featuredRecipesLoadMoreLabel}
+            </button>
+          </div>
+        ) : null}
+      </Section>
+
+      <p className="max-w-3xl px-1 text-xs text-stone-500 dark:text-stone-500">
+        Sharing stays within this instance. Connecting to other Sous Chef instances is future work.
+      </p>
+    </PageContainer>
   )
 }
