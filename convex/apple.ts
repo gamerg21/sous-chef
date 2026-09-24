@@ -13,6 +13,9 @@ export const signIn = internalMutation({
   returns: v.union(v.object({ userId: v.id('users'), name: v.string() }), v.null()),
   handler: async (ctx, { sub, fullName, refreshToken, tokenHash }) => {
     const name = cleanDisplayName(fullName);
+    if (await ctx.db.query('hubBans').withIndex('by_appleSub', (q) => q.eq('appleSub', sub)).first()) {
+      throw new Error('This community account is suspended');
+    }
     const account = await ctx.db
       .query('authAccounts')
       .withIndex('providerAndAccountId', (q) => q.eq('provider', 'apple').eq('providerAccountId', sub))
@@ -43,6 +46,12 @@ export const signIn = internalMutation({
     const current = await ctx.db.get(userId!);
     return { userId: userId!, name: current?.name?.trim() || DEFAULT_DISPLAY_NAME };
   },
+});
+
+export const isSuspended = internalQuery({
+  args: { sub: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { sub }) => !!(await ctx.db.query('hubBans').withIndex('by_appleSub', (q) => q.eq('appleSub', sub)).first()),
 });
 
 export const refreshTokensForUser = internalQuery({

@@ -344,6 +344,9 @@ struct CommunityModerationTests {
         #expect(report.body.contains("Author: Ada (user_1)"))
         #expect(report.body.contains("Reason: Spam or scam"))
         #expect(report.body.contains("Note: Links to a shop"))
+        #expect(report.body.contains("Recipe link: https://example.convex.site/api/v1/recipes/r1"))
+        let viaServer = CommunityReport(recipe: recipe("r1"), reason: .spam, note: "", origin: "http://kitchen.local:3000 (via companion server)")
+        #expect(viaServer.recipeLink == "http://kitchen.local:3000/api/community/recipes/r1")
         let url = try #require(report.mailtoURL)
         #expect(url.absoluteString.hasPrefix("mailto:community-souschef@georgevina.com?subject="))
     }

@@ -49,8 +49,27 @@ UI alone does not revoke the previously authorized server connection.
 
 The contract is in `src/lib/community-contract.ts`. Mutation endpoints validate
 bearer tokens, authorship, payload shape, and limits. Publishing is rate limited
-per community user. Feed pagination, likes/comments, reporting queues, and
-moderation administration are future work; do not advertise them as implemented.
+per community user. Feed pagination, likes/comments, an in-app reporting queue
+and a moderation dashboard are future work; do not advertise them as implemented.
+
+## Moderation
+
+The iOS app emails reports to community-souschef@georgevina.com, hides the
+recipe for the reporter, and lets people block cooks. The rules are published
+at https://sous-chef-website.vercel.app/community-guidelines/, which promises
+review within 24 hours. Each report includes the recipe ID, the author's user
+ID and a recipe link.
+
+Act on reports with internal functions (Convex dashboard or CLI; add `--prod`
+for the production community):
+
+| Command | Effect |
+| --- | --- |
+| `pnpm exec convex run moderation:recipe '{"id":"<recipe id>"}'` | Show a recipe, including hidden ones, with its author and ban state |
+| `pnpm exec convex run moderation:removeRecipe '{"id":"<recipe id>","reason":"Spam"}'` | Hide it for everyone; the author can't republish it |
+| `pnpm exec convex run moderation:restoreRecipe '{"id":"<recipe id>"}'` | Undo a removal (stays private until the author republishes) |
+| `pnpm exec convex run moderation:banUser '{"userId":"<author id>","reason":"Harassment"}'` | Remove all their recipes, revoke publishing, and block their Apple ID from signing in again, even after account deletion |
+| `pnpm exec convex run moderation:unbanUser '{"userId":"<author id>"}'` | Lift a ban; removed recipes stay removed |
 
 ## Sign in with Apple (iOS app)
 

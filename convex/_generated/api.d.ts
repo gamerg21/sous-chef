@@ -17,6 +17,7 @@ import type * as http from "../http.js";
 import type * as httpUtil from "../httpUtil.js";
 import type * as hub from "../hub.js";
 import type * as hubHttp from "../hubHttp.js";
+import type * as moderation from "../moderation.js";
 import type * as rateLimit from "../rateLimit.js";
 
 import type {
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   httpUtil: typeof httpUtil;
   hub: typeof hub;
   hubHttp: typeof hubHttp;
+  moderation: typeof moderation;
   rateLimit: typeof rateLimit;
 }>;
 

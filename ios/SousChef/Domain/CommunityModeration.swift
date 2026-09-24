@@ -143,8 +143,9 @@ struct CommunityReport {
             "Recipe ID: \(recipe.id)",
             "Title: \(recipe.title)",
             "Author: \(recipe.author?.name ?? "Unknown")\(recipe.author?.id.map { " (\($0))" } ?? "")",
-            "Community: \(origin.isEmpty ? "Unknown" : origin)",
+            "Community service: \(origin.isEmpty ? "Unknown" : origin)",
         ]
+        if let recipeLink { lines.append("Recipe link: \(recipeLink)") }
         if let source = recipe.sourceUrl { lines.append("Source: \(source)") }
         lines += [
             "Reason: \(reason.rawValue)",
@@ -152,6 +153,15 @@ struct CommunityReport {
             "App version: \(version) (iOS)",
         ]
         return lines.joined(separator: "\n")
+    }
+
+    /// Opens the reported recipe's data. The service root itself serves nothing.
+    var recipeLink: String? {
+        let viaServer = origin.hasSuffix(" (via companion server)")
+        let base = (viaServer ? String(origin.dropLast(" (via companion server)".count)) : origin)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard base.hasPrefix("http"), let id = recipe.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
+        return viaServer ? "\(base)/api/community/recipes/\(id)" : "\(base)/api/v1/recipes/\(id)"
     }
 
     var mailtoURL: URL? {

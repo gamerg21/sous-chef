@@ -54,6 +54,9 @@ export const appleSession = httpAction(async (ctx, request) => {
   }
 
   const token = newPublisherToken();
+  if (await ctx.runQuery(internal.apple.isSuspended, { sub })) {
+    return json({ error: 'This community account is suspended for breaking the community guidelines.' }, 403);
+  }
   const user = await ctx.runMutation(internal.apple.signIn, { sub, fullName, refreshToken, tokenHash: await hashCommunityToken(token) });
   if (!user) return json({ error: 'Sign in with Apple is unavailable right now' }, 502);
   return json({ token, user: { id: user.userId, name: user.name } });
