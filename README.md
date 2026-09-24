@@ -40,11 +40,13 @@ See [deployment](DEPLOYMENT.md), [Docker settings](DOCKER.md), and
   search, and importing independent recipe copies with photos and attribution.
 - Public `/explore` page and portable recipe downloads; no local account needed.
 - Hosted-demo mode with an isolated, temporary sample kitchen for each visitor.
+- A native [iOS and iPadOS app](ios/README.md) that works on its own with iCloud
+  sync and Apple Intelligence, or as an offline-capable companion to your server.
 
 Community sharing requires a configured, separately operated service. Community
-likes/comments, federation, automatic recipe synchronization, native apps, and
-phone use without access to the home server are not implemented. The extension
-catalog remains a preview; integrations cannot be connected.
+likes/comments, federation, and automatic community recipe synchronization are
+not implemented. The extension catalog remains a preview; integrations cannot be
+connected.
 
 ## Architecture
 
