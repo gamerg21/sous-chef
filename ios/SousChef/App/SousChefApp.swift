@@ -19,6 +19,7 @@ struct SousChefApp: App {
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
                 .task { await account.checkCredentialState() }
                 .task { AppNavigator.shared.receiveSharedRecipes() }
+                .onOpenURL { _ in AppNavigator.shared.receiveSharedRecipes() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {

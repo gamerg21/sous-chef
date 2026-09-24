@@ -23,6 +23,19 @@
 	<array>
 		<string>com.georgevina.souschef.recipe</string>
 	</array>
+	<!-- The share extension opens souschef:// so the cook can review what
+	     they just shared. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.georgevina.souschef</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>souschef</string>
+			</array>
+		</dict>
+	</array>
 	<!-- CloudKit pushes wake the app so iCloud changes arrive promptly. -->
 	<key>UIBackgroundModes</key>
 	<array>

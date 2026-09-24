@@ -150,8 +150,11 @@ import sheet and recipe editor, so nothing is saved without review and the
 extension needs neither the kitchen store nor Apple Intelligence. A page that's
 already saved opens instead of importing again.
 
-Share extensions can't open their app, so the confirmation asks the cook to
-open Sous Chef to finish.
+The confirmation stays up with an "Open Sous Chef" button, since the recipe
+isn't saved until it's reviewed. Share extensions have no API for opening their
+app, so the button asks the application found up the responder chain to open
+`souschef://shared` (the app's URL scheme); if that ever stops working, the
+sheet tells the cook to open Sous Chef from the Home Screen instead.
 
 ## Companion server sync
 

@@ -9,28 +9,48 @@ final class ShareViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         let items = extensionContext?.inputItems.compactMap { $0 as? NSExtensionItem } ?? []
-        let host = UIHostingController(rootView: ShareView(items: items) { [weak self] in
+        let host = UIHostingController(rootView: ShareView(items: items, openApp: { [weak self] in
+            self?.openSousChef() ?? false
+        }, done: { [weak self] in
             self?.extensionContext?.completeRequest(returningItems: nil)
-        })
+        }))
         addChild(host)
         host.view.frame = view.bounds
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(host.view)
         host.didMove(toParent: self)
     }
+
+    /// Share extensions have no API for opening their app. Asking the
+    /// application found up the responder chain is the long-standing
+    /// workaround; false means there was none to ask.
+    private func openSousChef() -> Bool {
+        guard let url = URL(string: "souschef://shared") else { return false }
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let application = current as? UIApplication {
+                application.open(url, options: [:], completionHandler: nil)
+                return true
+            }
+            responder = current.next
+        }
+        return false
+    }
 }
 
 struct ShareView: View {
     let items: [NSExtensionItem]
+    let openApp: () -> Bool
     let done: () -> Void
 
     private enum Phase {
         case reading
-        case added(title: String, detail: String)
+        case added(title: String)
         case failed(String)
     }
 
     @State private var phase = Phase.reading
+    @State private var couldNotOpen = false
 
     var body: some View {
         NavigationStack {
@@ -38,19 +58,8 @@ struct ShareView: View {
                 switch phase {
                 case .reading:
                     ProgressView()
-                case .added(let title, let detail):
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 52))
-                        .foregroundStyle(.tint)
-                        .symbolEffect(.bounce, value: title)
-                    Text(title)
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(3)
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                case .added(let title):
+                    added(title)
                 case .failed(let message):
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 44))
@@ -65,13 +74,56 @@ struct ShareView: View {
             .navigationTitle("Sous Chef")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: done)
+                if case .failed = phase {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done", action: done)
+                    }
                 }
             }
         }
         .tint(Color("AccentColor"))
         .task { await receive() }
+    }
+
+    /// Stays up until the cook chooses, because the recipe isn't saved until
+    /// it's reviewed in the app.
+    @ViewBuilder
+    private func added(_ title: String) -> some View {
+        Image(systemName: "tray.and.arrow.down.fill")
+            .font(.system(size: 48))
+            .foregroundStyle(.tint)
+            .symbolEffect(.bounce, value: title)
+        Text(title)
+            .font(.headline)
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+        VStack(spacing: 4) {
+            Text("One more step")
+                .font(.subheadline.weight(.semibold))
+            Text(couldNotOpen
+                 ? "Open Sous Chef from your Home Screen to review this recipe and save it."
+                 : "This recipe isn't in your recipes yet. Open Sous Chef to review it and save it.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, 6)
+        VStack(spacing: 10) {
+            if !couldNotOpen {
+                Button {
+                    if openApp() { done() } else { couldNotOpen = true }
+                } label: {
+                    Text("Open Sous Chef")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glassProminent)
+            }
+            Button(couldNotOpen ? "Done" : "Later", action: done)
+                .padding(.vertical, 6)
+        }
+        .padding(.top, 12)
     }
 
     private func receive() async {
@@ -84,16 +136,17 @@ struct ShareView: View {
             phase = .failed("Sous Chef couldn't receive this. Open Sous Chef and import it from Recipes instead.")
             return
         }
-        let pageTitle = items.lazy.compactMap { $0.attributedContentText?.string.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty }
+        // "Easy pancakes recipe | Good Food" reads as "Easy pancakes recipe".
+        let pageTitle = items.lazy
+            .compactMap { $0.attributedContentText?.string.components(separatedBy: " | ").first?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
         switch item {
         case .link(let link):
             let site = (link.host() ?? "").replacingOccurrences(of: "www.", with: "")
-            phase = .added(title: pageTitle ?? "Recipe from \(site)", detail: "Open Sous Chef to review and save it.")
+            phase = .added(title: pageTitle ?? "Recipe from \(site)")
         case .text:
-            phase = .added(title: "Recipe text added", detail: "Open Sous Chef to review and save it.")
+            phase = .added(title: "Shared recipe text")
         }
-        try? await Task.sleep(for: .seconds(1.6))
-        done()
     }
 
     /// The first web link and the first text among the shared items.
