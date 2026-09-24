@@ -24,7 +24,7 @@ const navigationItems = [
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { isAuthenticated, isLoading, demo } = useKitchenAuth();
+  const { isAuthenticated, isLoading, demo, demoMode } = useKitchenAuth();
   const { signOut } = useAuthActions();
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
@@ -75,9 +75,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/auth/signin");
+      router.replace(demoMode ? "/demo?expired=1" : "/auth/signin");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, demoMode, router]);
 
   if (bootstrapError) return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
@@ -110,7 +110,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/auth/signin");
+    router.push(demoMode ? "/demo" : "/auth/signin");
   };
 
   return (
@@ -132,9 +132,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }}
       onLogout={handleLogout}
     >
-      {demo && <p className="bg-amber-50 p-3 text-amber-950">Temporary demo kitchen · expires after 24 hours. Export recipes you want to keep.</p>}
+      {demo && <p className="bg-amber-50 p-3 text-amber-950">Temporary demo kitchen · resets on server restart and expires within 24 hours. Export recipes you want to keep.</p>}
       <DashboardPrewarm
-        enabled={authReady && isAuthenticated}
+        enabled={authReady && isAuthenticated && !demo}
         routes={[
           "/inventory",
           "/recipes",

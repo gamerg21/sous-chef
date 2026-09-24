@@ -1,6 +1,7 @@
 name: Type Check
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, master, develop ]
   pull_request:
@@ -40,3 +41,6 @@ jobs:
 
       - name: Documentation and skill integrity
         run: pnpm run check:docs
+
+      - name: Production build
+        run: pnpm run build

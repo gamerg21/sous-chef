@@ -1,0 +1,86 @@
+name: Deploy live demo
+
+on:
+  workflow_run:
+    workflows: ['Type Check']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-live-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # No checkout or execution of code/artifacts from the triggering run.
+      - name: Deploy tested main commit and verify live revision
+        uses: actions/github-script@v7
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const latest = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' });
+            if (latest.data.commit.sha !== sha) {
+              core.notice('A newer main commit exists; skipping this older run.');
+              return;
+            }
+            const hook = process.env.RENDER_DEPLOY_HOOK_URL;
+            if (!hook) {
+              core.setFailed('Configure the RENDER_DEPLOY_HOOK_URL repository secret. See docs/RENDER_DEMO.md.');
+              return;
+            }
+            core.setSecret(hook);
+            let url;
+            try { url = new URL(hook); } catch {
+              core.setFailed('The Render deploy hook is not a valid URL.');
+              return;
+            }
+            if (url.protocol !== 'https:' || url.hostname !== 'api.render.com' || url.pathname !== '/deploy/srv-daoj4kg473hc73ahds1g') {
+              core.setFailed('The deploy hook must target the Sous Chef demo service.');
+              return;
+            }
+            url.searchParams.set('ref', sha);
+            let response;
+            try {
+              response = await fetch(url, { method: 'POST', signal: AbortSignal.timeout(30000) });
+            } catch {
+              core.setFailed('Render deploy request failed. Check the Render dashboard before retrying.');
+              return;
+            }
+            if (!response.ok) {
+              core.setFailed(`Render rejected the deploy request (HTTP ${response.status}).`);
+              return;
+            }
+            core.info(`Requested demo deployment of ${sha}. Waiting for that exact revision.`);
+            for (let attempt = 0; attempt < 60; attempt++) {
+              await new Promise(resolve => setTimeout(resolve, 15000));
+              try {
+                const health = await fetch('https://souschef-demo.onrender.com/api/health', {
+                  cache: 'no-store', signal: AbortSignal.timeout(10000)
+                });
+                const state = await health.json();
+                if (health.ok && state.status === 'ready' && state.revision === sha) {
+                  const config = await fetch('https://souschef-demo.onrender.com/api/config', { signal: AbortSignal.timeout(10000) });
+                  if (!config.ok || !(await config.json()).demo) {
+                    core.setFailed('The new revision is healthy, but demo mode is not enabled.');
+                    return;
+                  }
+                  await core.summary.addHeading('Demo deployed')
+                    .addLink('Open Sous Chef', 'https://souschef-demo.onrender.com/demo')
+                    .addRaw(`\n\nVersion: ${state.version}\n\nCommit: ${sha}\n`).write();
+                  return;
+                }
+              } catch { /* Startup and free-host wake-up failures are retried. */ }
+            }
+            core.setFailed('Timed out waiting for the tested revision. Inspect Render deploy logs; an older healthy version does not count as success.');

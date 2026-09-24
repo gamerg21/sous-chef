@@ -91,6 +91,8 @@ pnpm run check:docs
 `pnpm dev` starts only Next.js. `pnpm dev:backend` is exclusively for developers
 working on a specifically selected community Convex deployment.
 
+For the public demo update pipeline, see [automatic demo deployments](docs/RENDER_DEMO.md).
+
 ## Community and hosted demo
 
 Set `COMMUNITY_API_URL` to the service's `https://…convex.site` origin and
