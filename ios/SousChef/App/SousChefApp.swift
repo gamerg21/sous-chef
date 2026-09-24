@@ -4,12 +4,14 @@ import SwiftUI
 @main
 struct SousChefApp: App {
     @State private var kitchen = Kitchen(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
+    @State private var moderation = CommunityModeration.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(kitchen)
+                .environment(moderation)
                 .modelContainer(kitchen.container)
                 .tint(.brand)
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }

@@ -3,18 +3,26 @@ import SwiftUI
 struct CommunityView: View {
     @Binding var showSettings: Bool
     @Environment(Kitchen.self) private var kitchen
+    @Environment(CommunityModeration.self) private var moderation
     @State private var recipes: [DTO.CommunityRecipe] = []
     @State private var search = ""
     @State private var loading = false
     @State private var error: String?
     @State private var loaded = false
+    @State private var reporting: DTO.CommunityRecipe?
+    @State private var blocking: DTO.CommunityRecipe?
 
+    private var visible: [DTO.CommunityRecipe] { moderation.visible(recipes) }
     private var available: Bool { kitchen.server.isConnected || CommunityService.isConfigured }
 
     var body: some View {
         NavigationStack {
             Group {
-                if !available {
+                if !moderation.hasAcceptedGuidelines {
+                    ScrollView {
+                        CommunityGuidelinesCard().padding()
+                    }
+                } else if !available {
                     ContentUnavailableView {
                         Label("Join the recipe community", systemImage: "person.2")
                     } description: {
@@ -26,15 +34,18 @@ struct CommunityView: View {
                     ProgressView("Loading community recipes…")
                 } else if let error, recipes.isEmpty {
                     ContentUnavailableView("Community unavailable", systemImage: "wifi.exclamationmark", description: Text(error))
-                } else if recipes.isEmpty && loaded {
+                } else if visible.isEmpty && loaded {
                     ContentUnavailableView(search.isEmpty ? "No recipes yet" : "No matches", systemImage: "book.pages",
                                            description: Text(search.isEmpty ? "Be the first to publish a recipe from its page." : "Try another search."))
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 14)], spacing: 14) {
-                            ForEach(recipes) { recipe in
+                            ForEach(visible) { recipe in
                                 NavigationLink(value: recipe) { CommunityCard(recipe: recipe) }
                                     .buttonStyle(.plain)
+                                    .contextMenu {
+                                        CommunityRecipeMenuItems(recipe: recipe, report: { reporting = recipe }, block: { blocking = recipe })
+                                    }
                             }
                         }
                         .padding()
@@ -47,13 +58,15 @@ struct CommunityView: View {
             .onSubmit(of: .search) { Task { await load() } }
             .toolbar { SettingsToolbarButton(showSettings: $showSettings) }
             .refreshable { await load() }
-            .task(id: available) { await load() }
+            .task(id: available && moderation.hasAcceptedGuidelines) { await load() }
+            .sheet(item: $reporting) { ReportRecipeSheet(recipe: $0) }
+            .blockAuthorConfirmation(for: $blocking)
             .onChange(of: search) { _, value in if value.isEmpty { Task { await load() } } }
         }
     }
 
     private func load() async {
-        guard available else { return }
+        guard available, moderation.hasAcceptedGuidelines else { return }
         loading = true
         defer { loading = false; loaded = true }
         do {
@@ -97,11 +110,29 @@ struct CommunityCard: View {
 struct CommunityRecipeView: View {
     let recipe: DTO.CommunityRecipe
     @Environment(Kitchen.self) private var kitchen
+    @Environment(CommunityModeration.self) private var moderation
+    @Environment(\.dismiss) private var dismiss
     @State private var saving = false
     @State private var saved = false
     @State private var error: String?
+    @State private var reporting = false
+    @State private var blocking: DTO.CommunityRecipe?
 
     var body: some View {
+        Group {
+            if moderation.hasAcceptedGuidelines && !moderation.isHidden(recipe) {
+                content
+            } else {
+                ContentUnavailableView("Recipe hidden", systemImage: "eye.slash",
+                                       description: Text("This recipe is hidden on this device. You can manage hidden recipes and blocked cooks in Settings."))
+            }
+        }
+        // Outside the branches so the report sheet survives the recipe being hidden.
+        .sheet(isPresented: $reporting, onDismiss: { if moderation.isHidden(recipe) { dismiss() } }) { ReportRecipeSheet(recipe: recipe) }
+        .blockAuthorConfirmation(for: $blocking) { dismiss() }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 RecipeImage(data: recipe.imageData)
@@ -155,6 +186,16 @@ struct CommunityRecipeView: View {
             .disabled(saving || saved)
             .padding()
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    CommunityRecipeMenuItems(recipe: recipe, report: { reporting = true }, block: { blocking = recipe })
+                } label: {
+                    Label("More", systemImage: "ellipsis")
+                }
+                .accessibilityIdentifier("communityRecipeMenu")
+            }
+        }
     }
 
     private func save() async {
@@ -192,6 +233,7 @@ struct CommunityRecipeView: View {
 struct PublishRecipeSheet: View {
     let recipe: Recipe
     @Environment(Kitchen.self) private var kitchen
+    @Environment(CommunityModeration.self) private var moderation
     @Environment(\.dismiss) private var dismiss
     @State private var state: (configured: Bool, connected: Bool)?
     @State private var visibility = "public"
@@ -201,7 +243,13 @@ struct PublishRecipeSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let state {
+                if !moderation.hasAcceptedGuidelines {
+                    Section {
+                        CommunityGuidelinesCard()
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                } else if let state {
                     if !state.configured {
                         Text("Your Sous Chef server isn't linked to a recipe community. Set COMMUNITY_API_URL on the server to enable it.")
                     } else if !state.connected {
@@ -214,7 +262,10 @@ struct PublishRecipeSheet: View {
                             }
                             .pickerStyle(.segmented)
                         } footer: {
-                            Text("Publishing shares the title, photo, ingredients and steps. Private notes and pantry links stay in your kitchen.")
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Publishing shares the title, photo, ingredients and steps. Private notes and pantry links stay in your kitchen.")
+                                Text("Everything you publish must follow the [community guidelines](https://sous-chef-website.vercel.app/community-guidelines/).")
+                            }
                         }
                         Section {
                             Button("Publish \(recipe.title)") { Task { await publish() } }
@@ -240,10 +291,11 @@ struct PublishRecipeSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents(moderation.hasAcceptedGuidelines ? [.medium, .large] : [.large])
     }
 
     private func publish() async {
+        guard moderation.hasAcceptedGuidelines else { return }
         working = true
         defer { working = false }
         await kitchen.server.syncNow()

@@ -121,5 +121,16 @@ item before either syncs.
 - **App Transport Security:** `NSAllowsArbitraryLoads` is set because home servers
   are often plain HTTP on LAN IPs, `.local` names or Tailscale addresses. The app
   warns before sending a password over HTTP to a public host.
+- **User-generated content (1.2):** community recipes are hidden until the person
+  agrees to the community guidelines (zero tolerance for objectionable content and
+  abusive users; versioned, stored on the device). Every community recipe has
+  **Report recipe** (reason plus optional note, emailed to george@georgevina.com
+  through Mail, a `mailto:` link, or copyable text) and **Block <cook>** in its
+  detail menu and long-press menu. Reported recipes and blocked cooks disappear
+  at once and can be restored in Settings → Blocked cooks and hidden recipes. A
+  built-in whole-word profanity and slur filter hides matching recipes. Publishing
+  also requires accepting the guidelines. Reports are reviewed within 24 hours;
+  Settings links the guidelines and the contact address. Code:
+  `Domain/CommunityModeration.swift`, `Features/Community/CommunitySafety.swift`.
 - **Privacy:** barcode lookups send only the barcode to Open Food Facts. Kitchen
   data stays on the device, in the person's iCloud, or on their own server.

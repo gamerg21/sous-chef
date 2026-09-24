@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(Kitchen.self) private var kitchen
+    @Environment(CommunityModeration.self) private var moderation
     @Environment(\.dismiss) private var dismiss
     @AppStorage("icloud.enabled") private var iCloudEnabled = true
     @State private var connecting = false
@@ -110,6 +111,21 @@ struct SettingsView: View {
                     Eyebrow("Services")
                 } footer: {
                     Text("Barcode lookups send only the barcode to Open Food Facts. The community address is only needed without a connected server.")
+                }
+
+                Section {
+                    NavigationLink { CommunityModerationSettingsView() } label: {
+                        Label("Blocked cooks and hidden recipes", systemImage: "hand.raised")
+                    }
+                    .badge(moderation.blockedAuthors.count + moderation.hiddenRecipes.count)
+                    Link(destination: CommunityModeration.guidelinesURL) { Label("Community guidelines", systemImage: "person.2") }
+                    Link(destination: URL(string: "mailto:\(CommunityModeration.contactEmail)")!) {
+                        LabeledContent { Text(CommunityModeration.contactEmail) } label: { Label("Contact", systemImage: "envelope") }
+                    }
+                } header: {
+                    Eyebrow("Community")
+                } footer: {
+                    Text("Report a recipe or block a cook from the recipe's menu. Reports are reviewed within 24 hours, and offending recipes and cooks are removed.")
                 }
 
                 Section {

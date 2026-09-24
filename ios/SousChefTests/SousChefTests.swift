@@ -266,3 +266,84 @@ struct KitchenTests {
         #expect(imported.steps.map(\.text) == ["Boil."])
     }
 }
+
+struct CommunityModerationTests {
+    private func recipe(_ id: String, title: String = "Tomato soup", author: DTO.CommunityRecipe.Author? = .init(id: "user_1", name: "Ada"),
+                        steps: [String] = ["Simmer."]) -> DTO.CommunityRecipe {
+        DTO.CommunityRecipe(id: id, title: title, description: nil, tags: nil, servings: nil, totalTimeMinutes: nil, sourceUrl: nil,
+                            photoUrl: nil, photoDataUrl: nil, ingredients: [.init(name: "Tomato", quantity: 4, unit: nil, note: nil)],
+                            steps: steps.map { .init(text: $0) }, author: author, createdAt: nil)
+    }
+
+    private func isolatedDefaults() -> UserDefaults {
+        let suite = "SousChefTests.moderation.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        return defaults
+    }
+
+    @Test func filterMatchesWholeWordsCaseInsensitively() throws {
+        let term = try #require(ContentFilter.terms.sorted().first)
+        #expect(ContentFilter.isObjectionable("What a \(term.uppercased()) recipe!"))
+        #expect(ContentFilter.isObjectionable("\(term)s everywhere"))
+        #expect(!ContentFilter.isObjectionable("Scunthorpe shiitake cocktail"))
+        #expect(!ContentFilter.isObjectionable("\(term)xyz"))
+        #expect(ContentFilter.isObjectionable(recipe("r1", steps: ["Stir, then \(term)."])))
+        #expect(!ContentFilter.isObjectionable(recipe("r2")))
+    }
+
+    @Test func guidelinesAcceptancePersists() {
+        let defaults = isolatedDefaults()
+        let moderation = CommunityModeration(defaults: defaults)
+        #expect(!moderation.hasAcceptedGuidelines)
+        moderation.acceptGuidelines()
+        #expect(CommunityModeration(defaults: defaults).hasAcceptedGuidelines)
+        #expect(defaults.integer(forKey: "community.guidelinesAccepted") == CommunityModeration.guidelinesVersion)
+    }
+
+    @Test func hidingAndUnhidingPersist() {
+        let defaults = isolatedDefaults()
+        let moderation = CommunityModeration(defaults: defaults)
+        let soup = recipe("r1"), salad = recipe("r2", title: "Salad", author: .init(id: "user_2", name: "Grace"))
+        moderation.hide(soup)
+        #expect(moderation.visible([soup, salad]).map(\.id) == ["r2"])
+        let reloaded = CommunityModeration(defaults: defaults)
+        #expect(reloaded.hiddenRecipes == ["r1": "Tomato soup"])
+        reloaded.unhide(id: "r1")
+        #expect(CommunityModeration(defaults: defaults).visible([soup, salad]).count == 2)
+    }
+
+    @Test func blockingHidesEveryRecipeByTheAuthor() {
+        let defaults = isolatedDefaults()
+        let moderation = CommunityModeration(defaults: defaults)
+        let ada = DTO.CommunityRecipe.Author(id: "user_1", name: "Ada")
+        let recipes = [recipe("r1", author: ada), recipe("r2", author: ada), recipe("r3", author: .init(id: "user_2", name: "Ada"))]
+        moderation.block(ada)
+        // Same display name, different id: not blocked.
+        #expect(moderation.visible(recipes).map(\.id) == ["r3"])
+        let reloaded = CommunityModeration(defaults: defaults)
+        #expect(reloaded.blockedAuthors == ["id:user_1": "Ada"])
+        reloaded.unblock(key: "id:user_1")
+        #expect(CommunityModeration(defaults: defaults).visible(recipes).count == 3)
+    }
+
+    @Test func blockingFallsBackToDisplayName() {
+        let moderation = CommunityModeration(defaults: isolatedDefaults())
+        moderation.block(.init(id: nil, name: "Anon Cook"))
+        let sameName = DTO.CommunityRecipe.Author(id: nil, name: "anon cook")
+        let withID = DTO.CommunityRecipe.Author(id: "user_9", name: "Anon Cook")
+        #expect(moderation.isBlocked(sameName))
+        #expect(moderation.isBlocked(withID) == false)
+    }
+
+    @Test func reportIncludesRecipeDetails() throws {
+        let report = CommunityReport(recipe: recipe("r1"), reason: .spam, note: "  Links to a shop ", origin: "https://example.convex.site")
+        #expect(report.subject == "Sous Chef community report: r1")
+        #expect(report.body.contains("Title: Tomato soup"))
+        #expect(report.body.contains("Author: Ada (user_1)"))
+        #expect(report.body.contains("Reason: Spam or scam"))
+        #expect(report.body.contains("Note: Links to a shop"))
+        let url = try #require(report.mailtoURL)
+        #expect(url.absoluteString.hasPrefix("mailto:george@georgevina.com?subject="))
+    }
+}
