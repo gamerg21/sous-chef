@@ -6,11 +6,11 @@ export async function request<A, R>(ref: Ref<A, R>, args: A): Promise<R> {
   const response = await fetch('/api/kitchen', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:ref.path,args})});
   const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Your kitchen could not complete this request'); return result.value;
 }
-const AuthContext = createContext({isAuthenticated:false, isLoading:true, demo:false});
+const AuthContext = createContext({isAuthenticated:false, isLoading:true, demo:false, demoMode:false});
 function AuthState({children}:{children:ReactNode}) {
-  const auth = useReactQuery({queryKey:['session'], queryFn:async () => { const res = await fetch('/api/auth',{cache:'no-store'}); if (!res.ok) throw new Error('Cannot load your session'); return res.json() as Promise<{authenticated:boolean;demo:boolean}>; }, retry:1, refetchInterval:30000});
+  const auth = useReactQuery({queryKey:['session'], queryFn:async () => { const res = await fetch('/api/auth',{cache:'no-store'}); if (!res.ok) throw new Error('Cannot load your session'); return res.json() as Promise<{authenticated:boolean;demo:boolean;demoMode:boolean}>; }, retry:1, refetchInterval:30000});
   if (auth.error) return <main className="p-8" role="alert">Cannot connect to your kitchen. <button onClick={() => void auth.refetch()}>Try again</button></main>;
-  return <AuthContext.Provider value={{isAuthenticated:!!auth.data?.authenticated,isLoading:auth.isPending,demo:!!auth.data?.demo}}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{isAuthenticated:!!auth.data?.authenticated,isLoading:auth.isPending,demo:!!auth.data?.demo,demoMode:!!auth.data?.demoMode}}>{children}</AuthContext.Provider>;
 }
 export function KitchenProvider({children}:{children:ReactNode}) {
   const [client] = useState(() => new QueryClient({defaultOptions:{queries:{retry:1, refetchOnWindowFocus:true}}}));

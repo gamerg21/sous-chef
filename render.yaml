@@ -1,0 +1,26 @@
+# Disposable public demo only. Never use this configuration for a personal kitchen.
+services:
+  - type: web
+    name: souschef-demo
+    branch: main
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node --max-old-space-size=384 server.js
+    healthCheckPath: /api/health
+    autoDeployTrigger: 'off' # GitHub Actions deploys only the exact commit that passed CI.
+    envVars:
+      - key: APP_URL
+        sync: false # Set to the HTTPS origin assigned by Render.
+      - key: SOUS_CHEF_DEMO
+        value: 'true'
+      - key: SOUS_CHEF_ALLOW_SIGNUP
+        value: 'false'
+      - key: SOUS_CHEF_DATA_DIR
+        value: /data
+      - key: COMMUNITY_API_URL
+        value: ''
+      - key: COMMUNITY_CONVEX_URL
+        value: ''
