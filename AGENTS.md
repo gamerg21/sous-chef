@@ -51,9 +51,8 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   project file and commit it with the upload, so the next upload continues from it.
 - Every uploaded build gets testing notes: add an entry to
   [ios/TESTFLIGHT.md](ios/TESTFLIGHT.md) in the same commit, covering new
-  features, fixes, and any big fix testers should confirm. Give the maintainer
-  the "What to Test" text to paste into App Store Connect, since the checked-in
-  API key can't reach this team.
+  features, fixes, and any big fix testers should confirm. The upload script
+  refuses to run without one and copies it into the build's "What to Test".
 - When the version changes (for example 1.0.1 to 1.0.2), reset the build number to 1.
 - The ShareExtension target carries the same `MARKETING_VERSION` and
   `CURRENT_PROJECT_VERSION` as the app; change both targets together or the
@@ -63,9 +62,15 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   number, ask the maintainer instead of guessing.
 - App Intent titles, descriptions and phrases can't mention Apple trademarks
   such as "Apple" or "Siri"; uploads fail with ITMS-90626.
-- Upload with the checked-in `ios/ExportOptions.plist`:
-  `xcodebuild -exportArchive -archivePath <archive> -exportOptionsPlist ios/ExportOptions.plist -exportPath <dir> -allowProvisioningUpdates`.
-  Never add `testFlightInternalTestingOnly`: it permanently limits a build to
+- Upload with `pnpm ios:testflight upload` ([scripts/testflight.mjs](scripts/testflight.mjs)).
+  It archives, uploads with the checked-in `ios/ExportOptions.plist`, waits for
+  processing, and sets the testing notes; `pnpm ios:testflight notes [build]`
+  and `pnpm ios:testflight status` also work on their own. It signs in with the
+  Sous Chef team's App Store Connect API key, kept outside the repository: the
+  .p8 in `~/.appstoreconnect/private_keys/` and its IDs in
+  `~/.appstoreconnect/sous-chef.json`. The `ASC_KEY_ID`/`ASC_ISSUER_ID`
+  variables in the maintainer's shell belong to another team; don't use them.
+- In `ios/ExportOptions.plist`, never add `testFlightInternalTestingOnly`: it permanently limits a build to
   internal testers, so it can't go to external testers or App Review.
 
 ## Installed skills

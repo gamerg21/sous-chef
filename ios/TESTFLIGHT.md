@@ -1,8 +1,9 @@
 # TestFlight testing notes
 
-Each build uploaded to TestFlight gets an entry here, newest first. The text
-under "What to Test" is pasted into the build's **What to Test** field in App
-Store Connect (TestFlight → the build → Test Details), so write it for testers:
+Each build uploaded to TestFlight gets an entry here, newest first, headed
+`## <version> (<build>)`. `pnpm ios:testflight upload` copies the text under
+"What to Test" into the build's **What to Test** field in App Store Connect
+(bold and code formatting are dropped), so write it for testers:
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
