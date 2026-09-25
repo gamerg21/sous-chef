@@ -49,6 +49,11 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   number (`manageAppVersionAndBuildNumber` stays `false`).
 - Before each TestFlight or App Store upload, increment the build number in the
   project file and commit it with the upload, so the next upload continues from it.
+- Every uploaded build gets testing notes: add an entry to
+  [ios/TESTFLIGHT.md](ios/TESTFLIGHT.md) in the same commit, covering new
+  features, fixes, and any big fix testers should confirm. Give the maintainer
+  the "What to Test" text to paste into App Store Connect, since the checked-in
+  API key can't reach this team.
 - When the version changes (for example 1.0.1 to 1.0.2), reset the build number to 1.
 - The ShareExtension target carries the same `MARKETING_VERSION` and
   `CURRENT_PROJECT_VERSION` as the app; change both targets together or the
