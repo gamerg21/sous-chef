@@ -135,7 +135,9 @@ struct RecipeImage: View {
 
     var body: some View {
         let image = loaded ?? data.flatMap { PhotoThumbnails.cached($0, maxPixel: maxPixel) }
-        ZStack {
+        // The photo fills an overlay so a wide image can't widen its container;
+        // callers only have to set the frame.
+        Color.clear.overlay {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {

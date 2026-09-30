@@ -67,7 +67,7 @@ struct CookModeView: View {
     private var ingredientsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Eyebrow("Mise en place", systemImage: "basket")
+                Eyebrow("Ingredients", systemImage: "basket")
                 Text(gatherTitle).heroTitle()
                     .contentTransition(.numericText())
                 ForEach(recipe.ingredients) { ingredient in
