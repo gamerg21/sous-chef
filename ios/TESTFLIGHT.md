@@ -7,6 +7,33 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (2)
+
+What's in it: everything from 1.1.0 (1), plus reordering recipe steps, room
+for three or more cook timers in the Dynamic Island, and the Mac sidebar and
+fixes from 1.0.1 (6).
+
+### What to Test
+
+**Reordering recipe steps (new)**
+- Edit a recipe with two or more steps. Tap Reorder next to the Steps heading.
+  The steps should show as numbered rows with drag handles, and ingredients
+  shouldn't be movable meanwhile.
+- Drag a step to a new place, tap Done, then Save. Open the recipe and start
+  cooking: the steps should be in the new order.
+- Try it while creating a new recipe too. Reorder shouldn't appear until there
+  are two steps.
+
+**Cook timers**
+- Start three or more timers while cooking, then lock the phone. The expanded
+  Dynamic Island should fit all of them.
+
+**Still worth checking from 1.1.0 (1)**
+- Meal planning, expiry reminders, widgets and Lock Screen timers (see the
+  1.1.0 (1) notes below).
+- On a Mac, the app should open with a sidebar, and changing a recipe photo
+  should still work.
+
 ## 1.1.0 (1)
 
 What's in it: weekly meal planning, expiry reminders with a "Use it up" list,
