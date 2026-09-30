@@ -172,7 +172,7 @@ final class Recipe {
 }
 
 enum ShoppingSource: String, Codable {
-    case manual, fromRecipe = "from-recipe", lowStock = "low-stock"
+    case manual, fromRecipe = "from-recipe", mealPlan = "meal-plan", lowStock = "low-stock"
 }
 
 @Model
@@ -221,9 +221,9 @@ final class Tombstone {
 }
 
 enum SyncKind: String {
-    case pantry, recipe, shopping
+    case pantry, recipe, shopping, mealPlan
 }
 
 enum KitchenSchema {
-    static let models: [any PersistentModel.Type] = [PantryItem.self, Recipe.self, ShoppingItem.self, Tombstone.self]
+    static let models: [any PersistentModel.Type] = [PantryItem.self, Recipe.self, ShoppingItem.self, PlannedMeal.self, Tombstone.self]
 }
