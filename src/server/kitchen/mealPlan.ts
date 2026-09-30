@@ -108,6 +108,15 @@ export const list = query({
   },
 });
 
+export const get = query({
+  args: { id: v.id("mealPlanEntries") },
+  handler: async (ctx, args) => {
+    const entry = await entryWithAccess(ctx, args.id);
+    const recipe = await ctx.db.get(entry.recipeId);
+    return { ...summary(entry, recipe), scale: scaleFor(entry, recipe) };
+  },
+});
+
 export const add = mutation({
   args: {
     householdId: v.optional(v.id("households")),

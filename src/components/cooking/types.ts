@@ -41,7 +41,7 @@ export interface Recipe {
   ingredients: RecipeIngredient[]
 }
 
-export type ShoppingListItemSource = 'manual' | 'from-recipe' | 'low-stock'
+export type ShoppingListItemSource = 'manual' | 'from-recipe' | 'meal-plan' | 'low-stock'
 
 export interface ShoppingListItem {
   id: string

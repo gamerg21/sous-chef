@@ -1,3 +1,9 @@
+## Unreleased
+
+- Weekly meal planning: a Plan page (and a Plan screen inside Cook on iOS) puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
+- "Add week's shortages to list" combines what the week's uncooked meals need across recipes (converting units), counts the pantry once for the whole week, and tops up existing shopping list items instead of duplicating them.
+- Cooking a planned meal uses the usual cook flow and atomic pantry deduction, scaled to the planned servings, and marks the meal cooked.
+
 ## 0.9.0 — A livelier, clearer kitchen
 
 - New design language across the app: grouped cards, section labels, inline expanding menus instead of dropdowns, and a shared UI kit (`src/components/ui/kit.tsx`).
