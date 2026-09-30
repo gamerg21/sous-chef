@@ -18,10 +18,12 @@ export interface InventoryItemRowProps {
   onEdit?: (id: string) => void
   onRemove?: (id: string) => void
   isDeleting?: boolean
+  /** The cook's "expiring soon" window in days. */
+  expiringWithinDays?: number
 }
 
-export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove, isDeleting = false }: InventoryItemRowProps) {
-  const status = itemExpiryStatus(item)
+export function InventoryItemRow({ item, location, dateFormat, onEdit, onRemove, isDeleting = false, expiringWithinDays }: InventoryItemRowProps) {
+  const status = itemExpiryStatus(item, undefined, expiringWithinDays)
   const formattedExpiry = formatDate(item.expiresOn, dateFormat ?? 'YYYY-MM-DD')
   const outOfStock = item.quantity <= 0
   // The badge tone mirrors the most urgent state so the list scans at a glance.

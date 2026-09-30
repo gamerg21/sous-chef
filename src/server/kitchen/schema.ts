@@ -282,7 +282,25 @@ export default defineSchema({
     defaultVolumeUnit: v.string(),
     timezone: v.optional(v.string()),
     dateFormat: v.optional(v.string()),
-  }).index("by_userId", ["userId"]),
+    // Expiry reminders: the "expiring soon" window in days (default 3), the
+    // opt-in daily email digest, and the last local day the digest handled.
+    expiringWithinDays: v.optional(v.number()),
+    expiryDigestEmail: v.optional(v.boolean()),
+    expiryDigestHandledOn: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_expiryDigestEmail", ["expiryDigestEmail"]),
+
+  // ── Pantry outcomes ───────────────────────────────────────────────────
+  // What became of dated items when they left the pantry: cooked or marked
+  // used ("used"), or thrown away ("wasted"). `on` is the cook's local day.
+  pantryOutcomes: defineTable({
+    householdId: v.id("households"),
+    name: v.string(),
+    outcome: v.union(v.literal("used"), v.literal("wasted")),
+    on: v.string(),
+    expiresOn: v.optional(v.string()),
+  }).index("by_householdId_and_on", ["householdId", "on"]),
 
   // ── User Unit Usage ───────────────────────────────────────────────────
   userUnitUsage: defineTable({

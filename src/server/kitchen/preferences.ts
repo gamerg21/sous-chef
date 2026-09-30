@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "./helpers";
+import { MAX_EXPIRING_WITHIN_DAYS, expiringWindow } from "../../lib/expiring";
+import { expiryDigestAvailable } from "./email";
 
 const DEFAULTS = {
   measurementSystem: "metric",
@@ -18,6 +20,12 @@ export const get = query({
       .query("userPreferences")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
+    const expiry = {
+      expiringWithinDays: expiringWindow(prefs?.expiringWithinDays),
+      expiryDigestEmail: prefs?.expiryDigestEmail ?? false,
+      // The digest toggle only works where the server can send email.
+      expiryDigestAvailable: expiryDigestAvailable(await ctx.db.get(userId)),
+    };
     if (!prefs) {
       return {
         preferences: {
@@ -26,6 +34,7 @@ export const get = query({
           defaultVolumeUnit: DEFAULTS.defaultVolumeUnit,
           timezone: null,
           dateFormat: DEFAULTS.dateFormat,
+          ...expiry,
         },
       };
     }
@@ -36,6 +45,7 @@ export const get = query({
         defaultVolumeUnit: prefs.defaultVolumeUnit,
         timezone: prefs.timezone ?? null,
         dateFormat: prefs.dateFormat ?? DEFAULTS.dateFormat,
+        ...expiry,
       },
     };
   },
@@ -48,16 +58,26 @@ export const update = mutation({
     defaultVolumeUnit: v.optional(v.string()),
     timezone: v.optional(v.union(v.string(), v.null())),
     dateFormat: v.optional(v.union(v.string(), v.null())),
+    expiringWithinDays: v.optional(v.number()),
+    expiryDigestEmail: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    if (args.expiringWithinDays !== undefined && (!Number.isInteger(args.expiringWithinDays) || args.expiringWithinDays < 1 || args.expiringWithinDays > MAX_EXPIRING_WITHIN_DAYS)) {
+      throw new Error(`Choose between 1 and ${MAX_EXPIRING_WITHIN_DAYS} days`);
+    }
+    if (args.expiryDigestEmail && !expiryDigestAvailable(await ctx.db.get(userId))) {
+      throw new Error("Email isn't set up on this server");
+    }
     const existing = await ctx.db
       .query("userPreferences")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
     if (existing) {
-      const patch: Record<string, string | undefined> = {};
+      const patch: Record<string, string | number | boolean | undefined> = {};
+      if (args.expiringWithinDays !== undefined) patch.expiringWithinDays = args.expiringWithinDays;
+      if (args.expiryDigestEmail !== undefined) patch.expiryDigestEmail = args.expiryDigestEmail;
       if (args.measurementSystem !== undefined)
         patch.measurementSystem = args.measurementSystem;
       if (args.defaultWeightUnit !== undefined)
@@ -77,6 +97,8 @@ export const update = mutation({
         defaultVolumeUnit: args.defaultVolumeUnit ?? DEFAULTS.defaultVolumeUnit,
         timezone: args.timezone ?? undefined,
         dateFormat: args.dateFormat ?? DEFAULTS.dateFormat,
+        expiringWithinDays: args.expiringWithinDays,
+        expiryDigestEmail: args.expiryDigestEmail,
       });
     }
     return { success: true };

@@ -3,6 +3,7 @@
 import { unitLabel } from "@/lib/units";
 import { NUTRIENT_FIELDS, readNutrition, type NutrientKey, type NutritionPer100g } from "@/lib/nutrition";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "@/lib/kitchen/client";
 import { api } from "@/lib/kitchen/api";
 import type { Id } from "@/server/kitchen/_generated/dataModel";
@@ -17,7 +18,9 @@ import {
   INVENTORY_ALL_CATEGORIES_VALUE,
   INVENTORY_CATEGORY_OPTIONS,
   INVENTORY_CUSTOM_CATEGORY_VALUE,
+  itemExpiryStatus,
 } from "@/components/inventory";
+import { buttonClassName, cx } from "@/components/ui/kit";
 import type {
   FoodFacts,
   InventoryItem,
@@ -70,6 +73,7 @@ function formatTag(tag: string) {
 export default function InventoryPage() {
   const inventoryData = useQuery(api.inventory.list, {});
   const preferencesData = useQuery(api.preferences.get, {});
+  const outcomesData = useQuery(api.expiry.outcomes, {});
   const removeItem = useMutation(api.inventory.remove);
   const createItem = useMutation(api.inventory.create);
   const updateItem = useMutation(api.inventory.update);
@@ -78,6 +82,8 @@ export default function InventoryPage() {
   const items = inventoryData?.items || [];
   const locations = inventoryData?.locations || [];
   const dateFormat = preferencesData?.preferences?.dateFormat || "YYYY-MM-DD";
+  const expiringWithinDays = preferencesData?.preferences?.expiringWithinDays;
+  const router = useRouter();
 
   const [selectedLocationId, setSelectedLocationId] = useState<
     KitchenLocationId | "all"
@@ -103,6 +109,14 @@ export default function InventoryPage() {
     setEditingItemId(id as Id<"inventoryItems">);
     setShowAddModal(true);
   }, [hasItems, inventoryData]);
+  // The expiry email links to /inventory?filter=expiring.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("filter") !== "expiring") return;
+    url.searchParams.delete("filter");
+    window.history.replaceState(null, "", url);
+    setFilter("expiring-soon");
+  }, []);
   const [showScanner, setShowScanner] = useState(false);
   const [prefillData, setPrefillData] = useState<InventoryPrefillData | null>(
     null
@@ -134,7 +148,8 @@ export default function InventoryPage() {
     setItemToDelete(id);
   }, []);
 
-  const handleConfirmDelete = useCallback(async () => {
+  // `outcome` is set when an expired item is marked used up or thrown away.
+  const handleConfirmDelete = useCallback(async (outcome?: "used" | "wasted") => {
     const id = itemToDelete;
     if (!id) return;
 
@@ -142,7 +157,7 @@ export default function InventoryPage() {
 
     setTimeout(async () => {
       try {
-        await removeItem({ id: id as Id<"inventoryItems"> });
+        await removeItem({ id: id as Id<"inventoryItems">, outcome });
 
         setDeletingItems((prev) => {
           const next = new Set(prev);
@@ -293,6 +308,9 @@ export default function InventoryPage() {
     );
   }
 
+  const pendingDelete = itemToDelete ? items.find((item) => item.id === itemToDelete) : undefined;
+  const expiredToDelete = pendingDelete && pendingDelete.quantity > 0 && itemExpiryStatus(pendingDelete) === "expired" ? pendingDelete : undefined;
+
   return (
     <>
       <KitchenInventoryDashboardView
@@ -312,7 +330,10 @@ export default function InventoryPage() {
         onEditItem={handleEditItem}
         onRemoveItem={handleRemoveItem}
         onViewExpiringSoon={handleViewExpiringSoon}
+        onCookExpiring={() => router.push("/cooking?filter=expiring")}
         deletingItems={deletingItems}
+        expiringWithinDays={expiringWithinDays}
+        outcomes={outcomesData}
       />
       {showScanner && (
         <BarcodeScanner
@@ -334,8 +355,27 @@ export default function InventoryPage() {
           }}
         />
       )}
+      {/* Past its date: ask what happened, for the used-versus-wasted tally. */}
+      <Modal isOpen={expiredToDelete !== undefined} onClose={() => setItemToDelete(null)} title="Remove expired item">
+        <div className="space-y-5">
+          <p className="text-base text-stone-600 dark:text-stone-300">
+            {expiredToDelete?.name} is past its date. Did you use it up, or throw it away?
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button type="button" onClick={() => void handleConfirmDelete("used")} className={cx(buttonClassName("secondary"), "min-h-11")}>
+              Used it up
+            </button>
+            <button type="button" onClick={() => void handleConfirmDelete("wasted")} className={cx(buttonClassName("danger"), "min-h-11")}>
+              Thrown away
+            </button>
+          </div>
+          <button type="button" onClick={() => setItemToDelete(null)} className={cx(buttonClassName("ghost"), "min-h-11 w-full")}>
+            Cancel
+          </button>
+        </div>
+      </Modal>
       <ConfirmModal
-        isOpen={itemToDelete !== null}
+        isOpen={itemToDelete !== null && expiredToDelete === undefined}
         onClose={() => setItemToDelete(null)}
         onConfirm={handleConfirmDelete}
         title="Remove item"
