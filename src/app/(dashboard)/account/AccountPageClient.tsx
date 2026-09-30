@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Collapse } from "@/components/ui/collapse";
 import { PageLoader } from "@/components/ui/page-loader";
+import { ExpiryReminderSettings } from "@/components/ExpiryReminderSettings";
 import {
   IconBadge,
   PageHeader,
@@ -324,6 +325,10 @@ export default function AccountPageClient() {
           error={preferencesError}
           success={preferencesSuccess}
         />
+      </Section>
+
+      <Section title="Expiry reminders">
+        <ExpiryReminderSettings />
       </Section>
     </div>
   );

@@ -7,6 +7,7 @@ import {
   resolveHouseholdId,
   decodeIngredientMapping,
 } from "./helpers";
+import { recordOutcome, todayFor } from "./expiry";
 
 
 export function ingredientForPlan(ing: Doc<"recipeIngredients">) {
@@ -168,8 +169,14 @@ export async function cookRecipeInTransaction(ctx: MutationCtx, args: CookArgs) 
   const { recipe, plan } = await recipePlan(ctx, args.recipeId, args.scale);
   if (args.householdId && args.householdId !== recipe.householdId) throw new Error("Recipe belongs to a different kitchen");
   if (plan.checks.length && !args.acknowledgeManualChecks) throw new Error("Check the ingredient amounts and units before confirming cooking");
+  const today = await todayFor(ctx, await getAuthUserId(ctx));
   for (const item of plan.deductions) {
-    if (item.remaining <= 0.000001) await ctx.db.delete(item.id as Id<"inventoryItems">);
+    if (item.remaining <= 0.000001) {
+      // A dated item cooked to the last crumb counts as used, not wasted.
+      const row = await ctx.db.get(item.id as Id<"inventoryItems">);
+      if (row?.expiresOn) await recordOutcome(ctx, recipe.householdId, { name: item.name, outcome: "used", on: today, expiresOn: row.expiresOn });
+      await ctx.db.delete(item.id as Id<"inventoryItems">);
+    }
     else await ctx.db.patch(item.id as Id<"inventoryItems">, { quantity: item.remaining });
   }
   await ctx.db.patch(args.recipeId, { lastCookedAt: Date.now() });

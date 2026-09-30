@@ -24,6 +24,7 @@ export default function CookingPage() {
 
   const cookingData = useQuery(api.cooking.whatCanICook, {});
   const shoppingListData = useQuery(api.shoppingList.get, {});
+  const preferencesData = useQuery(api.preferences.get, {});
   const addMissing = useMutation(api.cooking.addMissingToShoppingList);
   const cookRecipe = useMutation(api.cooking.cookRecipe);
   const cookingInFlight = useRef(false);
@@ -84,6 +85,13 @@ export default function CookingPage() {
       ).length,
     [shoppingListData?.items]
   );
+
+  // Reminders link to /cooking?filter=expiring for the "Use it up" filter.
+  useEffect(() => {
+    if (searchParams.get("filter") !== "expiring") return;
+    setCookability("expiring");
+    router.replace("/cooking", { scroll: false });
+  }, [searchParams, router]);
 
   useEffect(() => {
     const recipeId = searchParams.get("recipeId");
@@ -243,6 +251,7 @@ export default function CookingPage() {
         activeTag={activeTag}
         cookability={cookability}
         sort={sort}
+        expiringWithinDays={preferencesData?.preferences?.expiringWithinDays}
         onSearchChange={setSearchQuery}
         onSetTag={setActiveTag}
         onSetCookability={setCookability}

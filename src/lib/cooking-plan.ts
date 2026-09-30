@@ -4,6 +4,8 @@ export interface CookingPlan {
   checks: { name: string; reason: string }[];
   deductions: { id: string; name: string; quantity: number; unit?: string; remaining: number }[];
   availableCount: number;
+  /** Pantry rows (by id) that a counted ingredient matches by name, measured or not. */
+  uses?: string[];
 }
 type Ingredient = { id: string; name: string; quantity?: number; unit?: string; note?: string; mappingLabel?: string };
 type Stock = { id: string; name: string; quantity?: number; unit?: string; expiresOn?: string };
@@ -31,10 +33,12 @@ export function planCooking(ingredients: Ingredient[], stock: Stock[], catalog: 
   const remaining = stock.map(item => ({ ...item, quantity: item.quantity ?? 0, original: item.quantity ?? 0 }))
     .sort((a, b) => (a.expiresOn || '9999').localeCompare(b.expiresOn || '9999'));
   const plan: CookingPlan = { missingIngredients: [], checks: [], deductions: [], availableCount: 0 };
+  const uses = new Set<string>();
   if (!ingredients.length) plan.checks.push({ name: 'Recipe', reason: 'This recipe has no ingredients. Add them before tracking inventory automatically.' });
   for (const ingredient of ingredients) {
     if (/\boptional\b|to taste/i.test(ingredient.note ?? '') || units.get(normalize(ingredient.unit))?.type === 'qualitative' || /^(to taste|as needed)$/i.test(ingredient.unit ?? '')) continue;
     const matches = remaining.filter(item => normalize(item.name) === normalize(ingredient.mappingLabel || ingredient.name));
+    for (const item of matches) if (item.original > epsilon) uses.add(item.id);
     const missing = (quantity?: number) => plan.missingIngredients.push({ name: ingredient.name, quantity, unit: ingredient.unit });
     if (ingredient.quantity == null || !Number.isFinite(ingredient.quantity) || ingredient.quantity <= 0) {
       plan.checks.push({ name: ingredient.name, reason: 'Recipe amount is unspecified. Check it manually; inventory will not be deducted.' });
@@ -55,6 +59,7 @@ export function planCooking(ingredients: Ingredient[], stock: Stock[], catalog: 
       else missing(Number(needed.toPrecision(6)));
     } else plan.availableCount++;
   }
+  plan.uses = [...uses];
   plan.deductions = remaining.filter(item => item.original - item.quantity > epsilon).map(item => ({ id: item.id, name: item.name, quantity: item.original - item.quantity, unit: item.unit, remaining: item.quantity }));
   return plan;
 }

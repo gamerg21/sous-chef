@@ -19,16 +19,19 @@ extension Kitchen {
         Self.expiring(onHand(), within: days, now: now)
     }
 
-    static func expiring(_ items: [PantryItem], within days: Int = 3, now: Date = Date()) -> [PantryItem] {
-        let limit = Calendar.current.date(byAdding: .day, value: days + 1, to: Calendar.current.startOfDay(for: now)) ?? now
-        return items.filter { $0.quantity > 0 && ($0.expiresOn ?? .distantFuture) < limit }
+    /// The items among `items` that `ExpiringFood.find` counts as expiring, in their original order.
+    static func expiring(_ items: [PantryItem], within days: Int = ExpiringFood.defaultWindowDays, now: Date = Date()) -> [PantryItem] {
+        let ids = Set(ExpiringFood.find(in: items.map(\.expiringStock), within: days, now: now).map(\.id))
+        return items.filter { ids.contains($0.uuid) }
     }
 
     struct RecipeSuggestion: Identifiable {
         var recipe: Recipe
         var plan: CookingPlan
-        /// Ingredients that draw on items expiring within three days.
+        /// Ingredients that draw on items expiring within the window.
         var usesExpiring: [String]
+        /// The expiring pantry items those ingredients use, soonest first.
+        var expiringItems: [ExpiringFood] = []
 
         var id: UUID { recipe.uuid }
         var missing: Int { plan.missingIngredients.count }
@@ -38,14 +41,19 @@ extension Kitchen {
     /// it: nothing missing first, then recipes that use up food about to
     /// expire, then favorites, then whatever hasn't been cooked in a while.
     /// The Cook tab and Siri both use this order.
-    static func rankRecipes(_ recipes: [Recipe], pantry: [PantryItem], now: Date = Date()) -> [RecipeSuggestion] {
+    static func rankRecipes(_ recipes: [Recipe], pantry: [PantryItem], within days: Int = ExpiringFood.defaultWindowDays, now: Date = Date()) -> [RecipeSuggestion] {
         let stock = pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
-        let expiring = Set(Self.expiring(pantry, now: now).map { normalizeName($0.name) })
+        let expiringByName = Dictionary(grouping: ExpiringFood.find(in: pantry.map(\.expiringStock), within: days, now: now)) { normalizeName($0.name) }
         return recipes.compactMap { recipe -> RecipeSuggestion? in
             let ingredients = recipe.ingredients
             guard !ingredients.isEmpty else { return nil }
+            let using = ingredients.filter { expiringByName[normalizeName($0.pantryName)] != nil }
+            var seen = Set<UUID>()
+            let items = using.flatMap { expiringByName[normalizeName($0.pantryName)] ?? [] }
+                .filter { seen.insert($0.id).inserted }
+                .sorted { $0.daysLeft < $1.daysLeft }
             return RecipeSuggestion(recipe: recipe, plan: CookingPlanner.plan(ingredients: ingredients, stock: stock),
-                                    usesExpiring: ingredients.filter { expiring.contains(normalizeName($0.pantryName)) }.map(\.name))
+                                    usesExpiring: using.map(\.name), expiringItems: items)
         }
         .sorted { a, b in
             if a.missing != b.missing { return a.missing < b.missing }
@@ -55,6 +63,22 @@ extension Kitchen {
             if aCooked != bCooked { return aCooked < bCooked }
             return a.recipe.title.localizedStandardCompare(b.recipe.title) == .orderedAscending
         }
+    }
+
+    /// "Use it up": recipes that use expiring food, the most expiring items
+    /// first, then the soonest to expire, then the readiness order of
+    /// `ranked` (as returned by `rankRecipes`).
+    static func rankForUsingUp(_ ranked: [RecipeSuggestion]) -> [RecipeSuggestion] {
+        ranked.enumerated()
+            .filter { !$0.element.expiringItems.isEmpty }
+            .sorted { a, b in
+                let left = a.element.expiringItems, right = b.element.expiringItems
+                if left.count != right.count { return left.count > right.count }
+                let soonest = (left.map(\.daysLeft).min() ?? 0, right.map(\.daysLeft).min() ?? 0)
+                if soonest.0 != soonest.1 { return soonest.0 < soonest.1 }
+                return a.offset < b.offset
+            }
+            .map(\.element)
     }
 
     /// The best few recipes that use at least something from the pantry.
@@ -192,5 +216,12 @@ extension Kitchen {
         var draft = draft
         if draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { draft.title = "Untitled Recipe" }
         return draft
+    }
+}
+
+extension PantryItem {
+    /// What the expiry rules need from this item.
+    var expiringStock: ExpiringFood.Stock {
+        ExpiringFood.Stock(id: uuid, name: name, quantity: quantity, expiresOn: expiresOn)
     }
 }

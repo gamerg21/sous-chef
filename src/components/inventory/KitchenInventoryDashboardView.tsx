@@ -11,6 +11,8 @@ import {
 import { InventoryItemRow } from './InventoryItemRow'
 import { LocationTabs } from './LocationTabs'
 import { itemExpiryStatus } from './utils'
+import { ExpiringSoonCard } from './ExpiringSoonCard'
+import { DEFAULT_EXPIRING_WITHIN_DAYS } from '@/lib/expiring'
 import { Collapse } from '@/components/ui/collapse'
 import {
   EmptyState,
@@ -45,7 +47,12 @@ export interface KitchenInventoryDashboardViewProps {
   onEditItem?: (id: string) => void
   onRemoveItem?: (id: string) => void
   onViewExpiringSoon?: () => void
+  onCookExpiring?: () => void
   deletingItems?: Set<string>
+  /** The cook's "expiring soon" window in days. */
+  expiringWithinDays?: number
+  /** Dated items used up versus thrown away this month. */
+  outcomes?: { used: number; wasted: number }
 }
 
 const FILTER_OPTIONS: Array<{ value: InventoryFilter; label: string }> = [
@@ -74,7 +81,10 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     onEditItem,
     onRemoveItem,
     onViewExpiringSoon,
+    onCookExpiring,
     deletingItems = new Set(),
+    expiringWithinDays = DEFAULT_EXPIRING_WITHIN_DAYS,
+    outcomes,
   } = props
 
   // Local state fallback to keep the design interactive in Design OS previews
@@ -159,7 +169,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
 
     if (effectiveFilter === 'expiring-soon') {
       list = list.filter((i) => {
-        const s = itemExpiryStatus(i)
+        const s = itemExpiryStatus(i, undefined, expiringWithinDays)
         return s === 'soon' || s === 'expired'
       })
     }
@@ -169,7 +179,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     }
 
     const expiringSoonCount = items.filter((i) => {
-      const s = itemExpiryStatus(i)
+      const s = itemExpiryStatus(i, undefined, expiringWithinDays)
       return s === 'soon' || s === 'expired'
     }).length
 
@@ -180,7 +190,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
       outOfStockCount: items.filter((i) => i.quantity <= 0).length,
       totalCount: items.length,
     }
-  }, [items, effectiveLocation, effectiveFilter, effectiveCategory, effectiveQuery])
+  }, [items, effectiveLocation, effectiveFilter, effectiveCategory, effectiveQuery, expiringWithinDays])
 
   const emptyState = derived.list.length === 0
   const showSearchEmpty = items.length > 0 && emptyState
@@ -260,6 +270,15 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
             )
           })}
         </div>
+
+        <ExpiringSoonCard
+          items={items}
+          locations={locationMap}
+          withinDays={expiringWithinDays}
+          outcomes={outcomes}
+          onCookExpiring={onCookExpiring}
+          onShowExpiring={() => changeFilter('expiring-soon')}
+        />
 
         {/* Controls */}
         <div className="space-y-3">
@@ -388,6 +407,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
                     onEdit={onEditItem}
                     onRemove={onRemoveItem}
                     isDeleting={deletingItems.has(item.id)}
+                    expiringWithinDays={expiringWithinDays}
                   />
                 ))}
               </div>

@@ -64,7 +64,7 @@ runs or configures a Convex kitchen. That include requires Compose 2.20+.
 | `SOUS_CHEF_DEMO` | Opt-in isolated demo kitchens, default false |
 | `COMMUNITY_API_URL` | Optional community HTTP origin (`…convex.site`) |
 | `COMMUNITY_CONVEX_URL` | Optional community account origin (`…convex.cloud`) |
-| `RESEND_API_KEY`, `SMTP_FROM` | Optional local reset email |
+| `RESEND_API_KEY`, `SMTP_FROM` | Optional reset email and daily [expiry email](docs/EXPIRY_REMINDERS.md) |
 | `SECRETS_ENCRYPTION_KEY` | Optional existing key override; otherwise generated |
 | `SOUS_CHEF_IMAGE` | Prebuilt image tag; default builds locally |
 

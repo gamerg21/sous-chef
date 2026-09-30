@@ -1,4 +1,5 @@
 import { unitLabel } from '@/lib/units'
+import { DEFAULT_EXPIRING_WITHIN_DAYS, daysBetween, localDay } from '@/lib/expiring'
 import type { InventoryItem, QuantityUnit } from './types'
 
 export function formatQuantity(quantity: number, unit: QuantityUnit): string {
@@ -35,11 +36,11 @@ export function daysUntil(date: Date, now = new Date()): number {
   return Math.ceil(ms / (1000 * 60 * 60 * 24))
 }
 
-export function itemExpiryStatus(item: InventoryItem, now = new Date()): 'none' | 'expired' | 'soon' | 'ok' {
-  const d = parseISODate(item.expiresOn)
-  if (!d) return 'none'
-  const days = daysUntil(d, now)
+/** Calendar-day status in the cook's local time; "soon" uses their expiring window. */
+export function itemExpiryStatus(item: InventoryItem, now = new Date(), withinDays = DEFAULT_EXPIRING_WITHIN_DAYS): 'none' | 'expired' | 'soon' | 'ok' {
+  const days = item.expiresOn ? daysBetween(localDay(now), item.expiresOn.slice(0, 10)) : null
+  if (days === null) return 'none'
   if (days < 0) return 'expired'
-  if (days <= 3) return 'soon'
+  if (days <= withinDays) return 'soon'
   return 'ok'
 }

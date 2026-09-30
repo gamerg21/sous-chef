@@ -3,6 +3,11 @@
 - Weekly meal planning: a Plan page (and a Plan screen inside Cook on iOS) puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
 - "Add week's shortages to list" combines what the week's uncooked meals need across recipes (converting units), counts the pantry once for the whole week, and tops up existing shopping list items instead of duplicating them.
 - Cooking a planned meal uses the usual cook flow and atomic pantry deduction, scaled to the planned servings, and marks the meal cooked.
+- Expiry reminders: "expiring soon" means in-stock items expiring within a window you choose (3 days by default), including anything already past its date.
+- Inventory shows a "Use it up" card, and What can I cook? gains a **Use it up** filter that ranks recipes by how many expiring items they use and shows which ones.
+- Removing an expired item asks whether it was used up or thrown away; the inventory shows this month's totals.
+- Opt-in daily expiry email (off by default) when email is configured. At most one per day, never in the demo. See [expiry reminders](docs/EXPIRY_REMINDERS.md).
+- iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
 
 ## 0.9.0 — A livelier, clearer kitchen
 

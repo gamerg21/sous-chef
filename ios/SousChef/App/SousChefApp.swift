@@ -14,6 +14,7 @@ struct SousChefApp: App {
         if arguments.contains("-uiTesting"), arguments.contains("-seedSample") {
             UserDefaults.standard.register(defaults: ["onboarding.done": true])
         }
+        ExpiryReminders.shared.activate()
     }
 
     var body: some Scene {
@@ -32,6 +33,8 @@ struct SousChefApp: App {
                 Task { await kitchen.server.syncNow() }
                 Task { await account.checkCredentialState() }
             }
+            // Reminders reflect whatever synced or changed while the app was open.
+            if phase != .inactive { ExpiryReminders.shared.reschedule(kitchen) }
             if phase != .inactive { Task { await KitchenIndex.refresh(kitchen) } }
         }
     }
@@ -76,6 +79,11 @@ final class AppNavigator {
     /// Links and text shared from other apps, imported one at a time by `RecipesView`.
     var sharedRecipes: [SharedRecipeInbox.Item] = []
 
+    /// Cook shows only recipes that use up food expiring soon.
+    var cookShowsExpiring = false
+    /// Asks Pantry to scroll to its "Use soon" section; Pantry clears it.
+    var revealExpiringInPantry = false
+
     /// Whether the Mac sidebar is showing.
     var showsSidebar = true
 
@@ -83,6 +91,18 @@ final class AppNavigator {
         tab = .recipes
         recipeToCook = cooking ? id : nil
         recipeToOpen = id
+    }
+
+    /// Where an expiry reminder leads.
+    func showExpiring(in destination: ExpiryReminders.Destination) {
+        switch destination {
+        case .cook:
+            cookShowsExpiring = true
+            tab = .cook
+        case .pantry:
+            revealExpiringInPantry = true
+            tab = .pantry
+        }
     }
 
     /// Takes whatever the share extension left and switches to Recipes to import it.

@@ -8,6 +8,7 @@ export interface PantrySnapshotItem {
   name: string
   quantity?: number
   unit?: IngredientUnit | 'count'
+  expiresOn?: string
 }
 
 export interface RecipeIngredientMapping {
