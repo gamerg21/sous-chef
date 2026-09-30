@@ -4,17 +4,13 @@ import SwiftUI
 @main
 struct SousChefApp: App {
     @State private var kitchen = Kitchen.shared
-    @State private var moderation = CommunityModeration.shared
     @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(kitchen)
-                .environment(moderation)
-                .environment(account)
-                .modelContainer(kitchen.container)
+                .kitchenEnvironment(kitchen)
                 .tint(.brand)
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
                 .task { await account.checkCredentialState() }
@@ -98,9 +94,25 @@ struct RootView: View {
         .id(kitchen.storeGeneration)
         .sheet(isPresented: $showSettings) {
             SettingsView()
+                .kitchenEnvironment(kitchen)
         }
         .fullScreenCover(isPresented: Binding(get: { !onboardingDone }, set: { onboardingDone = !$0 })) {
             OnboardingView { onboardingDone = true }
+                .kitchenEnvironment(kitchen)
         }
+    }
+}
+
+extension View {
+    /// The kitchen, community and store every screen expects.
+    ///
+    /// On a Mac, full-screen covers and sheets presented from other sheets
+    /// don't inherit the environment, so every presentation passes it on
+    /// again. Without it the app crashes on launch while showing onboarding.
+    func kitchenEnvironment(_ kitchen: Kitchen = .shared) -> some View {
+        environment(kitchen)
+            .environment(CommunityModeration.shared)
+            .environment(CommunityAccount.shared)
+            .modelContainer(kitchen.container)
     }
 }

@@ -19,6 +19,7 @@ struct OnboardingView: View {
             if kitchen.server.isConnected { page = 1 }
         }) {
             ServerConnectView()
+                .kitchenEnvironment(kitchen)
         }
     }
 
@@ -70,7 +71,7 @@ struct OnboardingView: View {
             VStack(spacing: 8) {
                 Text("Keep your kitchen in iCloud").font(.system(.title, design: .rounded, weight: .bold))
                     .multilineTextAlignment(.center)
-                Text("Sync your pantry, recipes and shopping list across your iPhone and iPad.")
+                Text("Sync your pantry, recipes and shopping list across your iPhone, iPad and Mac.")
                     .font(.title3)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)

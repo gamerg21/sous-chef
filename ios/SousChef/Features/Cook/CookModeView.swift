@@ -47,7 +47,7 @@ struct CookModeView: View {
                     }
                 }
             }
-            .sheet(isPresented: $chatting) { RecipeChatView(recipe: recipe) }
+            .sheet(isPresented: $chatting) { RecipeChatView(recipe: recipe).kitchenEnvironment(kitchen) }
         }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }

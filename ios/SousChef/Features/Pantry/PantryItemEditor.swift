@@ -184,6 +184,7 @@ struct PantryItemEditor: View {
                     scanning = false
                     apply(found)
                 }
+                .kitchenEnvironment(kitchen)
             }
             .onAppear(perform: load)
         }

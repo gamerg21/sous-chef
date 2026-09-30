@@ -148,7 +148,7 @@ struct RecipeImportView: View {
                 AIEngineBadge()
             }
             PhotoStrip(photos: $pages, maxCount: 6, openCameraFirst: true)
-            Text("Photograph a cookbook page, or choose photos and screenshots. Add a page for each part if the recipe continues. Sous Chef reads the text on this iPhone\(kitchen.ai.isAvailable ? " with Apple Intelligence" : ""), and you'll review everything before saving.")
+            Text("Photograph a cookbook page, or choose photos and screenshots. Add a page for each part if the recipe continues. Sous Chef reads the text on this device\(kitchen.ai.isAvailable ? " with Apple Intelligence" : ""), and you'll review everything before saving.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

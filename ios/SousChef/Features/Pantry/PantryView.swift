@@ -73,15 +73,16 @@ struct PantryView: View {
                 }
             }
             .refreshable { await kitchen.server.syncNow() }
-            .sheet(isPresented: $adding) { PantryItemEditor(item: nil) }
-            .sheet(item: $editing) { PantryItemEditor(item: $0) }
+            .sheet(isPresented: $adding) { PantryItemEditor(item: nil).kitchenEnvironment(kitchen) }
+            .sheet(item: $editing) { PantryItemEditor(item: $0).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $scanning) {
                 BarcodeLookupSheet { prefill in
                     scanning = false
                     scannedPrefill = prefill
                 }
+                .kitchenEnvironment(kitchen)
             }
-            .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0) }
+            .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0).kitchenEnvironment(kitchen) }
         }
     }
 

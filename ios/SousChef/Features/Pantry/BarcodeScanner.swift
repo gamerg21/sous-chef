@@ -77,6 +77,7 @@ struct BarcodeLookupSheet: View {
             .padding()
             .sheet(isPresented: $scanningLabel) {
                 LabelScanSheet(barcode: error == nil ? nil : lastCode) { onFound($0) }
+                    .kitchenEnvironment()
             }
             .navigationTitle("Scan a barcode")
             .navigationBarTitleDisplayMode(.inline)

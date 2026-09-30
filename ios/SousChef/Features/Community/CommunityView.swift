@@ -59,7 +59,7 @@ struct CommunityView: View {
             .toolbar { SettingsToolbarButton(showSettings: $showSettings) }
             .refreshable { await load() }
             .task(id: available && moderation.hasAcceptedGuidelines) { await load() }
-            .sheet(item: $reporting) { ReportRecipeSheet(recipe: $0) }
+            .sheet(item: $reporting) { ReportRecipeSheet(recipe: $0).kitchenEnvironment(kitchen) }
             .blockAuthorConfirmation(for: $blocking)
             .onChange(of: search) { _, value in if value.isEmpty { Task { await load() } } }
         }
@@ -128,7 +128,7 @@ struct CommunityRecipeView: View {
             }
         }
         // Outside the branches so the report sheet survives the recipe being hidden.
-        .sheet(isPresented: $reporting, onDismiss: { if moderation.isHidden(recipe) { dismiss() } }) { ReportRecipeSheet(recipe: recipe) }
+        .sheet(isPresented: $reporting, onDismiss: { if moderation.isHidden(recipe) { dismiss() } }) { ReportRecipeSheet(recipe: recipe).kitchenEnvironment() }
         .blockAuthorConfirmation(for: $blocking) { dismiss() }
     }
 

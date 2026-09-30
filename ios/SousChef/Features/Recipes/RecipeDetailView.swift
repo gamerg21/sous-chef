@@ -90,15 +90,19 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $editing) {
             RecipeEditorView(draft: kitchen.draft(from: recipe), recipe: recipe)
+                .kitchenEnvironment(kitchen)
         }
         .fullScreenCover(isPresented: $cooking) {
             CookModeView(recipe: recipe, scale: scale)
+                .kitchenEnvironment(kitchen)
         }
         .sheet(isPresented: $chatting) {
             RecipeChatView(recipe: recipe)
+                .kitchenEnvironment(kitchen)
         }
         .sheet(isPresented: $publishing) {
             PublishRecipeSheet(recipe: recipe)
+                .kitchenEnvironment(kitchen)
         }
         .confirmationDialog("Delete \(recipe.title)?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete recipe", role: .destructive) {

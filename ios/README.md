@@ -38,6 +38,19 @@ xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 17'
 Launch arguments: `-seedSample` fills an empty kitchen with sample data, and
 `-uiTesting` uses an in-memory store.
 
+### On a Mac
+
+The App Store also offers the iPad app on Apple silicon Macs ("Designed for
+iPad"). To run it there, choose the **My Mac (Designed for iPad)** destination in
+Xcode; the Mac has to be registered to the team, which Xcode offers to do the first
+time.
+
+On a Mac, full-screen covers and sheets presented from other sheets don't
+inherit the SwiftUI environment. Views that read `Kitchen`, the community objects
+or the model container crash when that happens, so every `.sheet` and
+`.fullScreenCover` passes them on again with `.kitchenEnvironment()`. Test new
+sheets on a Mac, including onboarding on a fresh install.
+
 ### Signing and capabilities
 
 The target uses team `X423ZKYPDN` and bundle ID `com.georgevina.souschef`. The first

@@ -58,12 +58,13 @@ struct CookView: View {
                     }
                 }
             }
-            .fullScreenCover(item: $cooking) { CookModeView(recipe: $0, scale: 1) }
+            .fullScreenCover(item: $cooking) { CookModeView(recipe: $0, scale: 1).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $ideas) {
                 RecipeImportView(mode: .ideas) { draft in
                     ideas = false
                     kitchen.save(draft)
                 }
+                .kitchenEnvironment(kitchen)
             }
         }
     }

@@ -17,7 +17,7 @@ struct LabelScanSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Take a photo of the front of the package, and another of the nutrition panel if it has one. Sous Chef reads the text on this iPhone and fills in the item for you to check.")
+                    Text("Take a photo of the front of the package, and another of the nutrition panel if it has one. Sous Chef reads the text on this device and fills in the item for you to check.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
 

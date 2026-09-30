@@ -173,7 +173,7 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } } }
-            .sheet(isPresented: $connecting) { ServerConnectView() }
+            .sheet(isPresented: $connecting) { ServerConnectView().kitchenEnvironment(kitchen) }
             .sheet(item: $exportFile) { file in ShareSheet(items: [file.url]) }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 guard case .success(let url) = result else { return }

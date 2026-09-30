@@ -116,12 +116,14 @@ struct RecipesView: View {
                 RecipeEditorView(draft: session.draft, recipe: nil) { saved in
                     path.append(saved)
                 }
+                .kitchenEnvironment(kitchen)
             }
             .sheet(item: $sharedImport, onDismiss: reviewSharedDraft) { shared in
                 RecipeImportView(mode: shared.mode, shared: shared.content) { draft in
                     sharedDraft = draft
                     sharedImport = nil
                 }
+                .kitchenEnvironment(kitchen)
             }
             .sheet(item: $importMode) { mode in
                 RecipeImportView(mode: mode) { draft in
@@ -131,6 +133,7 @@ struct RecipesView: View {
                         creating = RecipeDraftSession(draft: draft)
                     }
                 }
+                .kitchenEnvironment(kitchen)
             }
         }
     }

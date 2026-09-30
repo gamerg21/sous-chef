@@ -86,8 +86,8 @@ struct ShoppingView: View {
             }
             .safeAreaInset(edge: .bottom) { addBar }
             .refreshable { await kitchen.server.syncNow() }
-            .sheet(item: $editing) { ShoppingItemEditor(item: $0) }
-            .sheet(isPresented: $stocking) { StockPurchasesView(items: inCart) }
+            .sheet(item: $editing) { ShoppingItemEditor(item: $0).kitchenEnvironment(kitchen) }
+            .sheet(isPresented: $stocking) { StockPurchasesView(items: inCart).kitchenEnvironment(kitchen) }
             .confirmationDialog("Remove \(inCart.count) checked item\(inCart.count == 1 ? "" : "s")?", isPresented: $confirmClear, titleVisibility: .visible) {
                 Button("Clear checked", role: .destructive) { kitchen.clearChecked() }
             }
