@@ -12,6 +12,7 @@ struct RecipeDetailView: View {
     @State private var cooking = false
     @State private var chatting = false
     @State private var publishing = false
+    @State private var planning = false
     @State private var confirmDelete = false
     @State private var toast: String?
 
@@ -102,6 +103,10 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $publishing) {
             PublishRecipeSheet(recipe: recipe)
+                .kitchenEnvironment(kitchen)
+        }
+        .sheet(isPresented: $planning) {
+            AddToPlanSheet(recipe: recipe, onAdded: show)
                 .kitchenEnvironment(kitchen)
         }
         .confirmationDialog("Delete \(recipe.title)?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -251,6 +256,7 @@ struct RecipeDetailView: View {
             .symbolEffect(.bounce, value: recipe.favorited)
             Menu {
                 Button { editing = true } label: { Label("Edit", systemImage: "pencil") }
+                Button { planning = true } label: { Label("Add to Plan", systemImage: "calendar.badge.plus") }
                 if kitchen.ai.isAvailable {
                     Button { chatting = true } label: { Label("Ask Sous Chef", systemImage: "apple.intelligence") }
                 }

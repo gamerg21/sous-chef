@@ -143,6 +143,8 @@ final class Kitchen {
 
     func delete(_ recipe: Recipe) {
         if let id = recipe.serverID { context.insert(Tombstone(kind: .recipe, serverID: id)) }
+        // The server removes a recipe's planned meals with it; so does the device.
+        for meal in fetch(PlannedMeal.self) where meal.recipeUUID == recipe.uuid { context.delete(meal) }
         context.delete(recipe)
     }
 
@@ -166,8 +168,8 @@ final class Kitchen {
 
     // MARK: Cooking
 
-    func plan(for recipe: Recipe) -> CookingPlan {
-        CookingPlanner.plan(ingredients: recipe.ingredients, stock: stock())
+    func plan(for recipe: Recipe, scale: Double = 1) -> CookingPlan {
+        CookingPlanner.plan(ingredients: MealPlanner.scaled(recipe.ingredients, by: scale), stock: stock())
     }
 
     struct CookResult {
@@ -177,18 +179,22 @@ final class Kitchen {
     }
 
     /// Deducts the recipe from the pantry. With a companion server, the server
-    /// does it atomically; offline, the same plan is applied here.
-    func cook(_ recipe: Recipe, addMissing: Bool) async -> CookResult {
-        let plan = plan(for: recipe)
+    /// does it atomically; offline, the same plan is applied here. Cooking a
+    /// planned meal scales the recipe to its servings and marks it cooked.
+    func cook(_ recipe: Recipe, addMissing: Bool, meal: PlannedMeal? = nil) async -> CookResult {
+        let scale = meal.map { self.scale(for: $0) } ?? 1
+        let plan = plan(for: recipe, scale: scale)
         if server.isConnected, recipe.serverID != nil {
             do {
-                if try await server.cookOnServer(recipe, addMissing: addMissing) {
+                if try await server.cookOnServer(recipe, addMissing: addMissing, meal: meal, scale: scale) {
+                    markCooked(meal)
                     return CookResult(plan: plan, addedToShopping: addMissing ? plan.missingIngredients.count : 0, onServer: true)
                 }
             } catch {
                 // Offline or unreachable: fall through and cook locally.
             }
         }
+        markCooked(meal)
         let items = Dictionary(fetch(PantryItem.self).map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
         for deduction in plan.deductions {
             guard let item = items[deduction.id] else { continue }
@@ -362,6 +368,7 @@ final class Kitchen {
         for item in fetch(PantryItem.self) where item.serverID != nil { context.delete(item) }
         for recipe in fetch(Recipe.self) where recipe.serverID != nil { context.delete(recipe) }
         for item in fetch(ShoppingItem.self) where item.serverID != nil { context.delete(item) }
+        for meal in fetch(PlannedMeal.self) where meal.serverID != nil { context.delete(meal) }
         for tombstone in fetch(Tombstone.self) { context.delete(tombstone) }
         try? context.save()
     }
@@ -376,6 +383,7 @@ final class Kitchen {
             recipe.photoNeedsUpload = recipe.photo != nil
         }
         for item in fetch(ShoppingItem.self) { item.serverID = nil; item.needsPush = true; item.recipeServerID = nil }
+        for meal in fetch(PlannedMeal.self) { meal.serverID = nil; meal.needsPush = true; meal.recipeServerID = nil }
         for tombstone in fetch(Tombstone.self) { context.delete(tombstone) }
         try? context.save()
     }

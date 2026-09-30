@@ -1,9 +1,11 @@
 'use client'
 
 import { unitLabel } from '@/lib/units'
-import { useRef } from 'react'
-import { ArrowLeft, ChefHat, Clock, ExternalLink, ImagePlus, ListChecks, Pencil, Play, Share2, Star, Trash2, Users } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ArrowLeft, CalendarPlus, ChefHat, Clock, ExternalLink, ImagePlus, ListChecks, Pencil, Play, Share2, Star, Trash2, Users } from 'lucide-react'
 import { RecipeNutritionCard } from './RecipeNutritionCard'
+import { Collapse } from '../ui/collapse'
+import { AddToPlanForm, type PlanEntryValues } from '../plan/AddToPlanForm'
 import { eyebrowClassName } from './IngredientComposer'
 import type { PantrySnapshotItem, Recipe } from './types'
 import { cx, formatMinutes, ingredientMatchStatus } from './utils'
@@ -14,6 +16,8 @@ export interface RecipeDetailViewProps {
   onBack?: () => void
   onCook?: (id: string) => void
   onPublish?: (id:string) => void
+  /** Plans the recipe for a day; shows an "Add to plan" drawer when set. */
+  onAddToPlan?: (id: string, values: PlanEntryValues) => Promise<void>
   onEdit?: (id: string) => void
   onToggleFavorite?: (id: string) => void
   onUploadPhoto?: (id: string, file: File) => void
@@ -21,7 +25,8 @@ export interface RecipeDetailViewProps {
 }
 
 export function RecipeDetailView(props: RecipeDetailViewProps) {
-  const { recipe, pantrySnapshot = [], onBack, onCook, onEdit, onPublish, onToggleFavorite, onUploadPhoto, onRemovePhoto } = props
+  const { recipe, pantrySnapshot = [], onBack, onCook, onEdit, onPublish, onAddToPlan, onToggleFavorite, onUploadPhoto, onRemovePhoto } = props
+  const [planning, setPlanning] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
   const statuses = recipe.ingredients.map((ing) => ingredientMatchStatus(ing, pantrySnapshot))
   const inStock = statuses.filter((s) => s === 'in-stock').length
@@ -117,6 +122,12 @@ export function RecipeDetailView(props: RecipeDetailViewProps) {
                   <Pencil className="h-4 w-4" strokeWidth={1.75} />
                   Edit
                 </button>
+                {onAddToPlan && (
+                  <button type="button" onClick={() => setPlanning((value) => !value)} aria-expanded={planning} aria-controls="add-to-plan" className={cx(secondaryButton, planning && 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200')}>
+                    <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+                    Add to plan
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onCook?.(recipe.id)}
@@ -127,6 +138,23 @@ export function RecipeDetailView(props: RecipeDetailViewProps) {
                 </button>
               </div>
             </div>
+
+            {onAddToPlan && (
+              <Collapse open={planning}>
+                <div id="add-to-plan" className="rounded-2xl border border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/40">
+                  <p className={cx(eyebrowClassName, 'px-5 pt-4')}>Add to plan</p>
+                  <AddToPlanForm
+                    key={String(planning)}
+                    defaultServings={recipe.servings}
+                    onClose={() => setPlanning(false)}
+                    onSave={async (values) => {
+                      await onAddToPlan(recipe.id, values)
+                      setPlanning(false)
+                    }}
+                  />
+                </div>
+              </Collapse>
+            )}
 
             {/* Quick facts */}
             <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-stone-200 bg-white sm:grid-cols-4 dark:border-stone-800 dark:bg-stone-900/40">

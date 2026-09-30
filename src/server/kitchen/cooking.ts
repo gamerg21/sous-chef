@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation, type QueryCtx, type MutationCtx } from "./_generated/server";
-import { planCooking, type CookingPlan } from "../../lib/cooking-plan";
+import { planCooking, scaleIngredients, type CookingPlan } from "../../lib/cooking-plan";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   getAuthUserId,
@@ -9,16 +9,16 @@ import {
 } from "./helpers";
 
 
-function ingredientForPlan(ing: Doc<"recipeIngredients">) {
+export function ingredientForPlan(ing: Doc<"recipeIngredients">) {
   const { note, mappingLabel } = decodeIngredientMapping(ing);
   return { id: ing._id, name: ing.name, quantity: ing.quantity, unit: ing.unit, note, mappingLabel };
 }
-async function catalogFor(ctx: QueryCtx) {
+export async function catalogFor(ctx: QueryCtx) {
   const units = await ctx.db.query("units").take(500);
   const aliases = await ctx.db.query("unitAliases").take(2000);
   return units.filter(u => u.isEnabled).map(u => ({ labels: [u.name, u.slug, u.abbr ?? "", ...aliases.filter(a => a.unitId === u._id).map(a => a.alias)], type: u.unitType, factor: u.toBaseFactor }));
 }
-async function pantryFor(ctx: QueryCtx, householdId: Id<"households">) {
+export async function pantryFor(ctx: QueryCtx, householdId: Id<"households">) {
   const items = await ctx.db.query("inventoryItems").withIndex("by_householdId", q => q.eq("householdId", householdId)).collect();
   return Promise.all(items.map(async item => ({ id: item._id, name: (await ctx.db.get(item.foodItemId))?.name ?? "Unknown", quantity: item.quantity, unit: item.unit, expiresOn: item.expiresOn })));
 }
@@ -105,19 +105,31 @@ export const whatCanICook = query({
   },
 });
 
-async function recipePlan(ctx: QueryCtx, recipeId: Id<"recipes">) {
+/** A recipe's ingredients in order, ready for planning; `scale` multiplies measured amounts. */
+export async function recipeIngredientsForPlan(ctx: QueryCtx, recipeId: Id<"recipes">, scale = 1) {
+  const ingredients = await ctx.db.query("recipeIngredients").withIndex("by_recipeId", q => q.eq("recipeId", recipeId)).collect();
+  return scaleIngredients(ingredients.sort((a, b) => a.order - b.order).map(ingredientForPlan), scale);
+}
+
+function validateScale(scale?: number) {
+  if (scale != null && (!Number.isFinite(scale) || scale <= 0 || scale > 100)) throw new Error("Scale must be between 0 and 100");
+}
+
+async function recipePlan(ctx: QueryCtx, recipeId: Id<"recipes">, scale = 1) {
   const userId = await getAuthUserId(ctx);
   const recipe = await ctx.db.get(recipeId);
   if (!recipe) throw new Error("Recipe not found");
   await resolveHouseholdId(ctx, userId, recipe.householdId);
-  const ingredients = await ctx.db.query("recipeIngredients").withIndex("by_recipeId", q => q.eq("recipeId", recipeId)).collect();
   const stock = await pantryFor(ctx, recipe.householdId);
-  return { recipe, plan: planCooking(ingredients.sort((a,b) => a.order-b.order).map(ingredientForPlan), stock, await catalogFor(ctx)) };
+  return { recipe, plan: planCooking(await recipeIngredientsForPlan(ctx, recipeId, scale), stock, await catalogFor(ctx)) };
 }
 
 export const preview = query({
-  args: { recipeId: v.id("recipes") },
-  handler: async (ctx, args) => (await recipePlan(ctx, args.recipeId)).plan,
+  args: { recipeId: v.id("recipes"), scale: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    validateScale(args.scale);
+    return (await recipePlan(ctx, args.recipeId, args.scale)).plan;
+  },
 });
 
 async function addShortages(ctx: MutationCtx, householdId: Id<"households">, recipeId: Id<"recipes">, missing: CookingPlan["missingIngredients"]) {
@@ -148,20 +160,26 @@ async function addShortages(ctx: MutationCtx, householdId: Id<"households">, rec
   return added;
 }
 
+type CookArgs = { recipeId: Id<"recipes">; householdId?: Id<"households">; addMissingToShoppingList?: boolean; acknowledgeManualChecks?: boolean; scale?: number };
+
+/** Deducts a recipe from the pantry inside the caller's transaction; cooking a planned meal shares it. */
+export async function cookRecipeInTransaction(ctx: MutationCtx, args: CookArgs) {
+  validateScale(args.scale);
+  const { recipe, plan } = await recipePlan(ctx, args.recipeId, args.scale);
+  if (args.householdId && args.householdId !== recipe.householdId) throw new Error("Recipe belongs to a different kitchen");
+  if (plan.checks.length && !args.acknowledgeManualChecks) throw new Error("Check the ingredient amounts and units before confirming cooking");
+  for (const item of plan.deductions) {
+    if (item.remaining <= 0.000001) await ctx.db.delete(item.id as Id<"inventoryItems">);
+    else await ctx.db.patch(item.id as Id<"inventoryItems">, { quantity: item.remaining });
+  }
+  await ctx.db.patch(args.recipeId, { lastCookedAt: Date.now() });
+  if (args.addMissingToShoppingList) await addShortages(ctx, recipe.householdId, args.recipeId, plan.missingIngredients);
+  return { cooked: true, missingIngredients: plan.missingIngredients, manualChecks: plan.checks };
+}
+
 export const cookRecipe = mutation({
-  args: { recipeId: v.id("recipes"), householdId: v.optional(v.id("households")), addMissingToShoppingList: v.optional(v.boolean()), acknowledgeManualChecks: v.optional(v.boolean()) },
-  handler: async (ctx, args) => {
-    const { recipe, plan } = await recipePlan(ctx, args.recipeId);
-    if (args.householdId && args.householdId !== recipe.householdId) throw new Error("Recipe belongs to a different kitchen");
-    if (plan.checks.length && !args.acknowledgeManualChecks) throw new Error("Check the ingredient amounts and units before confirming cooking");
-    for (const item of plan.deductions) {
-      if (item.remaining <= 0.000001) await ctx.db.delete(item.id as Id<"inventoryItems">);
-      else await ctx.db.patch(item.id as Id<"inventoryItems">, { quantity: item.remaining });
-    }
-    await ctx.db.patch(args.recipeId, { lastCookedAt: Date.now() });
-    if (args.addMissingToShoppingList) await addShortages(ctx, recipe.householdId, args.recipeId, plan.missingIngredients);
-    return { cooked: true, missingIngredients: plan.missingIngredients, manualChecks: plan.checks };
-  },
+  args: { recipeId: v.id("recipes"), householdId: v.optional(v.id("households")), addMissingToShoppingList: v.optional(v.boolean()), acknowledgeManualChecks: v.optional(v.boolean()), scale: v.optional(v.number()) },
+  handler: async (ctx, args) => cookRecipeInTransaction(ctx, args),
 });
 
 export const addMissingToShoppingList = mutation({

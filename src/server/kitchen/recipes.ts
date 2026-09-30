@@ -383,6 +383,12 @@ export const remove = mutation({
       .collect();
     for (const s of saves) await ctx.db.delete(s._id);
 
+    const planned = await ctx.db
+      .query("mealPlanEntries")
+      .withIndex("by_recipeId", (q) => q.eq("recipeId", args.id))
+      .collect();
+    for (const entry of planned) await ctx.db.delete(entry._id);
+
     await ctx.db.delete(args.id);
     return { success: true };
   },

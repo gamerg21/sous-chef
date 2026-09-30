@@ -8,7 +8,9 @@ struct CookView: View {
     @Environment(Kitchen.self) private var kitchen
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
+    @Query(filter: #Predicate<PlannedMeal> { $0.cookedAt == nil }) private var openMeals: [PlannedMeal]
     @State private var cooking: Recipe?
+    @State private var cookingMeal: PlannedMeal?
     @State private var ideas = false
 
     /// Ranking reruns only when recipes or the pantry change.
@@ -27,6 +29,7 @@ struct CookView: View {
                     let almost = ranked.filter { (1...2).contains($0.missing) }
                     let rest = ranked.filter { $0.missing > 2 }
                     heroCard(readyCount: ready.count, total: ranked.count)
+                    planSection
                     section("Ready now", symbol: "checkmark.seal", items: ready)
                     section("Almost there", symbol: "cart", items: almost)
                     section("Needs a shop", symbol: "basket", items: rest)
@@ -50,6 +53,7 @@ struct CookView: View {
             }
             .navigationTitle("Cook")
             .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
+            .navigationDestination(for: PlanRoute.self) { _ in PlanView() }
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 if kitchen.ai.canGenerateRecipes {
@@ -59,6 +63,12 @@ struct CookView: View {
                 }
             }
             .fullScreenCover(item: $cooking) { CookModeView(recipe: $0, scale: 1).kitchenEnvironment(kitchen) }
+            .fullScreenCover(item: $cookingMeal) { meal in
+                if let recipe = kitchen.recipe(for: meal) {
+                    CookModeView(recipe: recipe, scale: kitchen.scale(for: meal), meal: meal)
+                        .kitchenEnvironment(kitchen)
+                }
+            }
             .sheet(isPresented: $ideas) {
                 RecipeImportView(mode: .ideas) { draft in
                     ideas = false
@@ -74,6 +84,31 @@ struct CookView: View {
         case 5..<11: "This morning"
         case 11..<16: "This afternoon"
         default: "Tonight"
+        }
+    }
+
+    /// Tonight's planned meal, if any, and the way into the week plan.
+    private var planSection: some View {
+        Section {
+            if let meal = MealPlanner.tonight(in: openMeals), let recipe = kitchen.recipe(for: meal) {
+                HStack(spacing: 12) {
+                    RecipeImage(data: recipe.photo)
+                        .frame(width: 52, height: 52)
+                        .clipShape(.rect(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Eyebrow("Planned · \(meal.slot.title)", systemImage: meal.slot.symbol)
+                        Text(recipe.title).font(.body.weight(.semibold)).lineLimit(2)
+                    }
+                    Spacer()
+                    Button("Cook", systemImage: "flame") { cookingMeal = meal }
+                        .buttonStyle(.glassProminent)
+                        .labelStyle(.titleAndIcon)
+                        .fixedSize()
+                }
+            }
+            NavigationLink(value: PlanRoute()) {
+                Label("This week's plan", systemImage: "calendar")
+            }
         }
     }
 

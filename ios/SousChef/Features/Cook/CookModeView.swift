@@ -6,6 +6,8 @@ import SwiftUI
 struct CookModeView: View {
     let recipe: Recipe
     let scale: Double
+    /// Set when cooking a planned meal: the pantry update uses its servings and marks it cooked.
+    var meal: PlannedMeal?
 
     @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
@@ -120,7 +122,7 @@ struct CookModeView: View {
     }
 
     private var finishPage: some View {
-        let plan = kitchen.plan(for: recipe)
+        let plan = kitchen.plan(for: recipe, scale: meal == nil ? 1 : scale)
         return ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Eyebrow("All done", systemImage: "checkmark.seal")
@@ -164,7 +166,7 @@ struct CookModeView: View {
                     Button {
                         finishing = true
                         Task {
-                            result = await kitchen.cook(recipe, addMissing: addMissing && !plan.missingIngredients.isEmpty)
+                            result = await kitchen.cook(recipe, addMissing: addMissing && !plan.missingIngredients.isEmpty, meal: meal)
                             finishing = false
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
                         }

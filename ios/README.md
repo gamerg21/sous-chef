@@ -10,7 +10,7 @@ companion to a self-hosted Sous Chef server.
 | --- | --- | --- |
 | Pantry | Inventory | Pantry, fridge and freezer with brand, amounts, expiry (quick durations or a calendar) and nutrition; VisionKit barcode scanning with Open Food Facts lookup, and label scanning for products it doesn't know. |
 | Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
-| Cook | Cooking | Recipes ranked by what you have, cook mode with timers, and pantry deduction. |
+| Cook | Cooking, Plan | Recipes ranked by what you have, cook mode with timers, and pantry deduction. "This week's plan" plans recipes by day and meal, shows their readiness, and adds the week's combined shortages to the shopping list. |
 | Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
 | Community | Community | Browse and save community recipes; publish with Sign in with Apple or through a server. |
 
@@ -182,7 +182,7 @@ are required.
 
 - The device store is the working copy, so the app works offline.
 - Each sync pushes local changes (creates, updates and deletion tombstones), then
-  mirrors the server's pantry, recipes and shopping list. Conflicts resolve as
+  mirrors the server's pantry, recipes, shopping list and meal plan (servers without meal planning are skipped for plans). Conflicts resolve as
   "latest pusher wins".
 - On first connection, records that already exist on both sides (same name, and
   for pantry items the same location and unit) are paired instead of duplicated,

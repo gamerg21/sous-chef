@@ -9,6 +9,7 @@ import { RecipeDetailView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { PageLoader } from "@/components/ui/page-loader";
+import { formatDay, slotLabels, type PlanEntryValues } from "@/components/plan";
 
 export default function RecipeDetailPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function RecipeDetailPage() {
   const updateRecipe = useMutation(api.recipes.update);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const saveStorageId = useMutation(api.storage.saveStorageId);
+  const addToPlan = useMutation(api.mealPlan.add);
 
   const pantrySnapshot = useMemo(
     () => inventoryData?.items || [],
@@ -42,6 +44,28 @@ export default function RecipeDetailPage() {
       router.push(`/cooking?recipeId=${id}`);
     },
     [router]
+  );
+
+  const handleAddToPlan = useCallback(
+    async (id: string, values: PlanEntryValues) => {
+      try {
+        await addToPlan({ recipeId: id as Id<"recipes">, ...values });
+        setAlertModal({
+          isOpen: true,
+          message: `Planned for ${slotLabels[values.slot].toLowerCase()} on ${formatDay(values.date, { weekday: "long", day: "numeric", month: "short" })}. You'll find it under Plan.`,
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Error adding to plan:", error);
+        setAlertModal({
+          isOpen: true,
+          message: error instanceof Error ? error.message : "Couldn't add this recipe to your plan. Please try again.",
+          variant: "error",
+        });
+        throw error;
+      }
+    },
+    [addToPlan]
   );
 
   const handleEdit = useCallback(
@@ -148,6 +172,7 @@ export default function RecipeDetailPage() {
         onCook={handleCook}
         onEdit={handleEdit}
         onPublish={id=>router.push(`/community/publish?recipeId=${encodeURIComponent(id)}`)}
+        onAddToPlan={handleAddToPlan}
         onToggleFavorite={handleToggleFavorite}
         onUploadPhoto={handleUploadPhoto}
         onRemovePhoto={handleRemovePhoto}

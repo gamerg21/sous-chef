@@ -1,10 +1,66 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getAuthUserId, resolveHouseholdId } from "./helpers";
+import { unitConverter } from "../../lib/cooking-plan";
 
 function validateItem(name?: string, quantity?: number | null) {
   if (name !== undefined && (!name.trim() || name.trim().length > 200)) throw new Error("Item name must be between 1 and 200 characters");
   if (quantity != null && (!Number.isFinite(quantity) || quantity <= 0)) throw new Error("Quantity must be greater than zero");
+}
+
+/**
+ * Adds shortages to a household's list without duplicating what's already there.
+ * Rows for the same food in a comparable unit count toward the need, including
+ * ones already in the cart; any extra is topped up on an unticked row, so running
+ * it again changes nothing.
+ */
+export async function mergeShortagesIntoList(
+  ctx: MutationCtx,
+  householdId: Id<"households">,
+  shortages: { name: string; quantity?: number; unit?: string }[],
+  catalog: Parameters<typeof unitConverter>[0],
+  source = "meal-plan",
+) {
+  const list = await ctx.db.query("shoppingLists").withIndex("by_householdId", q => q.eq("householdId", householdId)).first();
+  if (!list) throw new Error("Shopping list not found");
+  const rows = await ctx.db.query("shoppingListItems").withIndex("by_shoppingListId", q => q.eq("shoppingListId", list._id)).collect();
+  const { convert } = unitConverter(catalog);
+  const key = (name: string) => name.toLowerCase().trim().replace(/\s+/g, " ");
+  let added = 0, updated = 0;
+  for (const item of shortages) {
+    const sameFood = rows.filter(row => key(row.name) === key(item.name));
+    if (item.quantity == null) {
+      if (!sameFood.length) {
+        const id = await ctx.db.insert("shoppingListItems", { shoppingListId: list._id, name: item.name.trim(), unit: item.unit, checked: false, source });
+        rows.push((await ctx.db.get(id))!);
+        added++;
+      }
+      continue;
+    }
+    const comparable = sameFood.filter(row => row.quantity != null && convert(1, row.unit, item.unit) !== null);
+    const covered = comparable.reduce((sum, row) => sum + convert(row.quantity!, row.unit, item.unit)!, 0);
+    if (covered + 0.000001 >= item.quantity) continue;
+    const extra = item.quantity - covered;
+    const open = comparable.find(row => !row.checked);
+    const unmeasured = sameFood.find(row => !row.checked && row.quantity == null);
+    if (open) {
+      const quantity = Number((open.quantity! + convert(extra, item.unit, open.unit)!).toPrecision(6));
+      await ctx.db.patch(open._id, { quantity });
+      open.quantity = quantity;
+      updated++;
+    } else if (unmeasured) {
+      const quantity = Number(extra.toPrecision(6));
+      await ctx.db.patch(unmeasured._id, { quantity, unit: item.unit });
+      Object.assign(unmeasured, { quantity, unit: item.unit });
+      updated++;
+    } else {
+      const id = await ctx.db.insert("shoppingListItems", { shoppingListId: list._id, name: item.name.trim(), quantity: Number(extra.toPrecision(6)), unit: item.unit, checked: false, source });
+      rows.push((await ctx.db.get(id))!);
+      added++;
+    }
+  }
+  return { added, updated };
 }
 
 export const get = query({

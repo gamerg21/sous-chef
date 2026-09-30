@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from 'react'
 import {
   Boxes,
   BookOpen,
+  CalendarDays,
   ShoppingCart,
   ChefHat,
   Users,
@@ -40,6 +41,7 @@ function iconForLabel(label: string): LucideIcon {
   if (normalized.includes('inventory')) return Boxes
   if (normalized.includes('recipe')) return BookOpen
   if (normalized.includes('cook')) return ChefHat
+  if (normalized === 'plan') return CalendarDays
   if (normalized.includes('shopping')) return ShoppingCart
   if (normalized.includes('community') || normalized.includes('extension')) return Users
   if (normalized.includes('settings')) return Settings
