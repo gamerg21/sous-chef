@@ -7,7 +7,8 @@ struct OnboardingView: View {
     @State private var connecting = false
     /// `-onboardingPage 1` opens the iCloud page directly, for screenshots.
     @State private var page = UserDefaults.standard.integer(forKey: "onboardingPage")
-    @State private var syncWithICloud = Kitchen.iCloudPreferred
+    /// On unless the person already turned it off; sync starts only when they continue.
+    @State private var syncWithICloud = UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? true
 
     var body: some View {
         Group {
@@ -117,7 +118,10 @@ struct OnboardingView: View {
 enum SampleKitchen {
     static func seedIfRequested(into kitchen: Kitchen) {
         guard ProcessInfo.processInfo.arguments.contains("-seedSample"), kitchen.fetch(PantryItem.self).isEmpty else { return }
-        UserDefaults.standard.set(true, forKey: "onboarding.done")
+        // With `-uiTesting` the app skips onboarding for that launch only.
+        if !ProcessInfo.processInfo.arguments.contains("-uiTesting") {
+            UserDefaults.standard.set(true, forKey: "onboarding.done")
+        }
         let photoFolder = UserDefaults.standard.string(forKey: "samplePhotos").map { URL(fileURLWithPath: $0) }
         let day: (Int) -> Date = { Calendar.current.date(byAdding: .day, value: $0, to: .now)! }
         let pantry: [(String, String?, StorageLocation, Double, String, String?, Date?)] = [

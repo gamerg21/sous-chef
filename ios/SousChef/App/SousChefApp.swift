@@ -7,6 +7,15 @@ struct SousChefApp: App {
     @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        // Sample data in an in-memory kitchen skips onboarding without saving
+        // that, so a test run never hides onboarding from the real app.
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-uiTesting"), arguments.contains("-seedSample") {
+            UserDefaults.standard.register(defaults: ["onboarding.done": true])
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -28,8 +37,28 @@ struct SousChefApp: App {
     }
 }
 
-enum AppTab: String, Hashable {
+enum AppTab: String, Hashable, CaseIterable {
     case pantry, recipes, cook, shopping, community
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .pantry: "Pantry"
+        case .recipes: "Recipes"
+        case .cook: "Cook"
+        case .shopping: "Shopping"
+        case .community: "Community"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .pantry: "cabinet"
+        case .recipes: "book.pages"
+        case .cook: "frying.pan"
+        case .shopping: "cart"
+        case .community: "person.2"
+        }
+    }
 }
 
 /// Where Siri and Shortcuts send the person when an intent opens the app.
@@ -70,26 +99,9 @@ struct RootView: View {
     @Query(filter: #Predicate<ShoppingItem> { !$0.checked }) private var openShopping: [ShoppingItem]
 
     var body: some View {
-        TabView(selection: $navigator.tab) {
-            Tab("Pantry", systemImage: "cabinet", value: AppTab.pantry) {
-                PantryView(showSettings: $showSettings)
-            }
-            Tab("Recipes", systemImage: "book.pages", value: AppTab.recipes) {
-                RecipesView(showSettings: $showSettings)
-            }
-            Tab("Cook", systemImage: "frying.pan", value: AppTab.cook) {
-                CookView(showSettings: $showSettings)
-            }
-            Tab("Shopping", systemImage: "cart", value: AppTab.shopping) {
-                ShoppingView(showSettings: $showSettings)
-            }
-            .badge(openShopping.count)
-            Tab("Community", systemImage: "person.2", value: AppTab.community) {
-                CommunityView(showSettings: $showSettings)
-            }
+        Group {
+            if ProcessInfo.processInfo.isiOSAppOnMac { macLayout } else { tabs }
         }
-        .tabViewStyle(.sidebarAdaptable)
-        .tabBarMinimizeBehavior(.onScrollDown)
         // Rebuild on the new store when iCloud sync is switched on or off.
         .id(kitchen.storeGeneration)
         .sheet(isPresented: $showSettings) {
@@ -101,6 +113,47 @@ struct RootView: View {
                 .kitchenEnvironment(kitchen)
         }
     }
+
+    private var tabs: some View {
+        TabView(selection: $navigator.tab) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                Tab(tab.title, systemImage: tab.systemImage, value: tab) { screen(for: tab) }
+                    .badge(badge(for: tab))
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tabBarMinimizeBehavior(.onScrollDown)
+    }
+
+    /// On a Mac the adaptable tab view's sidebar button turns the sidebar into
+    /// the iPad tab bar, which looks out of place, so the Mac gets an ordinary
+    /// sidebar that simply hides and shows.
+    private var macLayout: some View {
+        NavigationSplitView {
+            List(selection: Binding<AppTab?>(get: { navigator.tab }, set: { if let tab = $0 { navigator.tab = tab } })) {
+                ForEach(AppTab.allCases, id: \.self) { tab in
+                    Label(tab.title, systemImage: tab.systemImage)
+                        .badge(badge(for: tab))
+                        .tag(tab)
+                }
+            }
+            .navigationSplitViewColumnWidth(min: 180, ideal: 220)
+        } detail: {
+            screen(for: navigator.tab)
+        }
+    }
+
+    @ViewBuilder private func screen(for tab: AppTab) -> some View {
+        switch tab {
+        case .pantry: PantryView(showSettings: $showSettings)
+        case .recipes: RecipesView(showSettings: $showSettings)
+        case .cook: CookView(showSettings: $showSettings)
+        case .shopping: ShoppingView(showSettings: $showSettings)
+        case .community: CommunityView(showSettings: $showSettings)
+        }
+    }
+
+    private func badge(for tab: AppTab) -> Int { tab == .shopping ? openShopping.count : 0 }
 }
 
 extension View {

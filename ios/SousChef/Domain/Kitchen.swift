@@ -69,8 +69,11 @@ final class Kitchen {
 
     // MARK: iCloud
 
+    /// Nothing goes to iCloud until the person says yes on the onboarding
+    /// page, which records the choice. People who finished onboarding before
+    /// the choice was recorded keep syncing.
     static var iCloudPreferred: Bool {
-        get { UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? UserDefaults.standard.bool(forKey: "onboarding.done") }
         set { UserDefaults.standard.set(newValue, forKey: "icloud.enabled") }
     }
 

@@ -45,6 +45,9 @@ iPad"). To run it there, choose the **My Mac (Designed for iPad)** destination i
 Xcode; the Mac has to be registered to the team, which Xcode offers to do the first
 time.
 
+On a Mac the app uses an ordinary sidebar (`NavigationSplitView`) instead of the
+adaptable tab view, whose sidebar button turns into the iPad tab bar there.
+
 On a Mac, full-screen covers and sheets presented from other sheets don't
 inherit the SwiftUI environment. Views that read `Kitchen`, the community objects
 or the model container crash when that happens, so every `.sheet` and
