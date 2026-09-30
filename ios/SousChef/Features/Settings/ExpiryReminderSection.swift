@@ -18,7 +18,10 @@ struct ExpiryReminderSection: View {
             } label: {
                 Label("Expiring soon means within", systemImage: "hourglass")
             }
-            .onChange(of: windowDays) { reminders.reschedule() }
+            .onChange(of: windowDays) {
+                reminders.reschedule()
+                WidgetSnapshotWriter.scheduleRefresh()
+            }
 
             Toggle(isOn: $enabled) {
                 Label("Daily reminder", systemImage: "bell.badge")

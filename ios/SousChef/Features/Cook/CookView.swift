@@ -12,6 +12,7 @@ struct CookView: View {
     @State private var cooking: Recipe?
     @State private var cookingMeal: PlannedMeal?
     @State private var ideas = false
+    @State private var path = NavigationPath()
     @Bindable private var navigator = AppNavigator.shared
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
 
@@ -27,7 +28,7 @@ struct CookView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             let ranked = ranked
             let usingUp = Kitchen.rankForUsingUp(ranked)
             List {
@@ -70,6 +71,12 @@ struct CookView: View {
             .navigationTitle("Cook")
             .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
             .navigationDestination(for: PlanRoute.self) { _ in PlanView() }
+            .onChange(of: navigator.showPlan, initial: true) { _, show in
+                // A widget or `souschef://plan` link asked for the week plan.
+                guard show else { return }
+                navigator.showPlan = false
+                path = NavigationPath([PlanRoute()])
+            }
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 if kitchen.ai.canGenerateRecipes {

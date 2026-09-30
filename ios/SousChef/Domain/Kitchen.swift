@@ -20,7 +20,7 @@ final class Kitchen {
     private(set) var storeGeneration = 0
     let ai = KitchenAI()
     let server = CompanionServer()
-    private let inMemory: Bool
+    let inMemory: Bool
 
     var context: ModelContext { container.mainContext }
 

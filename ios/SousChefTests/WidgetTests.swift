@@ -76,9 +76,13 @@ struct WidgetTests {
     }
 
     @Test func snapshotDecodesWhenNewSectionsAreAddedOrMissing() throws {
-        // A snapshot from a newer build (say, with tonight's meal) still decodes.
-        let newer = #"{"expiring":[],"shopping":{"names":["Milk"],"openCount":1},"tonight":{"title":"Soup"}}"#
-        #expect(try KitchenSnapshot.decode(Data(newer.utf8)).shopping.names == ["Milk"])
+        // A snapshot from a newer build (an unknown section, or tonight's meal
+        // in a shape this build can't read) still decodes; the unreadable
+        // section is just missing.
+        let newer = #"{"expiring":[],"shopping":{"names":["Milk"],"openCount":1},"lunchbox":[1],"tonight":{"title":"Soup"}}"#
+        let snapshot = try KitchenSnapshot.decode(Data(newer.utf8))
+        #expect(snapshot.shopping.names == ["Milk"])
+        #expect(snapshot.tonight == nil)
     }
 
     @Test func snapshotListsFoodExpiringSoonAndTheOpenShoppingList() throws {
@@ -100,9 +104,10 @@ struct WidgetTests {
         let bread = try #require(kitchen.fetch(ShoppingItem.self).first { $0.name == "Bread" })
         bread.checked = true
 
-        let snapshot = WidgetSnapshotWriter.snapshot(of: kitchen, now: now)
+        let snapshot = WidgetSnapshotWriter.snapshot(of: kitchen, now: now, window: 3)
 
         #expect(snapshot.expiring.map(\.name) == ["Old milk", "Spinach", "Yogurt"])
+        #expect(snapshot.expiringWindowDays == 3)
         #expect(snapshot.expiring.map { $0.days(from: now) } == [-1, 0, 2])
         #expect(snapshot.expiring[0].location == "fridge")
         #expect(snapshot.shopping.openCount == 2)
@@ -117,10 +122,26 @@ struct WidgetTests {
             kitchen.context.insert(item)
             kitchen.context.insert(ShoppingItem(name: "Item \(index)"))
         }
-        let snapshot = WidgetSnapshotWriter.snapshot(of: kitchen, now: now)
+        let snapshot = WidgetSnapshotWriter.snapshot(of: kitchen, now: now, window: 14)
         #expect(snapshot.expiring.count == KitchenSnapshot.expiringLimit)
         #expect(snapshot.shopping.openCount == 12)
         #expect(snapshot.shopping.names.count == KitchenSnapshot.shoppingNameLimit)
+    }
+
+    @Test func snapshotUsesTheSameExpiringWindowAsThePantry() {
+        let kitchen = Kitchen(inMemory: true)
+        for days in [-3, 0, 2, 3, 4, 10] {
+            let item = PantryItem(name: "Food \(days)")
+            item.expiresOn = Calendar.current.date(byAdding: .day, value: days, to: now)
+            kitchen.context.insert(item)
+        }
+        let stock = kitchen.onHand().map(\.expiringStock)
+        for window in [1, 3, 7] {
+            let snapshot = WidgetSnapshotWriter.snapshot(of: kitchen, now: now, window: window)
+            #expect(snapshot.expiring.map(\.id) == ExpiringFood.find(in: stock, within: window, now: now).map(\.id))
+        }
+        let names = WidgetSnapshotWriter.snapshot(of: kitchen, now: now, window: 3).expiring.map(\.name)
+        #expect(names == ["Food -3", "Food 0", "Food 2", "Food 3"])
     }
 
     @Test func expiringItemsDescribeDaysLeft() {
@@ -146,5 +167,24 @@ struct WidgetTests {
         navigator.open(URL(string: "souschef://shared")!)
         navigator.open(URL(string: "https://example.com/shopping")!)
         #expect(navigator.tab == .pantry)
+    }
+
+    @Test func linksLeadToUseSoonUseItUpThePlanAndRecipes() throws {
+        let navigator = AppNavigator()
+        navigator.open(KitchenLink.useItUp)
+        #expect(navigator.tab == .cook && navigator.cookShowsExpiring)
+
+        navigator.open(KitchenLink.useSoon)
+        #expect(navigator.tab == .pantry && navigator.revealExpiringInPantry)
+
+        navigator.open(KitchenLink.plan)
+        #expect(navigator.tab == .cook && navigator.showPlan)
+
+        let id = UUID()
+        navigator.open(KitchenLink.recipe(id))
+        #expect(navigator.tab == .recipes && navigator.recipeToOpen == id)
+
+        #expect(KitchenLink.destination(of: try #require(URL(string: "souschef://recipe/not-a-uuid"))) == nil)
+        #expect(KitchenLink.destination(of: try #require(URL(string: "SousChef://Plan"))) == .plan)
     }
 }

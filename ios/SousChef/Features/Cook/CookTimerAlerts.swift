@@ -17,6 +17,12 @@ final class CookTimerAlerts {
     nonisolated static let notificationPrefix = "souschef.cook-timer."
     nonisolated static let notificationCategory = "SOUSCHEF_COOK_TIMER"
 
+    /// Registered with the others by `AppNotifications`, which also banners
+    /// finished timers with sound while the app is open.
+    nonisolated static var category: UNNotificationCategory {
+        UNNotificationCategory(identifier: notificationCategory, actions: [], intentIdentifiers: [])
+    }
+
     /// The running activity's ID. Activities are looked up by ID rather than
     /// kept, since `Activity` can't be held across concurrency domains.
     private var activityID: String?

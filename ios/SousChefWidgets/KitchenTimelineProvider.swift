@@ -9,7 +9,8 @@ nonisolated struct KitchenEntry: TimelineEntry {
 
 /// Serves the app's latest snapshot. The app reloads timelines whenever the
 /// snapshot changes; between changes, an entry at each of the next few
-/// midnights keeps "Tomorrow" and "3 days" counting down.
+/// midnights keeps "Tomorrow" and "3 days" counting down and moves Tonight's
+/// meal on to the next day's.
 nonisolated struct KitchenTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> KitchenEntry {
         KitchenEntry(date: .now, snapshot: .preview)
@@ -42,6 +43,9 @@ nonisolated extension KitchenSnapshot {
                 .init(id: UUID(), name: "Chicken thighs", location: "fridge", expiresOn: day(2)),
                 .init(id: UUID(), name: "Sourdough", location: "pantry", expiresOn: day(4)),
             ],
-            shopping: .init(openCount: 5, names: ["Milk", "Eggs", "Lemons", "Parmesan", "Basil"]))
+            shopping: .init(openCount: 5, names: ["Milk", "Eggs", "Lemons", "Parmesan", "Basil"]),
+            expiringWindowDays: 3,
+            tonight: .init(id: UUID(), recipeID: UUID(), recipeName: "Lemon Chicken Traybake", day: dayKey(today),
+                           slot: "dinner", servings: 4, missing: 1, photo: nil))
     }
 }

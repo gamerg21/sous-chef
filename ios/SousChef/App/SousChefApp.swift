@@ -14,7 +14,7 @@ struct SousChefApp: App {
         if arguments.contains("-uiTesting"), arguments.contains("-seedSample") {
             UserDefaults.standard.register(defaults: ["onboarding.done": true])
         }
-        ExpiryReminders.shared.activate()
+        AppNotifications.shared.activate()
     }
 
     var body: some Scene {
@@ -92,6 +92,8 @@ final class AppNavigator {
     var cookShowsExpiring = false
     /// Asks Pantry to scroll to its "Use soon" section; Pantry clears it.
     var revealExpiringInPantry = false
+    /// Asks Cook to show the week plan; Cook clears it.
+    var showPlan = false
 
     /// Whether the Mac sidebar is showing.
     var showsSidebar = true
@@ -102,22 +104,32 @@ final class AppNavigator {
         recipeToOpen = id
     }
 
-    /// Where an expiry reminder leads.
-    func showExpiring(in destination: ExpiryReminders.Destination) {
-        switch destination {
-        case .cook:
-            cookShowsExpiring = true
-            tab = .cook
-        case .pantry:
-            revealExpiringInPantry = true
-            tab = .pantry
-        }
+    /// Opens a `souschef://` link from a widget; other links are ignored.
+    func open(_ url: URL) {
+        guard let destination = KitchenLink.destination(of: url) else { return }
+        go(to: destination)
     }
 
-    /// Opens the tab a widget link names, such as `souschef://shopping`.
-    func open(_ url: URL) {
-        guard let tab = KitchenLink.tabName(in: url).flatMap(AppTab.init(rawValue:)) else { return }
-        self.tab = tab
+    /// The one place widget links and notification taps are routed.
+    func go(to destination: KitchenLink.Destination) {
+        switch destination {
+        case .pantry: tab = .pantry
+        case .recipes: tab = .recipes
+        case .cook: tab = .cook
+        case .shopping: tab = .shopping
+        case .community: tab = .community
+        case .useSoon:
+            revealExpiringInPantry = true
+            tab = .pantry
+        case .useItUp:
+            cookShowsExpiring = true
+            tab = .cook
+        case .plan:
+            showPlan = true
+            tab = .cook
+        case .recipe(let id):
+            open(recipe: id)
+        }
     }
 
     /// Takes whatever the share extension left and switches to Recipes to import it.

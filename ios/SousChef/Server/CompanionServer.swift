@@ -142,6 +142,8 @@ final class CompanionServer {
                 let now = Date()
                 UserDefaults.standard.set(now, forKey: "server.lastSynced")
                 status = .synced(now)
+                // Pulled pantry, list and plan changes reach the widgets too.
+                if !kitchen.inMemory { WidgetSnapshotWriter.scheduleRefresh(kitchen) }
             } catch ServerClient.ServerError.notAuthenticated {
                 status = .failed("Your server session ended. Sign in again in Settings.")
                 self.client = nil

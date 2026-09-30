@@ -1,13 +1,14 @@
 import SwiftUI
 import WidgetKit
 
-/// Food to use up next, with how many days each has left. Opens the Pantry.
+/// Food to use up next, with how many days each has left. Opens the Pantry's
+/// "Use soon" section, which uses the same window.
 struct ExpiringSoonWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "ExpiringSoon", provider: KitchenTimelineProvider()) { entry in
             ExpiringSoonView(entry: entry)
                 .containerBackground(.background, for: .widget)
-                .widgetURL(KitchenLink.pantry)
+                .widgetURL(KitchenLink.useSoon)
         }
         .configurationDisplayName("Use Soon")
         .description("Food in your kitchen that expires next.")
@@ -20,6 +21,14 @@ struct ExpiringSoonView: View {
     @Environment(\.widgetFamily) private var family
 
     private var items: [KitchenSnapshot.ExpiringItem] { entry.snapshot?.expiring ?? [] }
+
+    /// Uses the window the app found the items with, which is the cook's
+    /// "expiring soon" setting.
+    private var emptyText: String {
+        guard let snapshot = entry.snapshot else { return "Open Sous Chef to see what's expiring." }
+        guard let days = snapshot.expiringWindowDays else { return "Nothing expiring soon." }
+        return days == 1 ? "Nothing expiring by tomorrow." : "Nothing expiring in the next \(days) days."
+    }
 
     private var limit: Int {
         switch family {
@@ -41,7 +50,7 @@ struct ExpiringSoonView: View {
                 .textCase(.uppercase)
             if items.isEmpty {
                 Spacer(minLength: 0)
-                Text(entry.snapshot == nil ? "Open Sous Chef to see what's expiring." : "Nothing expiring in the next two weeks.")
+                Text(emptyText)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)

@@ -5,21 +5,20 @@ import UserNotifications
 /// Opt-in local notifications about food that's about to expire. Everything
 /// is scheduled on the device from the pantry; there is no push server.
 @Observable
-final class ExpiryReminders: NSObject, UNUserNotificationCenterDelegate {
+final class ExpiryReminders {
     static let shared = ExpiryReminders()
-
-    enum Destination: String {
-        /// Cook, filtered to recipes that use up expiring food.
-        case cook
-        /// The Pantry's "Use soon" section.
-        case pantry
-    }
 
     nonisolated private static let enabledKey = "expiry.reminders.enabled"
     private static let hourKey = "expiry.reminders.hour"
     private static let minuteKey = "expiry.reminders.minute"
-    nonisolated private static let category = "expiry-reminder"
-    nonisolated private static let showPantryAction = "show-pantry"
+    nonisolated static let category = "expiry-reminder"
+    nonisolated static let showPantryAction = "show-pantry"
+
+    /// Registered with the others by `AppNotifications`.
+    nonisolated static var notificationCategory: UNNotificationCategory {
+        let showPantry = UNNotificationAction(identifier: showPantryAction, title: "Show in Pantry", options: [.foreground])
+        return UNNotificationCategory(identifier: category, actions: [showPantry], intentIdentifiers: [])
+    }
 
     private let center = UNUserNotificationCenter.current()
     private let defaults = UserDefaults.standard
@@ -39,17 +38,9 @@ final class ExpiryReminders: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    override init() {
+    init() {
         isEnabled = defaults.bool(forKey: Self.enabledKey)
         time = DateComponents(hour: defaults.object(forKey: Self.hourKey) as? Int ?? 9, minute: defaults.object(forKey: Self.minuteKey) as? Int ?? 0)
-        super.init()
-    }
-
-    /// Becomes the notification delegate, so taps route into the app.
-    func activate() {
-        center.delegate = self
-        let showPantry = UNNotificationAction(identifier: Self.showPantryAction, title: "Show in Pantry", options: [.foreground])
-        center.setNotificationCategories([UNNotificationCategory(identifier: Self.category, actions: [showPantry], intentIdentifiers: [])])
     }
 
     /// Turns reminders on (asking permission the first time) or off.
@@ -103,17 +94,5 @@ final class ExpiryReminders: NSObject, UNUserNotificationCenterDelegate {
             let request = UNNotificationRequest(identifier: reminder.id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: when, repeats: false))
             try? await center.add(request)
         }
-    }
-
-    // MARK: UNUserNotificationCenterDelegate
-
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard response.notification.request.identifier.hasPrefix(ExpiryReminderSchedule.identifierPrefix) else { return }
-        let destination: Destination = response.actionIdentifier == Self.showPantryAction ? .pantry : .cook
-        await MainActor.run { AppNavigator.shared.showExpiring(in: destination) }
-    }
-
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
     }
 }
