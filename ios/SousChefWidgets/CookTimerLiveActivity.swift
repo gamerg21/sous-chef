@@ -70,9 +70,10 @@ struct CookTimerLiveActivity: Widget {
     }
 }
 
-/// Counts down to the timer's end, or says it's done. Once a timer passes
-/// its end the system re-renders (the activity's stale date), so "Done"
-/// replaces the zeroed clock.
+/// Counts down to the timer's end, or says it's done. A countdown stops at
+/// 0:00 on its own; "Done" appears whenever the activity is next rendered
+/// after that, such as when cook mode reports the finished timer or the
+/// system re-renders at the activity's stale date.
 private struct CountdownText: View {
     let countdown: CookTimerAttributes.Countdown
 
