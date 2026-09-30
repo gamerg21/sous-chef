@@ -47,6 +47,8 @@ time.
 
 On a Mac the app uses an ordinary sidebar (`NavigationSplitView`) instead of the
 adaptable tab view, whose sidebar button turns into the iPad tab bar there.
+Its toggle, `SidebarButton`, sits at the leading edge like other Mac apps and
+moves into the content toolbar when the sidebar is hidden.
 
 On a Mac, full-screen covers and sheets presented from other sheets don't
 inherit the SwiftUI environment. Views that read `Kitchen`, the community objects

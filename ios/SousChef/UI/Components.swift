@@ -88,6 +88,10 @@ struct SettingsToolbarButton: ToolbarContent {
     @Environment(Kitchen.self) private var kitchen
 
     var body: some ToolbarContent {
+        // With the Mac sidebar hidden, its button moves here.
+        if ProcessInfo.processInfo.isiOSAppOnMac && !AppNavigator.shared.showsSidebar {
+            ToolbarItem(placement: .topBarLeading) { SidebarButton() }
+        }
         ToolbarItem(placement: .topBarLeading) {
             Button {
                 showSettings = true
@@ -104,6 +108,20 @@ struct SettingsToolbarButton: ToolbarContent {
         case .failed: "exclamationmark.icloud"
         default: "gearshape"
         }
+    }
+}
+
+/// Hides or shows the Mac sidebar from the leading edge, where Mac apps keep it.
+struct SidebarButton: View {
+    @Bindable private var navigator = AppNavigator.shared
+
+    var body: some View {
+        Button {
+            withAnimation { navigator.showsSidebar.toggle() }
+        } label: {
+            Label(navigator.showsSidebar ? "Hide Sidebar" : "Show Sidebar", systemImage: "sidebar.left")
+        }
+        .keyboardShortcut("s", modifiers: [.command, .control])
     }
 }
 

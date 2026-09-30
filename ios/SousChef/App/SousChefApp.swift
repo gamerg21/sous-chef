@@ -76,6 +76,9 @@ final class AppNavigator {
     /// Links and text shared from other apps, imported one at a time by `RecipesView`.
     var sharedRecipes: [SharedRecipeInbox.Item] = []
 
+    /// Whether the Mac sidebar is showing.
+    var showsSidebar = true
+
     func open(recipe id: UUID, cooking: Bool = false) {
         tab = .recipes
         recipeToCook = cooking ? id : nil
@@ -127,9 +130,13 @@ struct RootView: View {
 
     /// On a Mac the adaptable tab view's sidebar button turns the sidebar into
     /// the iPad tab bar, which looks out of place, so the Mac gets an ordinary
-    /// sidebar that simply hides and shows.
+    /// sidebar that simply hides and shows. The system toggle sits at the
+    /// sidebar's trailing edge, so ours replaces it at the leading edge.
     private var macLayout: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: Binding(
+            get: { navigator.showsSidebar ? .all : .detailOnly },
+            set: { navigator.showsSidebar = $0 != .detailOnly }
+        )) {
             List(selection: Binding<AppTab?>(get: { navigator.tab }, set: { if let tab = $0 { navigator.tab = tab } })) {
                 ForEach(AppTab.allCases, id: \.self) { tab in
                     Label(tab.title, systemImage: tab.systemImage)
@@ -138,6 +145,8 @@ struct RootView: View {
                 }
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 220)
+            .background(SystemSidebarToggleRemover())
+            .toolbar { ToolbarItem(placement: .topBarLeading) { SidebarButton() } }
         } detail: {
             screen(for: navigator.tab)
         }
@@ -167,5 +176,22 @@ extension View {
             .environment(CommunityModeration.shared)
             .environment(CommunityAccount.shared)
             .modelContainer(kitchen.container)
+    }
+}
+
+/// Hides the split view's own sidebar button so `SidebarButton` can sit at the
+/// leading edge instead. `.toolbar(removing: .sidebarToggle)` would do this,
+/// but on a Mac it also makes the sidebar ignore its column width.
+private struct SystemSidebarToggleRemover: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Probe { Probe() }
+    func updateUIViewController(_ probe: Probe, context: Context) {}
+
+    final class Probe: UIViewController {
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            var controller = parent
+            while let current = controller, !(current is UISplitViewController) { controller = current.parent }
+            (controller as? UISplitViewController)?.displayModeButtonVisibility = .never
+        }
     }
 }
