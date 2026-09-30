@@ -7,6 +7,38 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## Next build (draft: add the version and build number when uploading)
+
+What's in it: Home Screen and Lock Screen widgets, and cook timers on the Lock
+Screen and in the Dynamic Island.
+
+### What to Test
+
+**Cook timers outside the app (new)**
+- Start cooking a recipe and start a timer from a step. The first time, allow
+  notifications and Live Activities.
+- Lock the phone or go to the Home Screen. The timer should count down on the
+  Lock Screen and in the Dynamic Island, with the recipe name and step.
+- Start a second timer. The one that finishes first should be shown in the
+  Dynamic Island, and both should be listed on the Lock Screen.
+- Let a timer finish with the phone locked. You should hear an alert and see
+  "Step … timer is done".
+- Remove a timer in cook mode, or close cook mode. Its alert shouldn't go off,
+  and the Lock Screen timer should update or disappear.
+
+**Widgets (new)**
+- Add the Use Soon and Shopping List widgets to the Home Screen, and to the
+  Lock Screen. Check they show what's in the app, and that days left and item
+  counts change after you edit your pantry or shopping list.
+- Tap each widget. Use Soon should open the Pantry, Shopping List the Shopping
+  tab.
+- Add an item with "Add to my Sous Chef shopping list" and check the Shopping
+  List widget updates.
+
+**Mac**
+- On a Mac, cook timers should still work in the app and alert you when they
+  finish.
+
 ## 1.0.1 (6)
 
 What's in it: the App Store release candidate for 1.0.1. Adds a Mac sidebar and

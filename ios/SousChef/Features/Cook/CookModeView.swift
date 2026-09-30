@@ -52,7 +52,14 @@ struct CookModeView: View {
             .sheet(isPresented: $chatting) { RecipeChatView(recipe: recipe).kitchenEnvironment(kitchen) }
         }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: [])
+        }
+        // Mirrors the timers to a Live Activity and schedules their alerts.
+        .onChange(of: timers) { _, timers in
+            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
+        }
     }
 
     private var ingredientsPage: some View {
@@ -240,7 +247,10 @@ struct CookModeView: View {
                         .foregroundStyle(remaining == 0 ? .orange : .primary)
                         .glassEffect(.regular.interactive(), in: .capsule)
                         .onChange(of: remaining == 0) { _, done in
-                            if done { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+                            guard done else { return }
+                            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                            // Moves the finished timer behind the running ones.
+                            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
                         }
                     }
                 }
@@ -252,13 +262,17 @@ struct CookModeView: View {
     }
 }
 
-struct CookTimer: Identifiable {
-    let id = UUID()
+nonisolated struct CookTimer: Identifiable, Hashable, Sendable {
+    var id = UUID()
     let label: String
     let seconds: Int
-    let started = Date()
+    var started = Date()
+
+    var ends: Date { started.addingTimeInterval(TimeInterval(seconds)) }
 
     func remaining(at date: Date) -> Int { max(0, seconds - Int(date.timeIntervalSince(started))) }
+
+    func isDone(at date: Date) -> Bool { ends <= date }
 
     static func clock(_ seconds: Int) -> String {
         Duration.seconds(seconds).formatted(.time(pattern: seconds >= 3600 ? .hourMinuteSecond : .minuteSecond))

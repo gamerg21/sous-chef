@@ -129,6 +129,7 @@ final class Kitchen {
         try? context.save()
         server.scheduleSync()
         ExpiryReminders.shared.reschedule(self)
+        if !inMemory { WidgetSnapshotWriter.scheduleRefresh(self) }
     }
 
     func fetch<T: PersistentModel>(_ type: T.Type) -> [T] {

@@ -8,6 +8,8 @@
 - Removing an expired item asks whether it was used up or thrown away; the inventory shows this month's totals.
 - Opt-in daily expiry email (off by default) when email is configured. At most one per day, never in the demo. See [expiry reminders](docs/EXPIRY_REMINDERS.md).
 - iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
+- iOS: cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
+- iOS: new widgets: Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tapping one opens the matching tab.
 
 ## 0.9.0 — A livelier, clearer kitchen
 
