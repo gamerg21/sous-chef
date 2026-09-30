@@ -9,8 +9,9 @@ confirm. Mention big fixes by name so testers can check they're gone.
 
 ## Next build (draft: add the version and build number when uploading)
 
-What's in it: Home Screen and Lock Screen widgets, and cook timers on the Lock
-Screen and in the Dynamic Island.
+What's in it: weekly meal planning, expiry reminders with a "Use it up" list,
+Home Screen and Lock Screen widgets (including Tonight's Meal), and cook timers
+on the Lock Screen and in the Dynamic Island.
 
 ### What to Test
 
@@ -22,16 +23,36 @@ Screen and in the Dynamic Island.
 - Start a second timer. The one that finishes first should be shown in the
   Dynamic Island, and both should be listed on the Lock Screen.
 - Let a timer finish with the phone locked. You should hear an alert and see
-  "Step … timer is done".
+  "Step … timer is done". Let one finish with Sous Chef open on another screen:
+  it should show a banner with sound too.
 - Remove a timer in cook mode, or close cook mode. Its alert shouldn't go off,
   and the Lock Screen timer should update or disappear.
 
+**Meal planning (new)**
+- In Cook, open "This week's plan" and plan a recipe for tonight's dinner with
+  a different number of servings. Cook it from the plan: the pantry should go
+  down by the scaled amounts, and the meal should show as cooked.
+- Try "Add week's shortages to list" twice. The second time nothing should be
+  added again.
+
+**Expiry reminders (new)**
+- In Settings, pick an "expiring soon" window and turn on the daily reminder.
+  On a day something expires you should get one reminder at the chosen time.
+  Tapping it should open Cook's "Use it up" list; "Show in Pantry" should open
+  the Pantry's "Use soon" section.
+
 **Widgets (new)**
-- Add the Use Soon and Shopping List widgets to the Home Screen, and to the
-  Lock Screen. Check they show what's in the app, and that days left and item
-  counts change after you edit your pantry or shopping list.
-- Tap each widget. Use Soon should open the Pantry, Shopping List the Shopping
-  tab.
+- Add the Tonight's Meal, Use Soon and Shopping List widgets to the Home
+  Screen, and to the Lock Screen. Check they show what's in the app, and that
+  they change after you edit your pantry, shopping list or meal plan.
+- Tonight's Meal should show tonight's planned recipe, its servings and
+  "Ready" or "Missing …". With nothing planned it should say "Nothing planned".
+  After you cook the meal it should move on or go empty.
+- Use Soon should list the same items as the Pantry's "Use soon" section, and
+  follow the window you set in Settings.
+- Tap each widget. Tonight's Meal should open the week plan (the medium size's
+  "Recipe" button opens the recipe), Use Soon the Pantry's "Use soon" section,
+  Shopping List the Shopping tab.
 - Add an item with "Add to my Sous Chef shopping list" and check the Shopping
   List widget updates.
 

@@ -177,21 +177,49 @@ in `WidgetShared/`.
 
 | Widget | Sizes | Tap opens |
 | --- | --- | --- |
-| Use Soon | small, medium, Lock Screen rectangular | Pantry |
+| Tonight's Meal | small, medium, Lock Screen rectangular and inline | The week plan (medium also links the recipe) |
+| Use Soon | small, medium, Lock Screen rectangular | Pantry's "Use soon" section |
 | Shopping List | small, Lock Screen rectangular, circular and inline | Shopping |
 
 Widgets never open the iCloud-synced SwiftData store. The app writes a small
 JSON `KitchenSnapshot` (`WidgetShared/KitchenSnapshot.swift`) to the App Group
-after each kitchen change (`Kitchen.changed()`), when it becomes active, and when
-it goes to the background, and reloads the widget timelines only when the
-snapshot changed (`Domain/WidgetSnapshotWriter.swift`). Widgets add an entry at
-each midnight so day counts stay right between changes. Taps use
-`souschef://pantry` and `souschef://shopping`, handled by
-`AppNavigator.open(_:)`.
+after each kitchen change, including meal plan changes (`Kitchen.changed()`),
+after a server sync, when it becomes active, and when it goes to the
+background, and reloads the widget timelines only when the snapshot changed
+(`Domain/WidgetSnapshotWriter.swift`). Widgets add an entry at each midnight so
+day counts stay right between changes.
 
-To add a widget for new data (such as tonight's planned meal): add an optional
-property to `KitchenSnapshot`, fill it in `WidgetSnapshotWriter.snapshot(of:)`,
-and add a widget to `SousChefWidgetsBundle`. Older snapshots decode without it.
+Use Soon lists what `ExpiringFood.find(in:within:)` (`Shared/ExpiringFood.swift`)
+finds with the "expiring soon" window from Settings, read from the App Group, so
+it matches the Pantry's "Use soon" section and the reminders. Changing the window
+refreshes the snapshot.
+
+**Tonight's Meal** shows `Kitchen.tonightsMeal(now:)`: today's uncooked dinner,
+otherwise today's next uncooked meal. It shows the recipe, meal, servings and
+pantry readiness at the planned servings ("Ready" or "Missing 2"). The snapshot
+also carries tomorrow's meal, so the widget moves on at midnight before the app
+runs again. Cooked meals drop out as soon as they're cooked. When nothing is
+planned it says "Nothing planned" and opens the plan. Recipe photos are shrunk
+to a small JPEG in the App Group (`WidgetPhotos/`, named after the photo's
+contents, old ones removed); without one it shows an icon.
+
+Older snapshots decode without the newer sections (`tonight`, `tomorrow`,
+`expiringWindowDays`), and an unreadable section is dropped rather than losing
+the whole snapshot. To add a widget for new data, add an optional property to
+`KitchenSnapshot`, decode it in `init(from:)`, fill it in
+`WidgetSnapshotWriter.snapshot(of:)`, and add a widget to `SousChefWidgetsBundle`.
+
+**Links.** Widgets and notifications lead to the same places through
+`KitchenLink` and `AppNavigator.go(to:)`: `souschef://pantry`, `recipes`, `cook`,
+`shopping`, `community`, `souschef://pantry/use-soon`,
+`souschef://cook/use-it-up`, `souschef://plan` (Cook's week plan) and
+`souschef://recipe/<id>`.
+
+**Notifications.** `Domain/AppNotifications.swift` is the app's one
+notification delegate and registers every category together (expiry
+reminders' `expiry-reminder` and cook timers' `SOUSCHEF_COOK_TIMER`), since
+`setNotificationCategories` replaces the whole set. Expiry reminder taps are
+routed as described under Expiry reminders.
 
 **Cook timers.** Starting a timer in cook mode starts one Live Activity for the
 recipe (`NSSupportsLiveActivities` is in `SousChef-Info.plist`). It lists every
@@ -203,8 +231,8 @@ activities left over from a previous launch end when the app starts
 notification with sound (identifiers `souschef.cook-timer.<id>`, category
 `SOUSCHEF_COOK_TIMER`), so it's heard with the app in the background or the phone
 locked. Notification permission is asked the first time a timer starts. With
-the app in the foreground the notification stays silent, and the in-app timer
-strip and haptic show that the timer is done.
+the app in the foreground the alert still shows as a banner with sound, since
+the cook may be on another screen, alongside the in-app timer strip and haptic.
 
 On a Mac ("Designed for iPad") and wherever Live Activities are turned off, only
 the notifications are used. The in-app timers never depend on either.
