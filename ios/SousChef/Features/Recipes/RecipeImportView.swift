@@ -27,6 +27,9 @@ struct RecipeImportView: View {
     @State private var working = false
     @State private var error: String?
     @State private var partial: RecipeDraft?
+    /// A link that can't be imported as typed; retrying it won't help, so the
+    /// bottom button offers Cancel until the link changes.
+    @State private var deadLink: String?
     @State private var task: Task<Void, Never>?
 
     var body: some View {
@@ -55,15 +58,26 @@ struct RecipeImportView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button(action: start) {
-                    Group {
-                        if working { ProgressView().tint(.white) } else { Text(actionTitle).font(.headline) }
+                Group {
+                    if showsCancel {
+                        Button(role: .cancel) { dismiss() } label: {
+                            Text("Cancel").font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.glass)
+                    } else {
+                        Button(action: start) {
+                            Group {
+                                if working { ProgressView().tint(.white) } else { Text(actionTitle).font(.headline) }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .disabled(!canStart || working)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
                 }
-                .buttonStyle(.glassProminent)
-                .disabled(!canStart || working)
                 .padding()
                 .accessibilityIdentifier("importAction")
             }
@@ -95,6 +109,10 @@ struct RecipeImportView: View {
         case .photo: "Read recipe"
         case .ideas: "Suggest a recipe"
         }
+    }
+
+    private var showsCancel: Bool {
+        mode == .link && !working && deadLink != nil && deadLink == link
     }
 
     private var canStart: Bool {
@@ -202,6 +220,7 @@ struct RecipeImportView: View {
 
     private func start() {
         error = nil
+        deadLink = nil
         working = true
         task = Task {
             defer { working = false }
@@ -225,7 +244,12 @@ struct RecipeImportView: View {
                 guard !Task.isCancelled else { return }
                 onDraft(draft)
             } catch {
-                if !Task.isCancelled { self.error = error.localizedDescription }
+                guard !Task.isCancelled else { return }
+                self.error = error.localizedDescription
+                switch error as? RecipeImporter.ImportError {
+                case .noRecipe, .badURL: deadLink = link
+                default: break
+                }
             }
         }
     }
