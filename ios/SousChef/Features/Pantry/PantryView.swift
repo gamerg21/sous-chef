@@ -11,6 +11,8 @@ struct PantryView: View {
     @State private var adding = false
     @State private var scanning = false
     @State private var scannedPrefill: PantryPrefill?
+    @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
+    private var navigator = AppNavigator.shared
 
     enum LocationScope: Hashable {
         case all, location(StorageLocation)
@@ -23,38 +25,49 @@ struct PantryView: View {
         }
     }
 
+    /// In-stock items expiring within the cook's window, soonest first.
     private var expiringSoon: [PantryItem] {
-        filtered.filter { $0.expiresOn.map { ExpiryLabel.days(until: $0) <= 5 } ?? false }
-            .sorted { ($0.expiresOn ?? .distantFuture) < ($1.expiresOn ?? .distantFuture) }
+        let byID = Dictionary(filtered.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+        return ExpiringFood.find(in: filtered.map(\.expiringStock), within: windowDays).compactMap { byID[$0.id] }
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                if items.isEmpty {
-                    emptyState
-                } else {
-                    summary
-                    if !expiringSoon.isEmpty && search.isEmpty {
-                        Section {
-                            ForEach(expiringSoon) { row($0) }
-                        } header: {
-                            Eyebrow("Use soon", systemImage: "clock.badge.exclamationmark")
-                        }
-                    }
-                    ForEach(StorageLocation.allCases) { location in
-                        let group = filtered.filter { $0.location == location }
-                        if !group.isEmpty {
+            ScrollViewReader { proxy in
+                List {
+                    if items.isEmpty {
+                        emptyState
+                    } else {
+                        summary
+                        if !expiringSoon.isEmpty && search.isEmpty {
                             Section {
-                                ForEach(group) { row($0) }
+                                ForEach(expiringSoon) { row($0) }
                             } header: {
-                                Eyebrow(location.title, systemImage: location.symbol)
+                                Eyebrow("Use soon", systemImage: "clock.badge.exclamationmark")
                             }
                         }
+                        ForEach(StorageLocation.allCases) { location in
+                            let group = filtered.filter { $0.location == location }
+                            if !group.isEmpty {
+                                Section {
+                                    ForEach(group) { row($0) }
+                                } header: {
+                                    Eyebrow(location.title, systemImage: location.symbol)
+                                }
+                            }
+                        }
+                        if filtered.isEmpty {
+                            ContentUnavailableView.search(text: search)
+                        }
                     }
-                    if filtered.isEmpty {
-                        ContentUnavailableView.search(text: search)
-                    }
+                }
+                // An expiry reminder's "Show in Pantry" lands on "Use soon", right under the summary.
+                .onChange(of: navigator.revealExpiringInPantry, initial: true) { _, reveal in
+                    guard reveal else { return }
+                    navigator.revealExpiringInPantry = false
+                    search = ""
+                    scope = .all
+                    withAnimation { proxy.scrollTo(Self.topID, anchor: .top) }
                 }
             }
             .listStyle(.insetGrouped)
@@ -113,8 +126,11 @@ struct PantryView: View {
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
+            .id(Self.topID)
         }
     }
+
+    private static let topID = "pantry-summary"
 
     private func row(_ item: PantryItem) -> some View {
         Button { editing = item } label: {

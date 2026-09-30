@@ -128,6 +128,7 @@ final class Kitchen {
     func changed() {
         try? context.save()
         server.scheduleSync()
+        ExpiryReminders.shared.reschedule(self)
     }
 
     func fetch<T: PersistentModel>(_ type: T.Type) -> [T] {

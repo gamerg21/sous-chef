@@ -15,8 +15,20 @@ companion to a self-hosted Sous Chef server.
 | Community | Community | Browse and save community recipes; publish with Sign in with Apple or through a server. |
 
 Settings (the toolbar button on every tab) covers iCloud, the companion server,
-Apple Intelligence, Open Food Facts, and recipe import/export in the same JSON
-format as the web app.
+Apple Intelligence, Open Food Facts, expiry reminders, and recipe import/export
+in the same JSON format as the web app.
+
+## Expiry reminders
+
+Pantry's "Use soon" section and Cook's **Use it up** list use the window set in
+Settings (3 days unless changed). The opt-in daily reminder is a local
+notification at the chosen time, 09:00 by default. The app schedules one per day
+for the next 14 days, each built from that day's list. Days with nothing expiring
+get no notification. Pantry changes and bringing the app to the foreground
+reschedule them. Tapping a reminder opens Cook's **Use it up** list; **Show in
+Pantry** opens "Use soon". The rules (`Shared/ExpiringFood.swift`, Foundation
+only) and the schedule (`Domain/ExpiryReminderSchedule.swift`) are unit tested.
+See [expiry reminders](../docs/EXPIRY_REMINDERS.md).
 
 The main navigation is the system `TabView`, so it gets the Liquid Glass tab bar,
 minimizes while scrolling, and becomes a sidebar on iPad.
