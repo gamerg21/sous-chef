@@ -262,26 +262,39 @@ struct StockPurchasesView: View {
             Form {
                 ForEach($purchases) { $purchase in
                     Section {
-                        HStack {
-                            TextField("Amount", value: $purchase.quantity, format: .number.precision(.fractionLength(0...3)))
-                                .keyboardType(.decimalPad)
-                                .frame(maxWidth: 90)
-                            UnitPicker(unit: $purchase.unit)
+                        HStack(spacing: 12) {
+                            IconBadge(systemImage: purchase.location.symbol)
+                            Text(purchase.item.name)
+                                .font(.headline)
+                                .lineLimit(2)
+                            Spacer(minLength: 8)
+                            HStack(spacing: 8) {
+                                TextField("0", value: $purchase.quantity, format: .number.precision(.fractionLength(0...3)))
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .font(.system(.title3, design: .rounded, weight: .semibold).monospacedDigit())
+                                    .fixedSize()
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(.fill.tertiary, in: .capsule)
+                                    .accessibilityLabel("Amount of \(purchase.item.name)")
+                                UnitMenu(unit: $purchase.unit)
+                            }
                         }
                         Picker("Store in", selection: $purchase.location) {
                             ForEach(StorageLocation.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
                         }
                         .pickerStyle(.segmented)
+                        .labelsHidden()
                         ExpiryField(date: $purchase.expiresOn)
-                    } header: {
-                        Eyebrow(purchase.item.name)
                     }
                 }
             }
-            .navigationTitle("Put purchases away")
+            .navigationTitle("Put away")
+            .navigationSubtitle(purchases.count == 1 ? "1 item" : "\(purchases.count) items")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add to pantry", role: .confirm) {
                         kitchen.stock(purchases)

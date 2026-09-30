@@ -268,20 +268,63 @@ struct UnitPicker: View {
     var allowNone = false
 
     var body: some View {
-        Picker(selection: $unit) {
-            if allowNone { Text("None").tag("") }
-            if !unit.isEmpty && Units.find(unit) == nil { Text(unit).tag(unit) }
-            ForEach(Units.pickerGroups, id: \.title) { group in
-                Section(group.title) {
-                    ForEach(group.units) { option in
-                        Text(option.abbr.flatMap { $0 == option.name ? nil : "\(option.name) (\($0))" } ?? option.name).tag(option.label)
-                    }
-                }
-            }
+        Picker(selection: canonical($unit)) {
+            UnitOptions(unit: unit, allowNone: allowNone)
         } label: {
             Label("Unit", systemImage: "scalemass")
         }
         .pickerStyle(.menu)
+    }
+}
+
+/// A compact unit menu that reads as part of the amount ("2 tsp ⌄").
+struct UnitMenu: View {
+    @Binding var unit: String
+
+    var body: some View {
+        Menu {
+            Picker("Unit", selection: canonical($unit)) {
+                UnitOptions(unit: unit, allowNone: false)
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(unit.isEmpty ? "unit" : (Units.find(unit)?.label ?? unit))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").imageScale(.small)
+            }
+            .font(.body.weight(.semibold))
+            .foregroundStyle(Color.brand)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color.brandSoft, in: .capsule)
+            // Keep "bunch" or "fl oz" on one line; the item name wraps instead.
+            .fixedSize()
+        }
+        .accessibilityLabel("Unit")
+        .accessibilityValue(unit)
+    }
+}
+
+/// Shows a stored spelling like "teaspoons" as its catalog unit ("tsp"),
+/// so the menu has a matching row instead of looking blank.
+private func canonical(_ unit: Binding<String>) -> Binding<String> {
+    Binding { Units.find(unit.wrappedValue)?.label ?? unit.wrappedValue } set: { unit.wrappedValue = $0 }
+}
+
+private struct UnitOptions: View {
+    let unit: String
+    let allowNone: Bool
+
+    var body: some View {
+        if allowNone { Text("None").tag("") }
+        if !unit.isEmpty && Units.find(unit) == nil { Text(unit).tag(unit) }
+        ForEach(Units.pickerGroups, id: \.title) { group in
+            Section(group.title) {
+                ForEach(group.units) { option in
+                    Text(option.abbr.flatMap { $0 == option.name ? nil : "\(option.name) (\($0))" } ?? option.name).tag(option.label)
+                }
+            }
+        }
     }
 }
 
