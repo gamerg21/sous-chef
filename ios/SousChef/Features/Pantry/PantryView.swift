@@ -157,6 +157,7 @@ struct PantryView: View {
                 kitchen.delete(item)
                 kitchen.changed()
             } label: { Label("Delete", systemImage: "trash") }
+            .tint(.red)
             Button {
                 kitchen.addShopping(item.name)
             } label: { Label("To list", systemImage: "cart.badge.plus") }

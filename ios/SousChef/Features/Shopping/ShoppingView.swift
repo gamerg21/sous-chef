@@ -148,6 +148,7 @@ struct ShoppingView: View {
                 kitchen.delete(item)
                 kitchen.changed()
             } label: { Label("Delete", systemImage: "trash") }
+            .tint(.red)
         }
     }
 

@@ -68,6 +68,7 @@ struct PlanWeekList: View {
                         .foregroundStyle(.secondary)
                     Button(action: onAddShortages) {
                         Label("Add week's shortages to list", systemImage: "cart.badge.plus")
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.glassProminent)
                     .padding(.top, 4)

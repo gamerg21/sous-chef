@@ -29,6 +29,7 @@ struct PlannedMealRow: View {
                 kitchen.delete(meal)
                 kitchen.changed()
             }
+            .tint(.red)
         }
         .contextMenu {
             if recipe != nil && !meal.isCooked {

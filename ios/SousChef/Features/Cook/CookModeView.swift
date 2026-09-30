@@ -34,8 +34,10 @@ struct CookModeView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.snappy, value: page)
             .safeAreaInset(edge: .top) {
-                if !timers.isEmpty { timerStrip }
+                if !timers.isEmpty { timerStrip.transition(.move(edge: .top).combined(with: .opacity)) }
             }
+            .animation(.bouncy, value: timers)
+            .sensoryFeedback(.start, trigger: timers.count) { old, new in new > old }
             .safeAreaInset(edge: .bottom) { controls }
             .navigationTitle(recipe.title)
             .navigationBarTitleDisplayMode(.inline)
@@ -114,17 +116,43 @@ struct CookModeView: View {
                 .fontDesign(.rounded)
                     .fixedSize(horizontal: false, vertical: true)
                 ForEach(CookTimer.durations(in: step.text), id: \.self) { seconds in
-                    Button {
-                        timers.append(CookTimer(label: "Step \(index + 1)", seconds: seconds))
-                    } label: {
-                        Label("Start \(CookTimer.describe(seconds)) timer", systemImage: "timer")
-                            .font(.headline)
-                    }
-                    .buttonStyle(.glass)
+                    timerButton(label: "Step \(index + 1)", seconds: seconds)
                 }
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Starts a step's timer. Once started it turns into a live countdown, so
+    /// it's clear the tap worked even before looking at the strip up top.
+    @ViewBuilder
+    private func timerButton(label: String, seconds: Int) -> some View {
+        if let timer = timers.first(where: { $0.label == label && $0.seconds == seconds }) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let remaining = timer.remaining(at: context.date)
+                Label(remaining == 0 ? "Timer done" : "Timer running · \(CookTimer.clock(remaining))",
+                      systemImage: remaining == 0 ? "bell.and.waves.left.and.right.fill" : "timer")
+                    .font(.headline.monospacedDigit())
+                    .contentTransition(.numericText(countsDown: true))
+                    .symbolEffect(.pulse, isActive: remaining > 0)
+                    .foregroundStyle(remaining == 0 ? .orange : Color.brand)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.brandSoft, in: .capsule)
+                    .overlay(Capsule().strokeBorder(remaining == 0 ? .orange : Color.brand, lineWidth: 1.5))
+            }
+            .transition(.scale(scale: 0.85).combined(with: .opacity))
+        } else {
+            Button {
+                timers.append(CookTimer(label: label, seconds: seconds))
+            } label: {
+                Label("Start \(CookTimer.describe(seconds)) timer", systemImage: "timer")
+                    .font(.headline)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(Color.brand)
+            .transition(.scale(scale: 0.85).combined(with: .opacity))
         }
     }
 
@@ -234,6 +262,7 @@ struct CookModeView: View {
                         HStack(spacing: 8) {
                             Image(systemName: remaining == 0 ? "bell.and.waves.left.and.right.fill" : "timer")
                                 .symbolEffect(.wiggle, isActive: remaining == 0)
+                                .symbolEffect(.bounce, options: .nonRepeating, value: timer.id)
                             Text(remaining == 0 ? "\(timer.label) done" : CookTimer.clock(remaining))
                                 .font(.headline.monospacedDigit())
                             Button("Remove \(timer.label) timer", systemImage: "xmark.circle.fill") {
@@ -244,8 +273,9 @@ struct CookModeView: View {
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .foregroundStyle(remaining == 0 ? .orange : .primary)
-                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .foregroundStyle(.white)
+                        .glassEffect(.regular.tint(remaining == 0 ? .orange : Color.brand).interactive(), in: .capsule)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
                         .onChange(of: remaining == 0) { _, done in
                             guard done else { return }
                             UINotificationFeedbackGenerator().notificationOccurred(.warning)
