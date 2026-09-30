@@ -7,6 +7,23 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.0.2 (7)
+
+What's in it: a small App Store fix for 1.0.1. Cook mode no longer says
+"Mise en place", and one community recipe no longer drags left and right.
+
+### What to Test
+
+**Cooking**
+- Start cooking any recipe. The small label above the ingredients title should
+  say "Ingredients", not "Mise en place".
+
+**Recipe photos**
+- Open Homemade Taco Seasoning in the community. The page should only scroll up
+  and down; dragging sideways shouldn't move it.
+- Open a few other community recipes and your own recipes. Photos should still
+  fill their frames, cropped, with no stretching.
+
 ## 1.0.1 (6)
 
 What's in it: the App Store release candidate for 1.0.1. Adds a Mac sidebar and
