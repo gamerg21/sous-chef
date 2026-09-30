@@ -17,6 +17,7 @@ struct RecipeEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \PantryItem.name) private var pantry: [PantryItem]
     @State private var photoItem: PhotosPickerItem?
+    @State private var choosingPhoto = false
     @State private var newIngredient = ""
     @State private var newStep = ""
     @State private var newTag = ""
@@ -41,7 +42,9 @@ struct RecipeEditorView: View {
                 }
 
                 Section {
-                    PhotosPicker(selection: $photoItem, matching: .images) {
+                    // A button rather than PhotosPicker, whose label closure isn't
+                    // main-actor isolated and can't read the draft.
+                    Button { choosingPhoto = true } label: {
                         RecipeImage(data: draft.photo, symbol: "camera", maxPixel: 1200)
                             .frame(height: 170)
                             .frame(maxWidth: .infinity)
@@ -55,6 +58,7 @@ struct RecipeEditorView: View {
                             }
                     }
                     .buttonStyle(.plain)
+                    .photosPicker(isPresented: $choosingPhoto, selection: $photoItem, matching: .images)
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                     if draft.photo != nil {
                         Button("Remove photo", role: .destructive) { draft.photo = nil }
