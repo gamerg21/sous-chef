@@ -1,3 +1,10 @@
+## Unreleased
+
+### iOS
+
+- Cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
+- New widgets: Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tapping one opens the matching tab.
+
 ## 0.9.0 — A livelier, clearer kitchen
 
 - New design language across the app: grouped cards, section labels, inline expanding menus instead of dropdowns, and a shared UI kit (`src/components/ui/kit.tsx`).

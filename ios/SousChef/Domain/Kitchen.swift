@@ -128,6 +128,7 @@ final class Kitchen {
     func changed() {
         try? context.save()
         server.scheduleSync()
+        if !inMemory { WidgetSnapshotWriter.scheduleRefresh(self) }
     }
 
     func fetch<T: PersistentModel>(_ type: T.Type) -> [T] {

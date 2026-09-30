@@ -36,6 +36,9 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Cook mode's timers show on the Lock Screen and in the Dynamic Island. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<!-- CloudKit pushes wake the app so iCloud changes arrive promptly. -->
 	<key>UIBackgroundModes</key>
 	<array>

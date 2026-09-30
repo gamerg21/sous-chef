@@ -154,6 +154,49 @@ xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 18 
 Spoken phrases still need checking by voice on a device with Siri, since
 automated tests can't exercise speech recognition.
 
+## Widgets and Live Activities
+
+The `SousChefWidgets` extension (`SousChefWidgets/`, bundle ID
+`com.georgevina.souschef.widgets`) adds Home Screen and Lock Screen widgets and
+cook mode's Live Activity. Like the share extension, it's signed with the
+`group.com.georgevina.souschef` App Group and carries the app's
+`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`. Code both targets need lives
+in `WidgetShared/`.
+
+| Widget | Sizes | Tap opens |
+| --- | --- | --- |
+| Use Soon | small, medium, Lock Screen rectangular | Pantry |
+| Shopping List | small, Lock Screen rectangular, circular and inline | Shopping |
+
+Widgets never open the iCloud-synced SwiftData store. The app writes a small
+JSON `KitchenSnapshot` (`WidgetShared/KitchenSnapshot.swift`) to the App Group
+after each kitchen change (`Kitchen.changed()`), when it becomes active, and when
+it goes to the background, and reloads the widget timelines only when the
+snapshot changed (`Domain/WidgetSnapshotWriter.swift`). Widgets add an entry at
+each midnight so day counts stay right between changes. Taps use
+`souschef://pantry` and `souschef://shopping`, handled by
+`AppNavigator.open(_:)`.
+
+To add a widget for new data (such as tonight's planned meal): add an optional
+property to `KitchenSnapshot`, fill it in `WidgetSnapshotWriter.snapshot(of:)`,
+and add a widget to `SousChefWidgetsBundle`. Older snapshots decode without it.
+
+**Cook timers.** Starting a timer in cook mode starts one Live Activity for the
+recipe (`NSSupportsLiveActivities` is in `SousChef-Info.plist`). It lists every
+timer, counts down the next to finish in the Dynamic Island, and uses
+`Text(timerInterval:)` and `ProgressView(timerInterval:)` so it ticks without
+updates from the app. Removing timers updates it, and closing cook mode ends it;
+activities left over from a previous launch end when the app starts
+(`Features/Cook/CookTimerAlerts.swift`). Each timer also schedules a local
+notification with sound (identifiers `souschef.cook-timer.<id>`, category
+`SOUSCHEF_COOK_TIMER`), so it's heard with the app in the background or the phone
+locked. Notification permission is asked the first time a timer starts. With
+the app in the foreground the notification stays silent, and the in-app timer
+strip and haptic show that the timer is done.
+
+On a Mac ("Designed for iPad") and wherever Live Activities are turned off, only
+the notifications are used. The in-app timers never depend on either.
+
 ## Share sheet
 
 `ShareExtension/` puts Sous Chef in the share sheet, so a recipe page in

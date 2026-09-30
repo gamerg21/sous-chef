@@ -24,14 +24,23 @@ struct SousChefApp: App {
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
                 .task { await account.checkCredentialState() }
                 .task { AppNavigator.shared.receiveSharedRecipes() }
-                .onOpenURL { _ in AppNavigator.shared.receiveSharedRecipes() }
+                .task { CookTimerAlerts.shared.endLeftoverActivities() }
+                .onOpenURL { url in
+                    AppNavigator.shared.open(url)
+                    AppNavigator.shared.receiveSharedRecipes()
+                }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 AppNavigator.shared.receiveSharedRecipes()
-                Task { await kitchen.server.syncNow() }
+                Task {
+                    await kitchen.server.syncNow()
+                    // Also catches iCloud changes that arrived while away.
+                    WidgetSnapshotWriter.refresh(kitchen)
+                }
                 Task { await account.checkCredentialState() }
             }
+            if phase == .background { WidgetSnapshotWriter.refresh(kitchen) }
             if phase != .inactive { Task { await KitchenIndex.refresh(kitchen) } }
         }
     }
@@ -83,6 +92,12 @@ final class AppNavigator {
         tab = .recipes
         recipeToCook = cooking ? id : nil
         recipeToOpen = id
+    }
+
+    /// Opens the tab a widget link names, such as `souschef://shopping`.
+    func open(_ url: URL) {
+        guard let tab = KitchenLink.tabName(in: url).flatMap(AppTab.init(rawValue:)) else { return }
+        self.tab = tab
     }
 
     /// Takes whatever the share extension left and switches to Recipes to import it.
