@@ -16,6 +16,9 @@ struct SettingsView: View {
     @State private var message: String?
     @State private var communityURL = CommunityService.directURL
     @State private var offEnabled = OpenFoodFacts.enabled
+    @State private var showsBuild = false
+    private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    private let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 
     var body: some View {
         @Bindable var ai = kitchen.ai
@@ -167,7 +170,10 @@ struct SettingsView: View {
                 Section {
                     Link(destination: URL(string: "https://sous-chef-website.vercel.app")!) { Label("Website", systemImage: "globe") }
                     Link(destination: URL(string: "https://github.com/gamerg21/sous-chef")!) { Label("Source code (AGPL-3.0)", systemImage: "chevron.left.forwardslash.chevron.right") }
-                    LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+                    // Tapping reveals the build number, like the Settings app's About page.
+                    LabeledContent("Version", value: showsBuild ? "\(version) (\(build))" : version)
+                        .contentShape(.rect)
+                        .onTapGesture { showsBuild.toggle() }
                 } header: {
                     Eyebrow("About")
                 }
