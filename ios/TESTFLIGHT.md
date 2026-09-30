@@ -9,14 +9,19 @@ confirm. Mention big fixes by name so testers can check they're gone.
 
 ## 1.0.2 (8)
 
-What's in it: a second try at the sideways-scrolling fix from build 7, plus
-the build number in Settings.
+What's in it: the App Store release candidate for 1.0.2, a small fix-up
+release on top of 1.0.1.
 
 ### What to Test
 
 **Community recipes**
 - Open Homemade Taco Seasoning and Oven-Baked Baby Back Ribs in the community.
   Drag sideways anywhere on the page; it shouldn't move left or right at all.
+- Photos should still fill their frames, cropped, with no stretching.
+
+**Cooking**
+- Start cooking any recipe. The small label above the ingredients title should
+  say "Ingredients", not "Mise en place".
 
 **Settings**
 - Tap Version at the bottom of Settings. It should switch between "1.0.2" and
