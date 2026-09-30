@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, Clock, Link2, Minus, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, Clock, Link2, Minus, Plus, Trash2, X } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe, RecipeIngredient, RecipeStep, RecipeVisibility, IngredientUnit } from './types'
 import { cx, normalizeKey } from './utils'
 import { parseAmount, unitLabel } from '@/lib/units'
@@ -579,6 +579,17 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
       return { ...d, steps }
     })
 
+  const moveStep = (id: string, delta: number) =>
+    setDraft((d) => {
+      const from = d.steps.findIndex((x) => x.id === id)
+      const to = from + delta
+      if (from < 0 || to < 0 || to >= d.steps.length) return d
+      const steps = [...d.steps]
+      const [step] = steps.splice(from, 1)
+      steps.splice(to, 0, step)
+      return { ...d, steps }
+    })
+
   const stepsPanel = (
     <section>
       <h2 className={cx(eyebrowClassName, 'mb-2 px-1')}>Steps{draft.steps.length ? ` · ${draft.steps.length}` : ''}</h2>
@@ -597,12 +608,39 @@ export function RecipeEditorView(props: RecipeEditorViewProps) {
                   onKeyDown={(e) => {
                     // Enter starts the next step; Shift+Enter keeps a line break.
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addStep(st.id) }
+                    // Alt+Up/Down moves the step without leaving the keyboard.
+                    if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                      e.preventDefault()
+                      moveStep(st.id, e.key === 'ArrowUp' ? -1 : 1)
+                    }
                   }}
                   rows={Math.max(1, Math.ceil(st.text.length / 70))}
                   placeholder="Describe this step"
                   aria-label={`Step ${idx + 1}`}
                   className="min-h-7 w-full resize-none bg-transparent py-0.5 text-base leading-6 text-stone-900 placeholder:text-stone-400 focus:outline-none dark:text-stone-100"
                 />
+                {draft.steps.length > 1 && (
+                  <div className="flex shrink-0 flex-col sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => moveStep(st.id, -1)}
+                      disabled={idx === 0}
+                      aria-label={`Move step ${idx + 1} up`}
+                      className="flex h-6 w-8 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                    >
+                      <ChevronUp className="h-4 w-4" strokeWidth={1.75} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveStep(st.id, 1)}
+                      disabled={idx === draft.steps.length - 1}
+                      aria-label={`Move step ${idx + 1} down`}
+                      className="flex h-6 w-8 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                    >
+                      <ChevronDown className="h-4 w-4" strokeWidth={1.75} />
+                    </button>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setDraft((d) => ({ ...d, steps: d.steps.filter((x) => x.id !== st.id) }))}
