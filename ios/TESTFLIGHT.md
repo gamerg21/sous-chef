@@ -7,7 +7,7 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
-## Next build (draft: add the version and build number when uploading)
+## 1.1.0 (1)
 
 What's in it: weekly meal planning, expiry reminders with a "Use it up" list,
 Home Screen and Lock Screen widgets (including Tonight's Meal), and cook timers
