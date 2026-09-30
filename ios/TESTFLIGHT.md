@@ -7,6 +7,37 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.0.1 (6)
+
+What's in it: the App Store release candidate for 1.0.1. Adds a Mac sidebar and
+fixes, plus small polish across cooking, shopping and recipe import.
+
+### What to Test
+
+**Cooking**
+- Start cooking any recipe. The ingredients page title should count what's
+  left ("Gather 5 ingredients", then "3 more to gather") and say "Ready to
+  cook" once everything is checked off.
+- On the Cook tab, the label above "You can cook…" should say "This morning",
+  "This afternoon" or "Tonight" depending on the time.
+
+**Putting shopping away**
+- Check off a few shopping items and tap to put them away. Each item should
+  show its name, amount and unit on one row. Change a unit from the menu and
+  confirm it's saved in the pantry.
+
+**Recipe import**
+- Paste a link that isn't a recipe (for example a news article). After the
+  error, the bottom button should say Cancel. Edit the link and it should go
+  back to Import.
+
+**Mac**
+- On a Mac, the app should open without crashing, show a sidebar, and wait for
+  your iCloud choice before syncing.
+
+**Still worth checking**
+- Share a recipe from Safari to Sous Chef and tap Open Sous Chef.
+
 ## 1.0.1 (5)
 
 What's in it: builds 3 to 5 add saving recipes from other apps.
