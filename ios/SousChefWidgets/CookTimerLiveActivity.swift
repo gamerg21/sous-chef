@@ -40,8 +40,9 @@ struct CookTimerLiveActivity: Widget {
                             ProgressView(timerInterval: next.interval, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
                                 .tint(.brand)
                         }
-                        OtherTimers(timers: Array(context.state.timers.dropFirst().prefix(2)))
+                        IslandOtherTimers(timers: Array(context.state.timers.dropFirst()))
                     }
+                    .padding(.horizontal, 4)
                 }
             } compactLeading: {
                 Image(systemName: "timer")
@@ -104,6 +105,32 @@ private struct OtherTimers: View {
     }
 }
 
+/// The expanded Dynamic Island is only about 160 points tall, so other timers
+/// share one line: the next of them, then how many more are running.
+private struct IslandOtherTimers: View {
+    let timers: [CookTimerAttributes.Countdown]
+
+    var body: some View {
+        if let first = timers.first {
+            HStack(spacing: 6) {
+                Text(first.label)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text("·").foregroundStyle(.tertiary)
+                CountdownText(countdown: first)
+                    .fixedSize()
+                Spacer(minLength: 8)
+                if timers.count > 1 {
+                    Text("+\(timers.count - 1) more")
+                        .foregroundStyle(Color.brand)
+                        .fixedSize()
+                }
+            }
+            .font(.subheadline)
+        }
+    }
+}
+
 struct CookTimerLockScreenView: View {
     let title: String
     let state: CookTimerAttributes.ContentState
@@ -142,6 +169,17 @@ struct CookTimerLockScreenView: View {
             OtherTimers(timers: Array(state.timers.dropFirst().prefix(2)))
         }
     }
+}
+
+#Preview("Island, four timers", as: .dynamicIsland(.expanded), using: CookTimerAttributes(recipeTitle: "Oven-Baked Baby Back Ribs")) {
+    CookTimerLiveActivity()
+} contentStates: {
+    CookTimerAttributes.ContentState(timers: [
+        .init(id: UUID(), label: "Step 8", startedAt: .now, endsAt: .now.addingTimeInterval(576)),
+        .init(id: UUID(), label: "Step 7", startedAt: .now, endsAt: .now.addingTimeInterval(1165)),
+        .init(id: UUID(), label: "Step 5", startedAt: .now, endsAt: .now.addingTimeInterval(10751)),
+        .init(id: UUID(), label: "Step 12", startedAt: .now, endsAt: .now.addingTimeInterval(14400)),
+    ])
 }
 
 #Preview("Lock Screen", as: .content, using: CookTimerAttributes(recipeTitle: "Pesto Pasta")) {
