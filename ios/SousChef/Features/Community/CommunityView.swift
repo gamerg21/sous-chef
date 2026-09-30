@@ -167,6 +167,9 @@ struct CommunityRecipeView: View {
                 }
                 if let error { ErrorBanner(message: error) }
             }
+            // Rows can round a fraction of a point wider than the screen, which
+            // lets the page drag sideways; cap the content at the offered width.
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .padding()
             .padding(.bottom, 80)
         }
