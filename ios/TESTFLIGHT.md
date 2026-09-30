@@ -7,6 +7,21 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.0.2 (8)
+
+What's in it: a second try at the sideways-scrolling fix from build 7, plus
+the build number in Settings.
+
+### What to Test
+
+**Community recipes**
+- Open Homemade Taco Seasoning and Oven-Baked Baby Back Ribs in the community.
+  Drag sideways anywhere on the page; it shouldn't move left or right at all.
+
+**Settings**
+- Tap Version at the bottom of Settings. It should switch between "1.0.2" and
+  "1.0.2 (8)". Tap again to switch back.
+
 ## 1.0.2 (7)
 
 What's in it: a small App Store fix for 1.0.1. Cook mode no longer says
