@@ -56,8 +56,9 @@ struct CookModeView: View {
     private var ingredientsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Eyebrow("Gather your ingredients", systemImage: "basket")
-                Text("Mise en place").heroTitle()
+                Eyebrow("Mise en place", systemImage: "basket")
+                Text(gatherTitle).heroTitle()
+                    .contentTransition(.numericText())
                 ForEach(recipe.ingredients) { ingredient in
                     Button {
                         withAnimation(.snappy) {
@@ -85,6 +86,14 @@ struct CookModeView: View {
             }
             .padding()
         }
+    }
+
+    private var gatherTitle: String {
+        let remaining = recipe.ingredients.filter { !gathered.contains($0.id) }.count
+        if recipe.ingredients.isEmpty { return "No ingredients listed" }
+        if remaining == 0 { return "Ready to cook" }
+        if gathered.isEmpty { return "Gather \(remaining) ingredient\(remaining == 1 ? "" : "s")" }
+        return "\(remaining) more to gather"
     }
 
     private func stepPage(index: Int, step: RecipeStep) -> some View {

@@ -69,10 +69,18 @@ struct CookView: View {
         }
     }
 
+    private var mealLabel: String {
+        switch Calendar.current.component(.hour, from: .now) {
+        case 5..<11: "This morning"
+        case 11..<16: "This afternoon"
+        default: "Tonight"
+        }
+    }
+
     private func heroCard(readyCount: Int, total: Int) -> some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Eyebrow("Tonight", systemImage: "sparkles")
+                Eyebrow(mealLabel, systemImage: "sparkles")
                 Text(readyCount == 0 ? "Nothing's fully stocked yet" : "You can cook \(readyCount) recipe\(readyCount == 1 ? "" : "s") right now")
                     .font(.system(.title2, design: .rounded, weight: .bold))
                 Text("Ranked by what's in your pantry, with food that expires soon first.")
