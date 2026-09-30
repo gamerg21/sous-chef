@@ -10,13 +10,25 @@ companion to a self-hosted Sous Chef server.
 | --- | --- | --- |
 | Pantry | Inventory | Pantry, fridge and freezer with brand, amounts, expiry (quick durations or a calendar) and nutrition; VisionKit barcode scanning with Open Food Facts lookup, and label scanning for products it doesn't know. |
 | Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
-| Cook | Cooking | Recipes ranked by what you have, cook mode with timers, and pantry deduction. |
+| Cook | Cooking, Plan | Recipes ranked by what you have, cook mode with timers, and pantry deduction. "This week's plan" plans recipes by day and meal, shows their readiness, and adds the week's combined shortages to the shopping list. |
 | Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
 | Community | Community | Browse and save community recipes; publish with Sign in with Apple or through a server. |
 
 Settings (the toolbar button on every tab) covers iCloud, the companion server,
-Apple Intelligence, Open Food Facts, and recipe import/export in the same JSON
-format as the web app.
+Apple Intelligence, Open Food Facts, expiry reminders, and recipe import/export
+in the same JSON format as the web app.
+
+## Expiry reminders
+
+Pantry's "Use soon" section and Cook's **Use it up** list use the window set in
+Settings (3 days unless changed). The opt-in daily reminder is a local
+notification at the chosen time, 09:00 by default. The app schedules one per day
+for the next 14 days, each built from that day's list. Days with nothing expiring
+get no notification. Pantry changes and bringing the app to the foreground
+reschedule them. Tapping a reminder opens Cook's **Use it up** list; **Show in
+Pantry** opens "Use soon". The rules (`Shared/ExpiringFood.swift`, Foundation
+only) and the schedule (`Domain/ExpiryReminderSchedule.swift`) are unit tested.
+See [expiry reminders](../docs/EXPIRY_REMINDERS.md).
 
 The main navigation is the system `TabView`, so it gets the Liquid Glass tab bar,
 minimizes while scrolling, and becomes a sidebar on iPad.
@@ -154,6 +166,77 @@ xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 18 
 Spoken phrases still need checking by voice on a device with Siri, since
 automated tests can't exercise speech recognition.
 
+## Widgets and Live Activities
+
+The `SousChefWidgets` extension (`SousChefWidgets/`, bundle ID
+`com.georgevina.souschef.widgets`) adds Home Screen and Lock Screen widgets and
+cook mode's Live Activity. Like the share extension, it's signed with the
+`group.com.georgevina.souschef` App Group and carries the app's
+`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`. Code both targets need lives
+in `WidgetShared/`.
+
+| Widget | Sizes | Tap opens |
+| --- | --- | --- |
+| Tonight's Meal | small, medium, Lock Screen rectangular and inline | The week plan (medium also links the recipe) |
+| Use Soon | small, medium, Lock Screen rectangular | Pantry's "Use soon" section |
+| Shopping List | small, Lock Screen rectangular, circular and inline | Shopping |
+
+Widgets never open the iCloud-synced SwiftData store. The app writes a small
+JSON `KitchenSnapshot` (`WidgetShared/KitchenSnapshot.swift`) to the App Group
+after each kitchen change, including meal plan changes (`Kitchen.changed()`),
+after a server sync, when it becomes active, and when it goes to the
+background, and reloads the widget timelines only when the snapshot changed
+(`Domain/WidgetSnapshotWriter.swift`). Widgets add an entry at each midnight so
+day counts stay right between changes.
+
+Use Soon lists what `ExpiringFood.find(in:within:)` (`Shared/ExpiringFood.swift`)
+finds with the "expiring soon" window from Settings, read from the App Group, so
+it matches the Pantry's "Use soon" section and the reminders. Changing the window
+refreshes the snapshot.
+
+**Tonight's Meal** shows `Kitchen.tonightsMeal(now:)`: today's uncooked dinner,
+otherwise today's next uncooked meal. It shows the recipe, meal, servings and
+pantry readiness at the planned servings ("Ready" or "Missing 2"). The snapshot
+also carries tomorrow's meal, so the widget moves on at midnight before the app
+runs again. Cooked meals drop out as soon as they're cooked. When nothing is
+planned it says "Nothing planned" and opens the plan. Recipe photos are shrunk
+to a small JPEG in the App Group (`WidgetPhotos/`, named after the photo's
+contents, old ones removed); without one it shows an icon.
+
+Older snapshots decode without the newer sections (`tonight`, `tomorrow`,
+`expiringWindowDays`), and an unreadable section is dropped rather than losing
+the whole snapshot. To add a widget for new data, add an optional property to
+`KitchenSnapshot`, decode it in `init(from:)`, fill it in
+`WidgetSnapshotWriter.snapshot(of:)`, and add a widget to `SousChefWidgetsBundle`.
+
+**Links.** Widgets and notifications lead to the same places through
+`KitchenLink` and `AppNavigator.go(to:)`: `souschef://pantry`, `recipes`, `cook`,
+`shopping`, `community`, `souschef://pantry/use-soon`,
+`souschef://cook/use-it-up`, `souschef://plan` (Cook's week plan) and
+`souschef://recipe/<id>`.
+
+**Notifications.** `Domain/AppNotifications.swift` is the app's one
+notification delegate and registers every category together (expiry
+reminders' `expiry-reminder` and cook timers' `SOUSCHEF_COOK_TIMER`), since
+`setNotificationCategories` replaces the whole set. Expiry reminder taps are
+routed as described under Expiry reminders.
+
+**Cook timers.** Starting a timer in cook mode starts one Live Activity for the
+recipe (`NSSupportsLiveActivities` is in `SousChef-Info.plist`). It lists every
+timer, counts down the next to finish in the Dynamic Island, and uses
+`Text(timerInterval:)` and `ProgressView(timerInterval:)` so it ticks without
+updates from the app. Removing timers updates it, and closing cook mode ends it;
+activities left over from a previous launch end when the app starts
+(`Features/Cook/CookTimerAlerts.swift`). Each timer also schedules a local
+notification with sound (identifiers `souschef.cook-timer.<id>`, category
+`SOUSCHEF_COOK_TIMER`), so it's heard with the app in the background or the phone
+locked. Notification permission is asked the first time a timer starts. With
+the app in the foreground the alert still shows as a banner with sound, since
+the cook may be on another screen, alongside the in-app timer strip and haptic.
+
+On a Mac ("Designed for iPad") and wherever Live Activities are turned off, only
+the notifications are used. The in-app timers never depend on either.
+
 ## Share sheet
 
 `ShareExtension/` puts Sous Chef in the share sheet, so a recipe page in
@@ -182,7 +265,7 @@ are required.
 
 - The device store is the working copy, so the app works offline.
 - Each sync pushes local changes (creates, updates and deletion tombstones), then
-  mirrors the server's pantry, recipes and shopping list. Conflicts resolve as
+  mirrors the server's pantry, recipes, shopping list and meal plan (servers without meal planning are skipped for plans). Conflicts resolve as
   "latest pusher wins".
 - On first connection, records that already exist on both sides (same name, and
   for pantry items the same location and unit) are paired instead of duplicated,

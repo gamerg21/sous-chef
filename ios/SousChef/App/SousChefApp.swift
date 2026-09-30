@@ -14,6 +14,7 @@ struct SousChefApp: App {
         if arguments.contains("-uiTesting"), arguments.contains("-seedSample") {
             UserDefaults.standard.register(defaults: ["onboarding.done": true])
         }
+        AppNotifications.shared.activate()
     }
 
     var body: some Scene {
@@ -24,14 +25,25 @@ struct SousChefApp: App {
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
                 .task { await account.checkCredentialState() }
                 .task { AppNavigator.shared.receiveSharedRecipes() }
-                .onOpenURL { _ in AppNavigator.shared.receiveSharedRecipes() }
+                .task { CookTimerAlerts.shared.endLeftoverActivities() }
+                .onOpenURL { url in
+                    AppNavigator.shared.open(url)
+                    AppNavigator.shared.receiveSharedRecipes()
+                }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 AppNavigator.shared.receiveSharedRecipes()
-                Task { await kitchen.server.syncNow() }
+                Task {
+                    await kitchen.server.syncNow()
+                    // Also catches iCloud changes that arrived while away.
+                    WidgetSnapshotWriter.refresh(kitchen)
+                }
                 Task { await account.checkCredentialState() }
             }
+            // Reminders reflect whatever synced or changed while the app was open.
+            if phase != .inactive { ExpiryReminders.shared.reschedule(kitchen) }
+            if phase == .background { WidgetSnapshotWriter.refresh(kitchen) }
             if phase != .inactive { Task { await KitchenIndex.refresh(kitchen) } }
         }
     }
@@ -76,6 +88,13 @@ final class AppNavigator {
     /// Links and text shared from other apps, imported one at a time by `RecipesView`.
     var sharedRecipes: [SharedRecipeInbox.Item] = []
 
+    /// Cook shows only recipes that use up food expiring soon.
+    var cookShowsExpiring = false
+    /// Asks Pantry to scroll to its "Use soon" section; Pantry clears it.
+    var revealExpiringInPantry = false
+    /// Asks Cook to show the week plan; Cook clears it.
+    var showPlan = false
+
     /// Whether the Mac sidebar is showing.
     var showsSidebar = true
 
@@ -83,6 +102,34 @@ final class AppNavigator {
         tab = .recipes
         recipeToCook = cooking ? id : nil
         recipeToOpen = id
+    }
+
+    /// Opens a `souschef://` link from a widget; other links are ignored.
+    func open(_ url: URL) {
+        guard let destination = KitchenLink.destination(of: url) else { return }
+        go(to: destination)
+    }
+
+    /// The one place widget links and notification taps are routed.
+    func go(to destination: KitchenLink.Destination) {
+        switch destination {
+        case .pantry: tab = .pantry
+        case .recipes: tab = .recipes
+        case .cook: tab = .cook
+        case .shopping: tab = .shopping
+        case .community: tab = .community
+        case .useSoon:
+            revealExpiringInPantry = true
+            tab = .pantry
+        case .useItUp:
+            cookShowsExpiring = true
+            tab = .cook
+        case .plan:
+            showPlan = true
+            tab = .cook
+        case .recipe(let id):
+            open(recipe: id)
+        }
     }
 
     /// Takes whatever the share extension left and switches to Recipes to import it.

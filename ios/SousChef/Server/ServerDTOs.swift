@@ -72,6 +72,18 @@ enum DTO {
         let recipeId: String?
     }
 
+    struct MealPlanList: Decodable { let entries: [MealPlanEntry] }
+
+    struct MealPlanEntry: Decodable {
+        let id: String
+        let date: String
+        let slot: String
+        let recipeId: String
+        let servings: Double?
+        let note: String?
+        let cooked: Bool
+    }
+
     struct Created: Decodable { let id: String }
 
     struct AIDraft: Decodable {

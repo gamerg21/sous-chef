@@ -142,6 +142,8 @@ final class CompanionServer {
                 let now = Date()
                 UserDefaults.standard.set(now, forKey: "server.lastSynced")
                 status = .synced(now)
+                // Pulled pantry, list and plan changes reach the widgets too.
+                if !kitchen.inMemory { WidgetSnapshotWriter.scheduleRefresh(kitchen) }
             } catch ServerClient.ServerError.notAuthenticated {
                 status = .failed("Your server session ended. Sign in again in Settings.")
                 self.client = nil
@@ -154,12 +156,21 @@ final class CompanionServer {
         } while rerun
     }
 
-    /// Server-side cooking keeps inventory deduction atomic across devices.
-    func cookOnServer(_ recipe: Recipe, addMissing: Bool) async throws -> Bool {
+    /// Server-side cooking keeps inventory deduction atomic across devices. A
+    /// planned meal the server knows is cooked through `mealPlan:cook`, which
+    /// scales it and marks it cooked in the same transaction.
+    func cookOnServer(_ recipe: Recipe, addMissing: Bool, meal: PlannedMeal? = nil, scale: Double = 1) async throws -> Bool {
         guard let client, let kitchen else { return false }
         try await SyncPass(client: client, kitchen: kitchen, householdID: householdID, linkExisting: false).push()
         guard let serverID = recipe.serverID else { return false }
-        _ = try await client.call("cooking:cookRecipe", ["recipeId": serverID, "addMissingToShoppingList": addMissing, "acknowledgeManualChecks": true])
+        if let mealID = meal?.serverID, meal?.isCooked == false {
+            _ = try await client.call("mealPlan:cook", ["id": mealID, "addMissingToShoppingList": addMissing, "acknowledgeManualChecks": true])
+        } else {
+            var args: [String: Any] = ["recipeId": serverID, "addMissingToShoppingList": addMissing, "acknowledgeManualChecks": true]
+            // Older servers reject unknown arguments, so only send a real scale.
+            if scale != 1 { args["scale"] = scale }
+            _ = try await client.call("cooking:cookRecipe", args)
+        }
         await syncNow()
         return true
     }
@@ -206,6 +217,12 @@ private struct SyncPass {
         return false
     }
 
+    /// The server predates the operation, e.g. meal planning.
+    private func unsupported(_ error: Error) -> Bool {
+        if case ServerClient.ServerError.server(let message) = error { return message.localizedCaseInsensitiveContains("unknown operation") }
+        return false
+    }
+
     // MARK: First connection
 
     /// Pairs records that already exist on both sides so connecting an
@@ -241,6 +258,18 @@ private struct SyncPass {
                 item.needsPush = false
             }
         }
+        // The same recipe planned for the same day and meal on both sides.
+        do {
+            var meals = try await client.call("mealPlan:list", scope, as: DTO.MealPlanList.self).entries
+            let recipeServerIDs = Dictionary(all(Recipe.self).compactMap { recipe in recipe.serverID.map { (recipe.uuid, $0) } }, uniquingKeysWith: { first, _ in first })
+            for meal in all(PlannedMeal.self) where meal.serverID == nil {
+                guard let recipeID = meal.recipeUUID.flatMap({ recipeServerIDs[$0] }) else { continue }
+                if let index = meals.firstIndex(where: { $0.date == meal.day && $0.slot == meal.slot.rawValue && $0.recipeId == recipeID }) {
+                    meal.serverID = meals.remove(at: index).id
+                    meal.needsPush = false
+                }
+            }
+        } catch where unsupported(error) {}
         try context.save()
     }
 
@@ -252,10 +281,11 @@ private struct SyncPass {
             case .pantry: "inventory:remove"
             case .recipe: "recipes:remove"
             case .shopping: "shoppingList:deleteItem"
+            case .mealPlan: "mealPlan:remove"
             case nil: ""
             }
             if !path.isEmpty {
-                do { _ = try await client.call(path, ["id": tombstone.serverID]) } catch where notFound(error) {}
+                do { _ = try await client.call(path, ["id": tombstone.serverID]) } catch where notFound(error) || unsupported(error) {}
             }
             context.delete(tombstone)
         }
@@ -263,7 +293,36 @@ private struct SyncPass {
         for recipe in all(Recipe.self) where recipe.needsPush || recipe.favorited != recipe.syncedFavorited { try await push(recipe) }
         let recipesByUUID = Dictionary(all(Recipe.self).map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
         for item in all(ShoppingItem.self) where item.needsPush { try await push(item, recipes: recipesByUUID) }
+        do {
+            for meal in all(PlannedMeal.self) where meal.needsPush { try await push(meal, recipes: recipesByUUID) }
+        } catch where unsupported(error) {
+            // A server from before meal planning: plans stay on this device and in iCloud.
+        }
         try context.save()
+    }
+
+    private func push(_ meal: PlannedMeal, recipes: [UUID: Recipe]) async throws {
+        if let id = meal.serverID {
+            let fields: [String: Any] = ["id": id, "date": meal.day, "slot": meal.slot.rawValue, "servings": meal.servings ?? NSNull(),
+                                         "note": meal.note ?? NSNull(), "cooked": meal.isCooked]
+            do {
+                _ = try await client.call("mealPlan:update", fields)
+                meal.needsPush = false
+                return
+            } catch where notFound(error) {
+                meal.serverID = nil
+            }
+        }
+        // The recipe has to reach the server first; it's pushed earlier in the pass.
+        guard let recipeID = meal.recipeUUID.flatMap({ recipes[$0]?.serverID }) ?? meal.recipeServerID else { return }
+        var fields: [String: Any] = ["date": meal.day, "slot": meal.slot.rawValue, "recipeId": recipeID].merging(scope) { $1 }
+        if let value = meal.servings { fields["servings"] = value }
+        if let value = meal.note { fields["note"] = value }
+        let created = try await client.call("mealPlan:add", fields, as: DTO.Created.self)
+        meal.serverID = created.id
+        meal.recipeServerID = recipeID
+        if meal.isCooked { _ = try await client.call("mealPlan:update", ["id": created.id, "cooked": true]) }
+        meal.needsPush = false
     }
 
     private func push(_ item: PantryItem) async throws {
@@ -467,6 +526,40 @@ private struct SyncPass {
         }
         for item in all(ShoppingItem.self) where item.serverID != nil && !serverShopping.contains(item.serverID!) && !item.needsPush {
             context.delete(item)
+        }
+
+        try await pullMealPlan(recipeByServerID: recipeByServerID)
+    }
+
+    private func pullMealPlan(recipeByServerID: [String: UUID]) async throws {
+        let entries: [DTO.MealPlanEntry]
+        do {
+            entries = try await client.call("mealPlan:list", scope, as: DTO.MealPlanList.self).entries
+        } catch where unsupported(error) {
+            return
+        }
+        let serverMeals = Set(entries.map(\.id))
+        var localMeals = Dictionary(all(PlannedMeal.self).compactMap { meal in meal.serverID.map { ($0, meal) } }, uniquingKeysWith: { first, _ in first })
+        for remote in entries {
+            let meal = localMeals.removeValue(forKey: remote.id) ?? {
+                let created = PlannedMeal(day: remote.date)
+                created.serverID = remote.id
+                created.needsPush = false
+                context.insert(created)
+                return created
+            }()
+            guard !meal.needsPush else { continue }
+            meal.day = remote.date
+            meal.slot = MealSlot(rawValue: remote.slot) ?? .dinner
+            meal.recipeServerID = remote.recipeId
+            meal.recipeUUID = recipeByServerID[remote.recipeId]
+            meal.servings = remote.servings.map { Int($0) }
+            meal.note = remote.note
+            if remote.cooked != meal.isCooked { meal.cookedAt = remote.cooked ? Date() : nil }
+            meal.needsPush = false
+        }
+        for meal in all(PlannedMeal.self) where meal.serverID != nil && !serverMeals.contains(meal.serverID!) && !meal.needsPush {
+            context.delete(meal)
         }
     }
 }

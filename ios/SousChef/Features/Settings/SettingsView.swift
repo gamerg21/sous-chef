@@ -135,6 +135,8 @@ struct SettingsView: View {
                     Text("Barcode lookups send only the barcode to Open Food Facts. Leave the community address empty to use the Sous Chef recipe community; a connected server uses its own.")
                 }
 
+                ExpiryReminderSection()
+
                 CommunityAccountSection()
 
                 Section {

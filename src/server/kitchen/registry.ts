@@ -16,4 +16,6 @@ import * as recipeImport from './recipeImport';
 import * as extensions from './extensions';
 import * as integrations from './integrations';
 import * as community from './community';
-export const modules = { rateLimit, inventory, recipes, cooking, shoppingList, units, households, preferences, users, admin, storage, barcodes, aiProviders, recipeIdeas, recipeImport, extensions, integrations, community };
+import * as mealPlan from './mealPlan';
+import * as expiry from './expiry';
+export const modules = { rateLimit, inventory, recipes, cooking, shoppingList, units, households, preferences, users, admin, storage, barcodes, aiProviders, recipeIdeas, recipeImport, extensions, integrations, community, mealPlan, expiry };

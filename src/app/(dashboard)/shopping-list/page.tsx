@@ -49,7 +49,7 @@ function toShoppingCategory(
 function toShoppingSource(
   value: string | undefined
 ): ShoppingListItem["source"] | undefined {
-  if (value === "manual" || value === "from-recipe" || value === "low-stock") {
+  if (value === "manual" || value === "from-recipe" || value === "meal-plan" || value === "low-stock") {
     return value;
   }
   return undefined;

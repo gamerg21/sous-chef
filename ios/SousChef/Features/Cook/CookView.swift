@@ -8,28 +8,48 @@ struct CookView: View {
     @Environment(Kitchen.self) private var kitchen
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
+    @Query(filter: #Predicate<PlannedMeal> { $0.cookedAt == nil }) private var openMeals: [PlannedMeal]
     @State private var cooking: Recipe?
+    @State private var cookingMeal: PlannedMeal?
     @State private var ideas = false
+    @State private var path = NavigationPath()
+    @Bindable private var navigator = AppNavigator.shared
+    @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
 
-    /// Ranking reruns only when recipes or the pantry change.
+    /// Ranking reruns only when recipes, the pantry, the window or the day change.
     @State private var ranking = Memo<Int, [Kitchen.RecipeSuggestion]>()
 
     private var ranked: [Kitchen.RecipeSuggestion] {
-        ranking(Kitchen.readinessKey(recipes: recipes, pantry: pantry)) { Kitchen.rankRecipes(recipes, pantry: pantry) }
+        var key = Hasher()
+        key.combine(Kitchen.readinessKey(recipes: recipes, pantry: pantry))
+        key.combine(windowDays)
+        key.combine(Calendar.current.startOfDay(for: .now))
+        return ranking(key.finalize()) { Kitchen.rankRecipes(recipes, pantry: pantry, within: windowDays) }
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             let ranked = ranked
+            let usingUp = Kitchen.rankForUsingUp(ranked)
             List {
                 if !recipes.isEmpty {
                     let ready = ranked.filter { $0.missing == 0 }
-                    let almost = ranked.filter { (1...2).contains($0.missing) }
-                    let rest = ranked.filter { $0.missing > 2 }
-                    heroCard(readyCount: ready.count, total: ranked.count)
-                    section("Ready now", symbol: "checkmark.seal", items: ready)
-                    section("Almost there", symbol: "cart", items: almost)
-                    section("Needs a shop", symbol: "basket", items: rest)
+                    heroCard(readyCount: ready.count, total: ranked.count, usingUpCount: usingUp.count)
+                    planSection
+                    if navigator.cookShowsExpiring {
+                        if usingUp.isEmpty {
+                            ContentUnavailableView("Nothing to use up", systemImage: "leaf",
+                                                   description: Text("None of your recipes use food that expires in the next \(windowDays) day\(windowDays == 1 ? "" : "s")."))
+                        } else {
+                            section("Uses food that expires soon", symbol: "hourglass", items: usingUp)
+                        }
+                    } else {
+                        let almost = ranked.filter { (1...2).contains($0.missing) }
+                        let rest = ranked.filter { $0.missing > 2 }
+                        section("Ready now", symbol: "checkmark.seal", items: ready)
+                        section("Almost there", symbol: "cart", items: almost)
+                        section("Needs a shop", symbol: "basket", items: rest)
+                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -50,6 +70,13 @@ struct CookView: View {
             }
             .navigationTitle("Cook")
             .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
+            .navigationDestination(for: PlanRoute.self) { _ in PlanView() }
+            .onChange(of: navigator.showPlan, initial: true) { _, show in
+                // A widget or `souschef://plan` link asked for the week plan.
+                guard show else { return }
+                navigator.showPlan = false
+                path = NavigationPath([PlanRoute()])
+            }
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 if kitchen.ai.canGenerateRecipes {
@@ -59,6 +86,12 @@ struct CookView: View {
                 }
             }
             .fullScreenCover(item: $cooking) { CookModeView(recipe: $0, scale: 1).kitchenEnvironment(kitchen) }
+            .fullScreenCover(item: $cookingMeal) { meal in
+                if let recipe = kitchen.recipe(for: meal) {
+                    CookModeView(recipe: recipe, scale: kitchen.scale(for: meal), meal: meal)
+                        .kitchenEnvironment(kitchen)
+                }
+            }
             .sheet(isPresented: $ideas) {
                 RecipeImportView(mode: .ideas) { draft in
                     ideas = false
@@ -77,18 +110,61 @@ struct CookView: View {
         }
     }
 
-    private func heroCard(readyCount: Int, total: Int) -> some View {
+    /// Tonight's planned meal, if any, and the way into the week plan.
+    private var planSection: some View {
+        Section {
+            if let meal = MealPlanner.tonight(in: openMeals), let recipe = kitchen.recipe(for: meal) {
+                HStack(spacing: 12) {
+                    RecipeImage(data: recipe.photo)
+                        .frame(width: 52, height: 52)
+                        .clipShape(.rect(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Eyebrow("Planned · \(meal.slot.title)", systemImage: meal.slot.symbol)
+                        Text(recipe.title).font(.body.weight(.semibold)).lineLimit(2)
+                    }
+                    Spacer()
+                    Button("Cook", systemImage: "flame") { cookingMeal = meal }
+                        .buttonStyle(.glassProminent)
+                        .labelStyle(.titleAndIcon)
+                        .fixedSize()
+                }
+            }
+            NavigationLink(value: PlanRoute()) {
+                Label("This week's plan", systemImage: "calendar")
+            }
+        }
+    }
+
+    private func heroCard(readyCount: Int, total: Int, usingUpCount: Int) -> some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 Eyebrow(mealLabel, systemImage: "sparkles")
                 Text(readyCount == 0 ? "Nothing's fully stocked yet" : "You can cook \(readyCount) recipe\(readyCount == 1 ? "" : "s") right now")
                     .font(.system(.title2, design: .rounded, weight: .bold))
-                Text("Ranked by what's in your pantry, with food that expires soon first.")
+                Text(navigator.cookShowsExpiring
+                     ? "Recipes that use the most food expiring soon come first."
+                     : "Ranked by what's in your pantry, with food that expires soon first.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                Picker("Show", selection: $navigator.cookShowsExpiring) {
+                    Text("All recipes").tag(false)
+                    Text(usingUpCount > 0 ? "Use it up (\(usingUpCount))" : "Use it up").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.top, 4)
             }
             .padding(.vertical, 6)
         }
+    }
+
+    /// "Uses spinach (tomorrow), milk (in 2 days)".
+    private func usesText(_ items: [ExpiringFood]) -> String {
+        let parts = items.prefix(3).map { item in
+            let phrase = ExpiringFood.phrase(daysLeft: item.daysLeft)
+            let when = phrase.hasPrefix("expires ") ? String(phrase.dropFirst("expires ".count)) : phrase
+            return "\(item.name) (\(when))"
+        }
+        return "Uses " + parts.joined(separator: ", ") + (items.count > 3 ? "…" : "")
     }
 
     @ViewBuilder
@@ -111,11 +187,11 @@ struct CookView: View {
                                 } else if let minutes = item.recipe.totalTimeMinutes {
                                     Label("\(minutes) min", systemImage: "timer").font(.caption).foregroundStyle(.secondary)
                                 }
-                                if !item.usesExpiring.isEmpty {
-                                    Label("Uses " + item.usesExpiring.prefix(2).joined(separator: ", "), systemImage: "clock.badge.exclamationmark")
+                                if let soonest = item.expiringItems.first {
+                                    Label(usesText(item.expiringItems), systemImage: "clock.badge.exclamationmark")
                                         .font(.caption)
-                                        .foregroundStyle(.red)
-                                        .lineLimit(1)
+                                        .foregroundStyle(soonest.daysLeft <= 0 ? .red : .orange)
+                                        .lineLimit(2)
                                 }
                             }
                         }
