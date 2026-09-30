@@ -22,6 +22,7 @@ struct RecipeEditorView: View {
     @State private var newStep = ""
     @State private var newTag = ""
     @State private var editingIngredient: Ingredient?
+    @State private var reorderingSteps = false
     @FocusState private var focus: Field?
 
     enum Field { case title, ingredient, step, tag }
@@ -102,6 +103,8 @@ struct RecipeEditorView: View {
                             .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
+                        .deleteDisabled(reorderingSteps)
+                        .moveDisabled(reorderingSteps)
                     }
                     .onDelete { draft.ingredients.remove(atOffsets: $0) }
                     .onMove { draft.ingredients.move(fromOffsets: $0, toOffset: $1) }
@@ -122,18 +125,45 @@ struct RecipeEditorView: View {
 
                 Section {
                     ForEach($draft.steps) { $step in
-                        TextField("Step", text: $step.text, axis: .vertical)
+                        if reorderingSteps {
+                            // Text fields swallow the drag, so reorder plain rows.
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text("\((draft.steps.firstIndex { $0.id == step.id } ?? 0) + 1)")
+                                    .font(.callout.weight(.semibold)).monospacedDigit()
+                                    .foregroundStyle(Color.brand)
+                                Text(step.text).lineLimit(3)
+                            }
+                        } else {
+                            TextField("Step", text: $step.text, axis: .vertical)
+                        }
                     }
                     .onDelete { draft.steps.remove(atOffsets: $0) }
                     .onMove { draft.steps.move(fromOffsets: $0, toOffset: $1) }
-                    HStack {
-                        TextField("Add a step", text: $newStep, axis: .vertical)
-                            .focused($focus, equals: .step)
-                        Button(action: addStep) { Image(systemName: "plus.circle.fill") }
-                            .disabled(newStep.nilIfEmpty == nil)
+                    if !reorderingSteps {
+                        HStack {
+                            TextField("Add a step", text: $newStep, axis: .vertical)
+                                .focused($focus, equals: .step)
+                            Button(action: addStep) { Image(systemName: "plus.circle.fill") }
+                                .disabled(newStep.nilIfEmpty == nil)
+                                .accessibilityIdentifier("addStep")
+                        }
                     }
                 } header: {
-                    Eyebrow("Steps · \(draft.steps.count)")
+                    HStack {
+                        Eyebrow("Steps · \(draft.steps.count)")
+                        Spacer()
+                        if draft.steps.count > 1 || reorderingSteps {
+                            Button(reorderingSteps ? "Done" : "Reorder") {
+                                focus = nil
+                                withAnimation { reorderingSteps.toggle() }
+                            }
+                            .font(.caption.weight(.semibold))
+                            .textCase(nil)
+                            .accessibilityIdentifier("reorderSteps")
+                        }
+                    }
+                } footer: {
+                    if reorderingSteps { Text("Drag the handles to change the order.") }
                 }
 
                 Section {
@@ -182,6 +212,7 @@ struct RecipeEditorView: View {
                     Eyebrow("Source & notes")
                 }
             }
+            .environment(\.editMode, .constant(reorderingSteps ? .active : .inactive))
             .navigationTitle(recipe == nil ? "New recipe" : "Edit recipe")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
