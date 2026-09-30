@@ -6,7 +6,6 @@
 - Expiry reminders: "expiring soon" means in-stock items expiring within a window you choose (3 days by default), including anything already past its date.
 - Inventory shows a "Use it up" card, and What can I cook? gains a **Use it up** filter that ranks recipes by how many expiring items they use and shows which ones.
 - Removing an expired item asks whether it was used up or thrown away; the inventory shows this month's totals.
-- Opt-in daily expiry email (off by default) when email is configured. At most one per day, never in the demo. See [expiry reminders](docs/EXPIRY_REMINDERS.md).
 - iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
 - iOS: cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
 - iOS: new widgets: Tonight's Meal (small, medium, Lock Screen), Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tonight's Meal shows the planned recipe with its servings and pantry readiness and opens the week plan; Use Soon uses the same "expiring soon" window as the Pantry and reminders. A finished cook timer also banners with sound while the app is open.

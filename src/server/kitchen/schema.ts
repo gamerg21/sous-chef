@@ -303,14 +303,10 @@ export default defineSchema({
     defaultVolumeUnit: v.string(),
     timezone: v.optional(v.string()),
     dateFormat: v.optional(v.string()),
-    // Expiry reminders: the "expiring soon" window in days (default 3), the
-    // opt-in daily email digest, and the last local day the digest handled.
+    // Expiry reminders: the "expiring soon" window in days (default 3).
     expiringWithinDays: v.optional(v.number()),
-    expiryDigestEmail: v.optional(v.boolean()),
-    expiryDigestHandledOn: v.optional(v.string()),
   })
-    .index("by_userId", ["userId"])
-    .index("by_expiryDigestEmail", ["expiryDigestEmail"]),
+    .index("by_userId", ["userId"]),
 
   // ── Pantry outcomes ───────────────────────────────────────────────────
   // What became of dated items when they left the pantry: cooked or marked

@@ -21,27 +21,7 @@ rules live in `src/lib/expiring.ts`; the iOS app mirrors them in
   used. The inventory page shows this month's totals. Items that are removed
   before their date, or set to zero by hand, aren't counted.
 - **Settings → Account & preferences → Expiry reminders:** the window (1, 2, 3, 5
-  or 7 days) and the daily email.
-
-### Daily email digest
-
-The digest is off by default. Each person opts in, and only when the server can
-send email: `RESEND_API_KEY` and `APP_URL` are set and `SOUS_CHEF_DEMO` isn't
-`true`. `SMTP_FROM` sets the sender, the same as password-reset email.
-
-- The Next.js server starts a timer when it boots (`src/instrumentation.ts`). It checks
-  every 15 minutes, and 30 seconds after startup. Without email configured, or
-  in the demo, no timer starts.
-- Each subscriber gets at most one email per local day, on the first check at
-  or after 08:00 in their timezone preference (the server's timezone when unset).
-- Before sending, the check records the day in SQLite
-  (`userPreferences.expiryDigestHandledOn`) inside a write transaction. Restarts,
-  overlapping checks and a second process sharing the database can't send the same
-  day twice. If Resend rejects the email or can't be reached, the claim is released
-  and a later check that day retries.
-- Nothing is sent on days when nothing is expiring, to demo accounts, or to
-  accounts without an email address.
-- If the server is down at 08:00, the digest goes out when it comes back that day.
+  or 7 days).
 
 ## On iPhone and iPad
 

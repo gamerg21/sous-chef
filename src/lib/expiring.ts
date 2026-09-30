@@ -1,6 +1,6 @@
 /**
  * "Expiring soon" rules shared by the inventory card, the "Use it up" cooking
- * filter and the daily email digest. Dates are calendar days (YYYY-MM-DD), so
+ * filter. Dates are calendar days (YYYY-MM-DD), so
  * "today" is always the cook's local day rather than a UTC instant.
  * The iOS app mirrors these rules in ios/Shared/ExpiringFood.swift.
  */
@@ -9,9 +9,6 @@ import type { CookingPlan } from './cooking-plan'
 export const DEFAULT_EXPIRING_WITHIN_DAYS = 3
 export const EXPIRING_WINDOW_CHOICES = [1, 2, 3, 5, 7] as const
 export const MAX_EXPIRING_WITHIN_DAYS = 30
-/** Local hour from which the daily email digest goes out. */
-export const DIGEST_HOUR = 8
-export const DIGEST_HOUR_LABEL = '8:00'
 
 export type ExpiringCandidate = { id: string; name: string; quantity?: number; expiresOn?: string }
 export type Expiring<T extends ExpiringCandidate> = T & { daysLeft: number }
