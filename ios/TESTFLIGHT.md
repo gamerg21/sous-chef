@@ -10,9 +10,16 @@ confirm. Mention big fixes by name so testers can check they're gone.
 ## 1.0.3 (1)
 
 What's in it: a security update for 1.0.2. It protects your Sous Chef server
-sign-in and makes recipe imports safer. Nothing else changes.
+sign-in and makes recipe imports safer, and makes ending cook mode clearer.
 
 ### What to Test
+
+**Cooking**
+- Cook any recipe through to the last page and update the pantry. The Close
+  button is gone; the "Finish" label at the bottom becomes a big button that
+  ends cooking.
+- Before you update the pantry, and on every other page, the bottom label
+  looks as it did before.
 
 **Server connection (if you use a Sous Chef server)**
 - Connect to your server and sync. Recipes, pantry, shopping list and meal
