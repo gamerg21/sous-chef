@@ -519,6 +519,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Sous Chef uses the camera to scan grocery barcodes, read food labels and photograph recipes.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Sous Chef connects to your own Sous Chef server on your home network to keep your kitchen in sync.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -557,6 +558,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Sous Chef uses the camera to scan grocery barcodes, read food labels and photograph recipes.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Sous Chef connects to your own Sous Chef server on your home network to keep your kitchen in sync.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

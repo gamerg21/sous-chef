@@ -2,29 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Self-hosted kitchens often run on plain HTTP inside a home network or
-	     tailnet. The app warns before sending credentials over HTTP to a
-	     non-local host; see ios/README.md for the App Review note. -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<!-- The recipe community used when no Sous Chef server is connected and no
-	     custom community address is set. Switch this to the production
-	     community (https://<deployment>.convex.site) before release. -->
-	<key>SousChefCommunityURL</key>
-	<string>https://silent-gerbil-530.convex.site</string>
-	<!-- Recipe screens advertise this activity so Siri knows which recipe
-	     "this recipe" means. -->
-	<key>NSUserActivityTypes</key>
-	<array>
-		<string>com.georgevina.souschef.recipe</string>
-	</array>
-	<!-- The share extension opens souschef:// so the cook can review what
-	     they just shared. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -36,10 +13,19 @@
 			</array>
 		</dict>
 	</array>
-	<!-- Cook mode's timers show on the Lock Screen and in the Dynamic Island. -->
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<!-- CloudKit pushes wake the app so iCloud changes arrive promptly. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.georgevina.souschef.recipe</string>
+	</array>
+	<key>SousChefCommunityURL</key>
+	<string>https://silent-gerbil-530.convex.site</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
