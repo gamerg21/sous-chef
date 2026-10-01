@@ -50,6 +50,7 @@ export default function SystemUpdates() {
   const [queued, setQueued] = useState('');
   const [reconnecting, setReconnecting] = useState(false);
   const [started, setStarted] = useState(0);
+  const [slow, setSlow] = useState(false);
   const active = !!queued || !!(status?.job && !finished.includes(status.job.phase));
   const refresh = useCallback(async () => {
     const response = await fetch('/api/system/updates', { cache: 'no-store', signal: AbortSignal.timeout(20000) });
@@ -72,6 +73,11 @@ export default function SystemUpdates() {
     const timer = setInterval(check, active ? 2000 : 60000);
     return () => { alive = false; clearInterval(timer); };
   }, [active, refresh]);
+  useEffect(() => {
+    if (!active || !started) return;
+    const timer = setTimeout(() => setSlow(true), Math.max(0, started + 5 * 60000 - Date.now()));
+    return () => { clearTimeout(timer); setSlow(false); };
+  }, [active, started]);
   async function act(action: 'check' | 'install') {
     setBusy(true); setError(''); setConfirm(false);
     try {
@@ -116,7 +122,7 @@ export default function SystemUpdates() {
         <div className="min-w-0 flex-1">
           <p className="font-medium text-stone-900 dark:text-stone-100">{reconnecting ? 'Restarting your kitchen…' : queued && (!status.job || finished.includes(status.job.phase)) ? 'Update queued…' : status.job?.message}</p>
           {active && <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">This page reconnects automatically. Keep the server running.</p>}
-          {active && started > 0 && Date.now() - started > 5 * 60000 && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">This is taking longer than expected. Check the updater on the server before retrying.</p>}
+          {active && slow && <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">This is taking longer than expected. Check the updater on the server before retrying.</p>}
           {status.job?.phase === 'complete' && !active && <button className={cx(buttonClassName('primary'), 'mt-3 min-h-11')} onClick={() => window.location.reload()}>Reload updated app</button>}
         </div>
       </section>}

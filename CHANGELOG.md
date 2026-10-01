@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Security: Next.js 16.3.8, Auth.js core 0.41.3 and Convex Auth 0.0.96, with refreshed dependencies. `pnpm audit` reports no known advisories (previously 88, including 4 critical).
 - Community password reset no longer writes reset links or email addresses to the logs. Without email delivery configured, community reset is unavailable instead.
 - Weekly meal planning: a Plan page (and a Plan screen inside Cook on iOS) puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
 - "Add week's shortages to list" combines what the week's uncooked meals need across recipes (converting units), counts the pantry once for the whole week, and tops up existing shopping list items instead of duplicating them.

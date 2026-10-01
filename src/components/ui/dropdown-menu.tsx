@@ -6,7 +6,10 @@ import { createPortal } from "react-dom";
 interface DropdownMenuContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Read only inside effects and event handlers. */
   triggerRef: React.RefObject<HTMLElement | null>;
+  /** Callback ref that records the trigger element. */
+  setTrigger: (node: HTMLElement | null) => void;
 }
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(null);
@@ -18,9 +21,10 @@ interface DropdownMenuProps {
 export function DropdownMenu({ children }: DropdownMenuProps) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLElement>(null);
+  const setTrigger = React.useCallback((node: HTMLElement | null) => { triggerRef.current = node; }, []);
 
   return (
-    <DropdownMenuContext.Provider value={{ open, setOpen, triggerRef }}>
+    <DropdownMenuContext.Provider value={{ open, setOpen, triggerRef, setTrigger }}>
       <div className="relative inline-block text-left">{children}</div>
     </DropdownMenuContext.Provider>
   );
@@ -34,20 +38,19 @@ interface DropdownMenuTriggerProps {
 export function DropdownMenuTrigger({ asChild, children }: DropdownMenuTriggerProps) {
   const context = React.useContext(DropdownMenuContext);
   if (!context) throw new Error("DropdownMenuTrigger must be used within DropdownMenu");
+  const { open, setOpen, setTrigger } = context;
 
   const handleClick = () => {
-    context.setOpen(!context.open);
+    setOpen(!open);
   };
 
   if (asChild && React.isValidElement(children)) {
     const childProps = children.props as { onClick?: (e: React.MouseEvent) => void; ref?: React.Ref<HTMLElement> };
     const originalRef = (children as any).ref;
-    // Extract ref object to avoid direct context mutation
-    const triggerRef = context.triggerRef;
-    
+
     return React.cloneElement(children, {
       ref: (node: HTMLElement | null) => {
-        triggerRef.current = node;
+        setTrigger(node);
         // Preserve any existing ref
         if (typeof originalRef === 'function') {
           originalRef(node);
@@ -64,7 +67,7 @@ export function DropdownMenuTrigger({ asChild, children }: DropdownMenuTriggerPr
   }
 
   return (
-    <button type="button" ref={context.triggerRef as React.RefObject<HTMLButtonElement>} onClick={handleClick}>
+    <button type="button" ref={setTrigger} onClick={handleClick}>
       {children}
     </button>
   );
