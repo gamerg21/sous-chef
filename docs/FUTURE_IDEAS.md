@@ -26,17 +26,37 @@ Household-level tags (vegetarian, nut-free, gluten-free and so on). Use them to
 filter recipes, guide AI recipe drafts, and warn when a community recipe being
 imported conflicts with them.
 
-### Shopping list by store aisle on the web, and Reminders export
+### Reminders export
 
-iOS groups the shopping list by aisle and can sort it with Apple Intelligence;
-the web list doesn't group by aisle yet. On iOS, add exporting the list to
-Apple Reminders for people who shop from Reminders.
+On iOS, add exporting the shopping list to Apple Reminders for people who shop
+from Reminders. (Aisle grouping on the web is covered by the store-first
+shopping list below.)
 
-### Receipt scanning
+### Receipt scanning and grocery prices
 
 Label and recipe scanning already exist on iOS. Scanning a grocery receipt
 could fill the "Put purchases away" flow, matching receipt lines to shopping
 items and pantry foods, so restocking takes seconds.
+
+The same scan can record what each item cost and where it was bought. Keep a
+price history per food and store, and show the last price paid on the
+shopping list ("$3.49 at Costco, Sep 12") so it's easy to spot a price change
+while shopping. Prices could also be typed in when putting purchases away, for
+people who don't scan receipts. Later this could estimate a shopping trip's
+total or a planned meal's cost.
+
+### Preferred stores and a store-first shopping list
+
+Let a household save the grocery stores it uses and mark one as preferred. Each
+shopping item can be assigned a store, defaulting to the preferred one or to
+where it was last bought (from receipt prices above).
+
+The shopping list then becomes a hierarchy: **store → aisle or category →
+items**. For example, Costco → Produce → spinach, then Trader Joe's → Dairy →
+milk. Unassigned items fall under the preferred store. Being able to collapse
+a store's section, or show just one store, would help on a trip. This builds
+on the aisle grouping iOS already has, and the web list would get the same
+structure.
 
 ## Left over from 1.1.0
 
