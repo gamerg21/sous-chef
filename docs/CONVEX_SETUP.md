@@ -12,6 +12,8 @@ For a new community deployment:
 4. Set the deployment's `SITE_URL` to the hosted community web app origin.
    Keep an existing `APP_BASE_URL` override consistent with it.
 5. Optionally configure `RESEND_API_KEY` and `SMTP_FROM` for recovery email.
+   Without them, community password reset is unavailable; reset links are
+   never written to logs.
 6. For Sign in with Apple in the iOS app, set `APPLE_TEAM_ID`, `APPLE_KEY_ID`
    (a Sign in with Apple key), `APPLE_BUNDLE_ID` (the app's bundle ID) and
    `APPLE_PRIVATE_KEY` (the key's `.p8` contents). Pass the key from its file
