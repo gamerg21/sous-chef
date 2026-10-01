@@ -58,6 +58,34 @@ a store's section, or show just one store, would help on a trip. This builds
 on the aisle grouping iOS already has, and the web list would get the same
 structure.
 
+### Manage your own community recipes
+
+Today the community can already take a new version of a recipe: publishing
+again replaces its snapshot and bumps `revision` and `updatedAt` in
+`convex/hub.ts`. Unpublishing hides it (`visibility: 'private'`) but keeps the
+record. Neither is visible to other cooks: browse and detail show only
+`createdAt`, and there's no record of what changed.
+
+- **My published recipes:** one place on the web and iOS listing everything
+  you've published, with its status (public, unlisted, hidden, or removed by a
+  moderator), last update and revision. Each has actions to update, unpublish
+  or delete it.
+- **Updates with a change note:** when pushing an update, ask for an optional
+  short note ("Cut the sugar to ½ cup, added a resting step"). Store the date
+  and note with each revision and show "Updated Oct 3 · Cut the sugar…" on the
+  community recipe, with the earlier notes listed below. Cooks who imported the
+  recipe could later be told a newer version exists. Automatic syncing of
+  imported copies isn't implemented and should stay opt-in.
+- **Unpublish vs. delete:** keep unpublish as a reversible "take it down"
+  that hides the recipe but lets you publish it again. Add a permanent delete
+  that removes the recipe and its photos from the community after a
+  confirmation. Copies other cooks already imported stay in their kitchens,
+  because imports are independent copies. A "Take down all my recipes" action
+  could sit beside the existing delete-account option.
+- **Moderation:** a recipe removed by a moderator can't be republished today.
+  Show that clearly in the list, with the removal reason, and keep reports
+  attached to the recipe across updates.
+
 ## Left over from 1.1.0
 
 ### Daily expiry email (tabled)
