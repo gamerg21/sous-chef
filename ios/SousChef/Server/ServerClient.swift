@@ -5,8 +5,8 @@ import Security
 /// app uses: `POST /api/auth` for sessions and `POST /api/kitchen` for typed
 /// operations such as `inventory:list`.
 final class ServerClient {
-    enum ServerError: LocalizedError {
-        case invalidURL, notAuthenticated, server(String), unreachable, badResponse
+    enum ServerError: LocalizedError, Equatable {
+        case invalidURL, notAuthenticated, server(String), unreachable, badResponse, insecureConnection
         var errorDescription: String? {
             switch self {
             case .invalidURL: "Enter your server's address, like http://192.168.1.20:3000"
@@ -14,25 +14,29 @@ final class ServerClient {
             case .server(let message): message
             case .unreachable: "Couldn't reach your Sous Chef server. Check the address and that you're on the same network."
             case .badResponse: "That address didn't answer like a Sous Chef server."
+            case .insecureConnection: "This server uses plain HTTP outside your home network. Connect again in Settings to confirm you want to use it without encryption."
             }
         }
     }
 
     static let cookieName = "sous_chef_session"
+    /// Kitchen API responses can be large for big kitchens; photos are capped
+    /// well above the server's 5 MB upload limit.
+    static let responseLimit = 64_000_000
+    static let photoLimit = 10_000_000
 
     let baseURL: URL
     private(set) var token: String?
+    /// Whether the person confirmed sending credentials to a plain-HTTP
+    /// server outside their home network.
+    let allowsInsecure: Bool
     private let session: URLSession
 
-    init(baseURL: URL, token: String?) {
+    init(baseURL: URL, token: String?, allowsInsecure: Bool = false) {
         self.baseURL = baseURL
         self.token = token
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.httpCookieStorage = nil
-        configuration.httpShouldSetCookies = false
-        configuration.timeoutIntervalForRequest = 20
-        configuration.waitsForConnectivity = false
-        session = URLSession(configuration: configuration)
+        self.allowsInsecure = allowsInsecure
+        session = URLSession(configuration: BoundedFetch.anonymousConfiguration)
     }
 
     static func normalize(_ address: String) throws -> URL {
@@ -43,15 +47,64 @@ final class ServerClient {
         return url
     }
 
-    /// True when credentials would cross the internet unencrypted.
+    /// True when credentials could cross the internet unencrypted. HTTPS is
+    /// always fine. Plain HTTP is fine only for loopback, private and
+    /// link-local addresses, tailnet addresses, and home-network names;
+    /// anything public or ambiguous needs the person's confirmation.
     static func isInsecureRemote(_ url: URL) -> Bool {
-        guard url.scheme?.lowercased() == "http", let host = url.host?.lowercased() else { return false }
-        if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".lan") || host.hasSuffix(".home.arpa") || host.hasSuffix(".ts.net") || !host.contains(".") { return false }
-        let parts = host.split(separator: ".").compactMap { Int($0) }
-        if parts.count == 4 {
-            if parts[0] == 10 || parts[0] == 127 || (parts[0] == 192 && parts[1] == 168) || (parts[0] == 172 && (16...31).contains(parts[1])) || (parts[0] == 100 && (64...127).contains(parts[1])) { return false }
+        guard let scheme = url.scheme?.lowercased(), scheme != "https" else { return false }
+        guard scheme == "http", var host = url.host(percentEncoded: false)?.lowercased(), !host.isEmpty else { return true }
+        if host.hasPrefix("[") && host.hasSuffix("]") { host = String(host.dropFirst().dropLast()) }
+        while host.hasSuffix(".") { host.removeLast() }
+        // Numeric addresses are classified by value, before any name rules,
+        // so IPv6 literals and shorthand IPv4 can't pass as local names.
+        if let v4 = ipv4(host) { return !isLocalIPv4(v4) }
+        if let v6 = ipv6(host) { return !isLocalIPv6(v6) }
+        // Anything else that is numeric (3232235777, 0x7f.1, 127.1) or
+        // colon-separated is an address the system may still connect to.
+        if host.contains(":") || host.range(of: #"^((0x[0-9a-f]*|[0-9]+)\.){0,3}(0x[0-9a-f]*|[0-9]+)$"#, options: .regularExpression) != nil { return true }
+        if host == "localhost" || host.hasSuffix(".localhost") { return false }
+        if [".local", ".lan", ".home.arpa", ".internal", ".ts.net"].contains(where: host.hasSuffix) { return false }
+        // Single-label names like "nas" only resolve on the local network.
+        return host.contains(".")
+    }
+
+    /// Strict dotted-quad IPv4 only; shorthand like "127.1" returns nil.
+    static func ipv4(_ host: String) -> [UInt8]? {
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4 else { return nil }
+        let bytes = parts.compactMap { part -> UInt8? in
+            guard (1...3).contains(part.count), part.allSatisfy(\.isASCII), part.allSatisfy(\.isNumber), part == "0" || !part.hasPrefix("0") else { return nil }
+            return UInt8(part)
         }
-        return true
+        return bytes.count == 4 ? bytes : nil
+    }
+
+    static func ipv6(_ host: String) -> [UInt8]? {
+        guard host.contains(":") else { return nil }
+        // Zone IDs (fe80::1%en0) only make sense on the local link.
+        let address = host.split(separator: "%", maxSplits: 1).first.map(String.init) ?? host
+        var storage = in6_addr()
+        guard inet_pton(AF_INET6, address, &storage) == 1 else { return nil }
+        return withUnsafeBytes(of: storage) { Array($0) }
+    }
+
+    private static func isLocalIPv4(_ b: [UInt8]) -> Bool {
+        b[0] == 10 || b[0] == 127 || (b[0] == 192 && b[1] == 168) || (b[0] == 172 && (16...31).contains(b[1]))
+            || (b[0] == 169 && b[1] == 254) || (b[0] == 100 && (64...127).contains(b[1]))
+    }
+
+    private static func isLocalIPv6(_ b: [UInt8]) -> Bool {
+        if b == [UInt8](repeating: 0, count: 15) + [1] { return true }                     // ::1
+        if b[0] == 0xfe && (b[1] & 0xc0) == 0x80 { return true }                           // fe80::/10 link-local
+        if (b[0] & 0xfe) == 0xfc { return true }                                           // fc00::/7 unique local
+        if b[0..<10].allSatisfy({ $0 == 0 }) && b[10] == 0xff && b[11] == 0xff { return isLocalIPv4(Array(b[12...])) } // ::ffff:a.b.c.d
+        return false
+    }
+
+    /// Only the kitchen itself — same scheme, host and port — gets the session.
+    func isKitchenOrigin(_ url: URL) -> Bool {
+        BoundedFetch.sameOrigin(url, baseURL)
     }
 
     private func request(_ path: String, method: String = "POST", body: Data? = nil, contentType: String = "application/json") -> URLRequest {
@@ -65,13 +118,15 @@ final class ServerClient {
         return request
     }
 
-    private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    /// Every request carrying the session goes through here: it refuses an
+    /// unconfirmed plain-HTTP public server and any redirect off the kitchen.
+    private func send(_ request: URLRequest, limit: Int = responseLimit) async throws -> (Data, HTTPURLResponse) {
+        guard let url = request.url, isKitchenOrigin(url) else { throw ServerError.badResponse }
+        guard allowsInsecure || !Self.isInsecureRemote(baseURL) else { throw ServerError.insecureConnection }
         do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse else { throw ServerError.badResponse }
-            return (data, http)
-        } catch let error as ServerError {
-            throw error
+            return try await BoundedFetch.data(for: request, limit: limit, redirects: .sameOriginOnly, session: session)
+        } catch let error as BoundedFetch.FetchError where error != .notHTTP {
+            throw ServerError.badResponse
         } catch {
             throw ServerError.unreachable
         }
@@ -151,12 +206,24 @@ final class ServerClient {
         return "/api/files/\(id)"
     }
 
+    /// Downloads a recipe photo. Paths on the kitchen get the session; any
+    /// other address — absolute, protocol-relative or a different port — is
+    /// fetched anonymously, since recipe photo links come from other people.
     func download(_ path: String) async throws -> Data {
-        let url = path.hasPrefix("http") ? URL(string: path) : URL(string: path, relativeTo: baseURL)
-        guard let url else { throw ServerError.badResponse }
-        var request = URLRequest(url: url.absoluteURL)
-        if let token { request.setValue("\(Self.cookieName)=\(token)", forHTTPHeaderField: "Cookie") }
-        let (data, response) = try await send(request)
+        guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL, BoundedFetch.Origin(url) != nil else { throw ServerError.badResponse }
+        let data: Data
+        let response: HTTPURLResponse
+        if isKitchenOrigin(url) {
+            var request = URLRequest(url: url)
+            if let token { request.setValue("\(Self.cookieName)=\(token)", forHTTPHeaderField: "Cookie") }
+            (data, response) = try await send(request, limit: Self.photoLimit)
+        } else {
+            do {
+                (data, response) = try await BoundedFetch.data(for: URLRequest(url: url), limit: Self.photoLimit, redirects: .anyCredentialFree)
+            } catch {
+                throw ServerError.badResponse
+            }
+        }
         guard response.statusCode == 200 else { throw ServerError.badResponse }
         return data
     }

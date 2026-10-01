@@ -1,17 +1,42 @@
 import Foundation
+import ImageIO
 import UIKit
 
 enum ImageTools {
+    /// Larger images are refused before decoding: a small file can declare
+    /// enormous dimensions and exhaust memory once decoded. 100 MP still
+    /// covers the largest camera photos.
+    static let maxSourcePixels = 100_000_000
+
+    /// Pixel size read from the image header, without decoding the image.
+    static func pixelSize(_ data: Data) -> CGSize? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              width > 0, height > 0 else { return nil }
+        return CGSize(width: width, height: height)
+    }
+
     /// JPEG, longest side at most `maxDimension`, for storage and upload.
-    static func compressed(_ data: Data, maxDimension: CGFloat = 1600, quality: CGFloat = 0.8) -> Data? {
-        guard let image = UIImage(data: data) else { return nil }
-        let longest = max(image.size.width, image.size.height)
-        let scale = min(1, maxDimension / max(longest, 1))
-        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        let resized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-        return resized.jpegData(compressionQuality: quality)
+    /// Downsamples while decoding, so memory stays proportional to the result.
+    static func compressed(_ data: Data, maxDimension: CGFloat = 1600, quality: CGFloat = 0.8, maxPixels: Int = maxSourcePixels) -> Data? {
+        guard let size = pixelSize(data), Int(size.width) * Int(size.height) <= maxPixels,
+              let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(1, min(maxDimension, max(size.width, size.height))),
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: image).jpegData(compressionQuality: quality)
+    }
+
+    /// A synced photo as stored on this device: kept as-is when it is already
+    /// small, otherwise shrunk. Nil when it isn't a usable image.
+    static func fitted(_ data: Data, maxDimension: CGFloat = 1600, maxPixels: Int = maxSourcePixels) -> Data? {
+        guard let size = pixelSize(data) else { return nil }
+        return max(size.width, size.height) <= maxDimension ? data : compressed(data, maxDimension: maxDimension, maxPixels: maxPixels)
     }
 }
 

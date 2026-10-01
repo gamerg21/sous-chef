@@ -42,8 +42,22 @@ final class CompanionServer {
             UserDefaults.standard.set(true, forKey: "server.installed")
         }
         if let url = try? ServerClient.normalize(address), !address.isEmpty, let token = Keychain.read(account: "session") {
-            client = ServerClient(baseURL: url, token: token)
+            // Connections made before 1.0.3 to a public HTTP hostname or IPv4
+            // address were already confirmed in the warning, so carry that
+            // over. Public IPv6 skipped the warning and must be confirmed.
+            if UserDefaults.standard.string(forKey: Self.insecureKey) == nil, ServerClient.isInsecureRemote(url),
+               let host = url.host(percentEncoded: false), host.contains("."), !host.contains(":") {
+                UserDefaults.standard.set(url.absoluteString, forKey: Self.insecureKey)
+            }
+            client = ServerClient(baseURL: url, token: token, allowsInsecure: Self.insecureConfirmed(for: url))
         }
+    }
+
+    /// The plain-HTTP public address the person agreed to send credentials to.
+    private static let insecureKey = "server.insecureConfirmedURL"
+
+    private static func insecureConfirmed(for url: URL) -> Bool {
+        UserDefaults.standard.string(forKey: insecureKey) == url.absoluteString
     }
 
     var isConnected: Bool { client?.token != nil }
@@ -55,9 +69,11 @@ final class CompanionServer {
 
     // MARK: Connection
 
-    func connect(address: String, email: String, password: String, createAccount: Bool, name: String?) async throws {
+    /// `allowInsecure` records that the person confirmed the plain-HTTP
+    /// warning; without it, credentials never go to a public HTTP server.
+    func connect(address: String, email: String, password: String, createAccount: Bool, name: String?, allowInsecure: Bool = false) async throws {
         let url = try ServerClient.normalize(address)
-        let candidate = ServerClient(baseURL: url, token: nil)
+        let candidate = ServerClient(baseURL: url, token: nil, allowsInsecure: allowInsecure)
         _ = try await candidate.status()
         try await candidate.authenticate(flow: createAccount ? "signUp" : "signIn", email: email.trimmingCharacters(in: .whitespaces).lowercased(), password: password, name: name)
         let households = try await candidate.call("households:list", as: [DTO.Household].self)
@@ -65,6 +81,11 @@ final class CompanionServer {
             throw ServerClient.ServerError.server("Your account doesn't have a kitchen yet. Open Sous Chef on the web once to create one.")
         }
         Keychain.save(candidate.token ?? "", account: "session")
+        if allowInsecure && ServerClient.isInsecureRemote(url) {
+            UserDefaults.standard.set(url.absoluteString, forKey: Self.insecureKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.insecureKey)
+        }
         self.address = url.absoluteString
         self.email = email
         UserDefaults.standard.set(self.address, forKey: "server.url")
@@ -110,7 +131,7 @@ final class CompanionServer {
         householdName = nil
         households = []
         status = .idle
-        for key in ["server.household", "server.householdName", "server.lastSynced", "server.initialSyncDone"] {
+        for key in ["server.household", "server.householdName", "server.lastSynced", "server.initialSyncDone", Self.insecureKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
     }
@@ -146,6 +167,11 @@ final class CompanionServer {
                 if !kitchen.inMemory { WidgetSnapshotWriter.scheduleRefresh(kitchen) }
             } catch ServerClient.ServerError.notAuthenticated {
                 status = .failed("Your server session ended. Sign in again in Settings.")
+                self.client = nil
+                Keychain.delete(account: "session")
+                return
+            } catch ServerClient.ServerError.insecureConnection {
+                status = .failed(ServerClient.ServerError.insecureConnection.localizedDescription)
                 self.client = nil
                 Keychain.delete(account: "session")
                 return
@@ -492,7 +518,7 @@ private struct SyncPass {
             if recipe.steps.map(\.text) != remote.steps.map(\.text) { recipe.steps = remote.steps.map { RecipeStep(text: $0.text) } }
             if remote.photoUrl != recipe.remotePhotoPath {
                 recipe.remotePhotoPath = remote.photoUrl
-                if let path = remote.photoUrl { recipe.photo = try? await client.download(path) } else { recipe.photo = nil }
+                if let path = remote.photoUrl { recipe.photo = (try? await client.download(path)).flatMap { ImageTools.fitted($0) } } else { recipe.photo = nil }
             }
             recipe.needsPush = false
         }
