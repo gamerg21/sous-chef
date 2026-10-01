@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Community password reset no longer writes reset links or email addresses to the logs. Without email delivery configured, community reset is unavailable instead.
 - Weekly meal planning: a Plan page (and a Plan screen inside Cook on iOS) puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
 - "Add week's shortages to list" combines what the week's uncooked meals need across recipes (converting units), counts the pantry once for the whole week, and tops up existing shopping list items instead of duplicating them.
 - Cooking a planned meal uses the usual cook flow and atomic pantry deduction, scaled to the planned servings, and marks the meal cooked.
@@ -9,6 +10,17 @@
 - iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
 - iOS: cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
 - iOS: new widgets: Tonight's Meal (small, medium, Lock Screen), Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tonight's Meal shows the planned recipe with its servings and pantry readiness and opens the week plan; Use Soon uses the same "expiring soon" window as the Pantry and reminders. A finished cook timer also banners with sound while the app is open.
+
+## iOS 1.0.3 — Security update
+
+- Your Sous Chef server sign-in is only sent to your server. Recipe photos
+  linked from other websites are downloaded without it, and requests that
+  carry it can't be redirected to another address.
+- Connecting over plain HTTP to a server outside your home network, including
+  by IPv6 address, always asks for confirmation first, and the app refuses to
+  send your password to such a server until you confirm.
+- Recipe imports and synced photos stop downloading once they pass their size
+  limit, and oversized images are refused before they're decoded.
 
 ## 0.9.0 — A livelier, clearer kitchen
 
