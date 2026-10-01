@@ -1,3 +1,14 @@
+## iOS 1.0.3 — Security update
+
+- Your Sous Chef server sign-in is only sent to your server. Recipe photos
+  linked from other websites are downloaded without it, and requests that
+  carry it can't be redirected to another address.
+- Connecting over plain HTTP to a server outside your home network, including
+  by IPv6 address, always asks for confirmation first, and the app refuses to
+  send your password to such a server until you confirm.
+- Recipe imports and synced photos stop downloading once they pass their size
+  limit, and oversized images are refused before they're decoded.
+
 ## 0.9.0 — A livelier, clearer kitchen
 
 - New design language across the app: grouped cards, section labels, inline expanding menus instead of dropdowns, and a shared UI kit (`src/components/ui/kit.tsx`).
