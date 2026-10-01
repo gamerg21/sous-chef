@@ -133,7 +133,6 @@ struct CookModeView: View {
                             Label("Added \(result.addedToShopping) item\(result.addedToShopping == 1 ? "" : "s") to your shopping list.", systemImage: "cart.badge.plus")
                         }
                     }
-                    Button("Close") { dismiss() }.buttonStyle(.glassProminent)
                 } else {
                     Card {
                         Eyebrow("This will use", systemImage: "minus.circle")
@@ -198,9 +197,18 @@ struct CookModeView: View {
                 .buttonStyle(.glass)
                 .disabled(page == 0)
 
-                Text(page == 0 ? "Ingredients" : page > steps.count ? "Finish" : "Step \(page) of \(steps.count)")
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
-                    .frame(maxWidth: .infinity)
+                // Once the pantry is updated, "Finish" becomes the button that ends cooking.
+                if result != nil && page == pageCount - 1 {
+                    Button { dismiss() } label: {
+                        Text("Finish").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .accessibilityIdentifier("finishCooking")
+                } else {
+                    Text(page == 0 ? "Ingredients" : page > steps.count ? "Finish" : "Step \(page) of \(steps.count)")
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .frame(maxWidth: .infinity)
+                }
 
                 Button {
                     page = min(pageCount - 1, page + 1)
