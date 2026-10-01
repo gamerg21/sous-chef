@@ -7,6 +7,42 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (4)
+
+What's in it: everything from 1.1.0 (3), plus the security update and Finish
+button shipping as 1.0.3. It protects your Sous Chef server sign-in and makes
+recipe imports safer.
+
+### What to Test
+
+**Server connection (if you use a Sous Chef server)**
+- Connect to your server and sync. Recipes, pantry, shopping list and meal
+  plan should sync as before, and recipe photos you added should still appear.
+- Recipes whose photo comes from another website should still show that photo.
+- Connecting to a plain http:// address outside your home network, including
+  an IPv6 address, should ask "Connect without encryption?" first. Home
+  network addresses such as 192.168.x.x, .local names and tailnet names
+  should connect without asking.
+- If you already used a public http:// address, you should stay connected.
+
+**Recipe imports**
+- Import a few recipes from websites and from the share sheet. Titles,
+  ingredients, steps and photos should come through as before.
+- A link to a huge page or photo shouldn't freeze or close the app. Oversized
+  photos are skipped, and the recipe still imports when the page has one.
+
+**Cooking**
+- Cook any recipe through to the last page and update the pantry. The Close
+  button is gone; the "Finish" label at the bottom becomes a big button that
+  ends cooking. Planned meals should still be marked cooked.
+
+**Settings**
+- Tap Version at the bottom of Settings. It should switch between "1.1.0" and
+  "1.1.0 (4)".
+
+**Still worth checking**
+- Widgets, meal planning and expiry reminders should work as in 1.1.0 (3).
+
 ## 1.1.0 (3)
 
 What's in it: everything from 1.1.0 (2), plus the fixes shipping in the App
