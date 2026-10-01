@@ -25,9 +25,10 @@ enum RecipeImporter {
         request.setValue("text/html,application/xhtml+xml", forHTTPHeaderField: "Accept")
         let data: Data
         do {
-            let (body, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw ImportError.unreadable(site) }
-            data = body.prefix(4_000_000)
+            // Read at most 4 MB of the page; the rest is never downloaded.
+            let (body, response) = try await BoundedFetch.data(for: request, limit: pageLimit, overflow: .truncate, redirects: .anyCredentialFree)
+            guard (200..<300).contains(response.statusCode) else { throw ImportError.unreadable(site) }
+            data = body
         } catch let error as ImportError { throw error } catch { throw ImportError.unreadable(site) }
         let html = String(decoding: data, as: UTF8.self)
 
@@ -231,9 +232,12 @@ enum RecipeImporter {
         return Structured(recipe: draft, photoURL: photoURL)
     }
 
+    static let pageLimit = 4_000_000
+    static let imageLimit = 8_000_000
+
     static func downloadImage(_ url: URL) async -> Data? {
-        guard let (data, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200, data.count < 8_000_000 else { return nil }
+        guard let (data, response) = try? await BoundedFetch.data(for: URLRequest(url: url, timeoutInterval: 20), limit: imageLimit, redirects: .anyCredentialFree),
+              response.statusCode == 200 else { return nil }
         return ImageTools.compressed(data)
     }
 

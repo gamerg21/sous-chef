@@ -311,7 +311,7 @@ struct ServerConnectView: View {
                 }
             }
             .alert("Connect without encryption?", isPresented: $confirmInsecure) {
-                Button("Connect anyway", role: .destructive) { Task { await connect() } }
+                Button("Connect anyway", role: .destructive) { Task { await connect(allowInsecure: true) } }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This address uses plain HTTP outside your home network, so your password could be seen in transit. Use an https:// address if your server has one.")
@@ -320,12 +320,12 @@ struct ServerConnectView: View {
         }
     }
 
-    private func connect() async {
+    private func connect(allowInsecure: Bool = false) async {
         working = true
         error = nil
         defer { working = false }
         do {
-            try await kitchen.server.connect(address: address, email: email, password: password, createAccount: createAccount, name: name.nilIfEmpty)
+            try await kitchen.server.connect(address: address, email: email, password: password, createAccount: createAccount, name: name.nilIfEmpty, allowInsecure: allowInsecure)
             dismiss()
         } catch {
             self.error = error.localizedDescription
