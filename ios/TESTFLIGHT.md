@@ -7,6 +7,31 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (3)
+
+What's in it: everything from 1.1.0 (2), plus the fixes shipping in the App
+Store as 1.0.2.
+
+### What to Test
+
+**Community recipes**
+- Open Homemade Taco Seasoning and Oven-Baked Baby Back Ribs in the community.
+  Drag sideways anywhere on the page; it shouldn't move left or right at all.
+- Photos should still fill their frames, cropped, with no stretching, on
+  recipe pages, cards and meal plan rows.
+
+**Cooking**
+- Start cooking any recipe. The small label above the ingredients title should
+  say "Ingredients", not "Mise en place".
+
+**Settings**
+- Tap Version at the bottom of Settings. It should switch between "1.1.0" and
+  "1.1.0 (3)". Tap again to switch back.
+
+**Still worth checking from 1.1.0 (2)**
+- Reordering recipe steps, three or more cook timers in the Dynamic Island,
+  meal planning, expiry reminders and widgets (see the notes below).
+
 ## 1.1.0 (2)
 
 What's in it: everything from 1.1.0 (1), plus reordering recipe steps, room
