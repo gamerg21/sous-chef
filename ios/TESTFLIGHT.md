@@ -7,6 +7,34 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.0.3 (1)
+
+What's in it: a security update for 1.0.2. It protects your Sous Chef server
+sign-in and makes recipe imports safer. Nothing else changes.
+
+### What to Test
+
+**Server connection (if you use a Sous Chef server)**
+- Connect to your server and sync. Recipes, pantry, shopping list and meal
+  plan should sync as before, and recipe photos you added should still appear.
+- Recipes whose photo comes from another website should still show that photo.
+- Connecting to a plain http:// address outside your home network, including
+  an IPv6 address, should ask "Connect without encryption?" first. Home
+  network addresses such as 192.168.x.x, .local names and tailnet names
+  should connect without asking.
+- If you already used a public http:// address, you should stay connected.
+- Disconnect, then connect again; it should work normally.
+
+**Recipe imports**
+- Import a few recipes from websites and from the share sheet. Titles,
+  ingredients, steps and photos should come through as before.
+- A link to a huge page or photo shouldn't freeze or close the app. Oversized
+  photos are skipped, and the recipe still imports when the page has one.
+
+**Settings**
+- Tap Version at the bottom of Settings. It should switch between "1.0.3" and
+  "1.0.3 (1)".
+
 ## 1.0.2 (8)
 
 What's in it: the App Store release candidate for 1.0.2, a small fix-up
