@@ -31,7 +31,7 @@ struct TwoPane<Primary: View, Secondary: View>: View {
         let length = horizontal ? proxy.size.width : proxy.size.height
         // Reserved regions arrived in the iOS 27.1 SDK (SwiftUI 8.0.85).
         // Including inactive ones keeps the panes put as the phone opens and
-        // closes. The simulator reports none, so it takes the fallback below.
+        // closes.
         #if canImport(SwiftUI, _version: 8.0.85)
         if #available(iOS 27.1, *),
            let fold = proxy.reservedRegions(kind: .division, options: .includeInactive).first {
@@ -58,17 +58,72 @@ extension View {
         onGeometryChange(for: Bool.self) { $0.size.width >= 700 } action: { isWide.wrappedValue = $0 }
     }
 
-    /// Tracks whether an iPhone Duo is half open, as when it's propped on the
-    /// counter. Always false before the iOS 27.1 SDK.
-    @ViewBuilder func tracksHalfOpen(_ halfOpen: Binding<Bool>) -> some View {
+    /// Tracks how an iPhone Duo is being held. Always flat before the iOS
+    /// 27.1 SDK and on devices without a hinge.
+    func tracksFoldPosture(_ posture: Binding<FoldPosture>) -> some View {
+        modifier(FoldPostureTracker(posture: posture))
+    }
+}
+
+/// How an iPhone Duo is being held, from its hinge and the way its fold runs
+/// across the window.
+enum FoldPosture: Equatable {
+    /// Open flat, closed, or a device without a hinge.
+    case flat
+    /// Half open with the fold running top to bottom, standing like a book.
+    case book
+    /// Half open with the fold running across, propped like a laptop.
+    case laptop
+
+    static func resolve(halfOpen: Bool, foldRunsAcross: Bool) -> FoldPosture {
+        guard halfOpen else { return .flat }
+        return foldRunsAcross ? .laptop : .book
+    }
+}
+
+private struct FoldPostureTracker: ViewModifier {
+    @Binding var posture: FoldPosture
+    @State private var halfOpen = false
+    @State private var foldRunsAcross = false
+
+    func body(content: Content) -> some View {
+        tracked(content)
+            .onGeometryChange(for: Bool.self) { proxy in
+                // The fold divides the window's long side, so with no fold
+                // reported a window taller than wide has it running across.
+                #if canImport(SwiftUI, _version: 8.0.85)
+                if #available(iOS 27.1, *),
+                   let fold = proxy.reservedRegions(kind: .division, options: .includeInactive).first {
+                    return fold.frame.width > fold.frame.height
+                }
+                #endif
+                return proxy.size.height > proxy.size.width
+            } action: { foldRunsAcross = $0 }
+            .onChange(of: halfOpen, initial: true) { update() }
+            .onChange(of: foldRunsAcross) { update() }
+    }
+
+    @ViewBuilder private func tracked(_ content: Content) -> some View {
         #if canImport(SwiftUI, _version: 8.0.85)
         if #available(iOS 27.1, *) {
-            onHingeChange { _, context in halfOpen.wrappedValue = context.hinge?.status == .partiallyOpen }
+            content.onHingeChange { _, context in halfOpen = context.hinge?.status == .partiallyOpen }
         } else {
-            self
+            content
         }
         #else
-        self
+        content
         #endif
+    }
+
+    private func update() {
+        #if DEBUG
+        // The simulator can't turn an unfolded Duo on its side, so this
+        // previews the laptop posture for screenshots.
+        if ProcessInfo.processInfo.arguments.contains("-simulateLaptopPosture") {
+            posture = .laptop
+            return
+        }
+        #endif
+        posture = .resolve(halfOpen: halfOpen, foldRunsAcross: foldRunsAcross)
     }
 }

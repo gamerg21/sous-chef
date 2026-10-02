@@ -323,6 +323,13 @@ struct MiscTests {
         #expect(CookTimerAlarms.title(for: CookTimer(label: "Step 3", seconds: 60, customStep: 2)) == "Step 3 is done")
     }
 
+    @Test func readsTheDuoPostureFromTheHingeAndFold() {
+        #expect(FoldPosture.resolve(halfOpen: false, foldRunsAcross: false) == .flat)
+        #expect(FoldPosture.resolve(halfOpen: false, foldRunsAcross: true) == .flat)
+        #expect(FoldPosture.resolve(halfOpen: true, foldRunsAcross: false) == .book)
+        #expect(FoldPosture.resolve(halfOpen: true, foldRunsAcross: true) == .laptop)
+    }
+
     @Test func findsIngredientsInSteps() {
         let step = RecipeStep(text: "Toss the potatoes with olive oil, zest a lemon and add the berries.")
         #expect(step.mentions(Ingredient(name: "Potatoes")))
