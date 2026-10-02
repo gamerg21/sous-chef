@@ -16,25 +16,30 @@ struct CookModeView: View {
     @State private var finishing = false
     @State private var result: Kitchen.CookResult?
     @State private var chatting = false
+    /// Unfolded or on a wide screen, the ingredients stay beside the steps.
+    @State private var twoPane = false
+    /// An iPhone Duo propped half open on the counter.
+    @State private var halfOpen = false
 
+    /// Propped half open like a laptop with a timer running, the half lying
+    /// on the counter shows the countdown. Propped like a book, the phone is
+    /// wide and keeps its two panes.
+    private var onCounter: Bool { halfOpen && !twoPane && !timers.isEmpty }
     private var steps: [RecipeStep] { recipe.steps }
     private var pageCount: Int { steps.count + 2 }
+    /// Beside the steps, the ingredients no longer need a page of their own.
+    private var firstPage: Int { twoPane ? 1 : 0 }
+    private var currentStep: RecipeStep? { steps.indices.contains(page - 1) ? steps[page - 1] : nil }
 
     var body: some View {
         NavigationStack {
-            TabView(selection: $page) {
-                ingredientsPage.tag(0)
-                ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-                    stepPage(index: index, step: step).tag(index + 1)
-                }
-                finishPage.tag(steps.count + 1)
+            Group {
+                if twoPane { twoPaneLayout } else if onCounter { counterLayout } else { pagedLayout }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.snappy, value: page)
-            .safeAreaInset(edge: .top) {
-                if !timers.isEmpty { timerStrip }
-            }
-            .safeAreaInset(edge: .bottom) { controls }
+            .animation(.snappy, value: onCounter)
+            .tracksTwoPaneWidth($twoPane)
+            .tracksHalfOpen($halfOpen)
+            .onChange(of: twoPane) { page = max(page, firstPage) }
             .navigationTitle(recipe.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -53,39 +58,108 @@ struct CookModeView: View {
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
     }
 
+    /// One page at a time: ingredients, each step, then finishing up.
+    private var pagedLayout: some View {
+        TabView(selection: $page) {
+            ingredientsPage.tag(0)
+            stepPages
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .animation(.snappy, value: page)
+        .safeAreaInset(edge: .top) {
+            if !timers.isEmpty { timerStrip }
+        }
+        .safeAreaInset(edge: .bottom) { controls }
+    }
+
+    /// Ingredients and timers on one half, the steps on the other, meeting at
+    /// the fold of an unfolded iPhone Duo.
+    private var twoPaneLayout: some View {
+        TwoPane {
+            ingredientsPage
+                .safeAreaInset(edge: .top) {
+                    if !timers.isEmpty { timerStrip }
+                }
+        } secondary: {
+            TabView(selection: $page) { stepPages }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.snappy, value: page)
+                .safeAreaInset(edge: .bottom) { controls }
+        }
+    }
+
+    /// Propped on the counter: the steps stand up facing the cook, and the
+    /// half lying flat shows the timers in big type, with the controls in
+    /// easy reach.
+    private var counterLayout: some View {
+        TwoPane(axis: .vertical) {
+            TabView(selection: $page) {
+                ingredientsPage.tag(0)
+                stepPages
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.snappy, value: page)
+        } secondary: {
+            VStack(spacing: 16) {
+                timerBoard
+                controls
+            }
+            .padding(.top)
+        }
+    }
+
+    @ViewBuilder private var stepPages: some View {
+        ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+            stepPage(index: index, step: step).tag(index + 1)
+        }
+        finishPage.tag(steps.count + 1)
+    }
+
     private var ingredientsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Eyebrow("Mise en place", systemImage: "basket")
-                Text(gatherTitle).heroTitle()
+                Text(gatherTitle)
+                    .font(.system(twoPane ? .title2 : .largeTitle, design: .rounded, weight: .bold))
                     .contentTransition(.numericText())
-                ForEach(recipe.ingredients) { ingredient in
-                    Button {
-                        withAnimation(.snappy) {
-                            if gathered.contains(ingredient.id) { gathered.remove(ingredient.id) } else { gathered.insert(ingredient.id) }
-                        }
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: gathered.contains(ingredient.id) ? "checkmark.circle.fill" : "circle")
-                                .font(.title2)
-                                .foregroundStyle(gathered.contains(ingredient.id) ? Color.brand : .secondary)
-                                .contentTransition(.symbolEffect(.replace))
-                            VStack(alignment: .leading) {
-                                Text(ingredient.name).font(.title3).strikethrough(gathered.contains(ingredient.id))
-                                if let note = ingredient.note { Text(note).font(.callout).foregroundStyle(.secondary) }
-                            }
-                            Spacer()
-                            Text(Units.amount(ingredient.quantity.map { $0 * scale }, ingredient.unit))
-                                .font(.title3.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 6)
+                VStack(alignment: .leading, spacing: twoPane ? 4 : 16) {
+                    ForEach(recipe.ingredients) { ingredient in
+                        ingredientRow(ingredient, inStep: twoPane && currentStep?.mentions(ingredient) == true)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding()
         }
+    }
+
+    private func ingredientRow(_ ingredient: Ingredient, inStep: Bool) -> some View {
+        Button {
+            withAnimation(.snappy) {
+                if gathered.contains(ingredient.id) { gathered.remove(ingredient.id) } else { gathered.insert(ingredient.id) }
+            }
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: gathered.contains(ingredient.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(gathered.contains(ingredient.id) ? Color.brand : .secondary)
+                    .contentTransition(.symbolEffect(.replace))
+                VStack(alignment: .leading) {
+                    Text(ingredient.name).font(.title3.weight(inStep ? .semibold : .regular)).strikethrough(gathered.contains(ingredient.id))
+                    if let note = ingredient.note { Text(note).font(.callout).foregroundStyle(.secondary) }
+                }
+                Spacer()
+                Text(Units.amount(ingredient.quantity.map { $0 * scale }, ingredient.unit))
+                    .font(.title3.monospacedDigit())
+                    .foregroundStyle(inStep ? Color.brand : .secondary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, twoPane ? 12 : 0)
+            .background(inStep ? Color.brandSoft : .clear, in: .rect(cornerRadius: 16, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(inStep ? "Used in this step" : "")
+        .animation(.snappy, value: inStep)
     }
 
     private var gatherTitle: String {
@@ -112,6 +186,14 @@ struct CookModeView: View {
                             .font(.headline)
                     }
                     .buttonStyle(.glass)
+                }
+                // With room to spare, a glance at what's coming.
+                if twoPane, steps.indices.contains(index + 1) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Eyebrow("Up next", systemImage: "arrow.turn.down.right")
+                        Text(steps[index + 1].text).font(.body).foregroundStyle(.secondary).lineLimit(3)
+                    }
+                    .padding(.top, 12)
                 }
             }
             .padding()
@@ -191,12 +273,12 @@ struct CookModeView: View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
                 Button {
-                    page = max(0, page - 1)
+                    page = max(firstPage, page - 1)
                 } label: {
                     Image(systemName: "chevron.left").font(.title3.weight(.semibold)).frame(width: 52, height: 44)
                 }
                 .buttonStyle(.glass)
-                .disabled(page == 0)
+                .disabled(page <= firstPage)
 
                 Text(page == 0 ? "Ingredients" : page > steps.count ? "Finish" : "Step \(page) of \(steps.count)")
                     .font(.subheadline.weight(.semibold).monospacedDigit())
@@ -237,9 +319,7 @@ struct CookModeView: View {
                         .padding(.vertical, 8)
                         .foregroundStyle(remaining == 0 ? .orange : .primary)
                         .glassEffect(.regular.interactive(), in: .capsule)
-                        .onChange(of: remaining == 0) { _, done in
-                            if done { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
-                        }
+                        .buzzes(whenDone: remaining == 0)
                     }
                 }
             }
@@ -247,6 +327,72 @@ struct CookModeView: View {
             .padding(.vertical, 4)
         }
         .scrollIndicators(.hidden)
+    }
+
+    /// The timers in type big enough to read from across the kitchen.
+    private var timerBoard: some View {
+        HStack(spacing: 12) {
+            ForEach(timers) { timer in
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let remaining = timer.remaining(at: context.date)
+                    VStack(spacing: 10) {
+                        HStack {
+                            Image(systemName: remaining == 0 ? "bell.and.waves.left.and.right.fill" : "timer")
+                                .symbolEffect(.wiggle, isActive: remaining == 0)
+                            Text(timer.label).textCase(.uppercase).tracking(1.1)
+                            Spacer()
+                            Button("Remove \(timer.label) timer", systemImage: "xmark.circle.fill") {
+                                timers.removeAll { $0.id == timer.id }
+                            }
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(.secondary)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        Text(remaining == 0 ? "Done" : CookTimer.clock(remaining))
+                            .font(.system(size: 96, weight: .semibold, design: .rounded).monospacedDigit())
+                            .minimumScaleFactor(0.3)
+                            .lineLimit(1)
+                            .frame(maxHeight: .infinity)
+                        ProgressView(value: Double(timer.seconds - remaining), total: Double(timer.seconds))
+                            .tint(remaining == 0 ? .orange : Color.brand)
+                    }
+                    .padding(20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .foregroundStyle(remaining == 0 ? .orange : .primary)
+                    .glassEffect(.regular, in: .rect(cornerRadius: 28, style: .continuous))
+                    .buzzes(whenDone: remaining == 0)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+private extension View {
+    /// A warning buzz as a timer runs out.
+    func buzzes(whenDone done: Bool) -> some View {
+        onChange(of: done) { _, done in
+            if done { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
+        }
+    }
+}
+
+extension RecipeStep {
+    /// Whether the step names this ingredient, going by its last word so
+    /// "Lemons" matches "zest the lemon" and "olive oil" matches "the oil".
+    func mentions(_ ingredient: Ingredient) -> Bool {
+        guard let noun = Self.words(in: ingredient.name).last else { return false }
+        return Self.words(in: text).contains(noun)
+    }
+
+    /// Lowercased words, roughly singular: "tomatoes" → "tomato", "berries" → "berry".
+    private static func words(in text: String) -> [String] {
+        text.lowercased().split { !$0.isLetter }.map { word in
+            if word.hasSuffix("oes") || word.hasSuffix("ches") || word.hasSuffix("shes") { return String(word.dropLast(2)) }
+            if word.hasSuffix("ies"), word.count > 4 { return word.dropLast(3) + "y" }
+            if word.hasSuffix("s"), !word.hasSuffix("ss"), word.count > 3 { return String(word.dropLast()) }
+            return String(word)
+        }
     }
 }
 

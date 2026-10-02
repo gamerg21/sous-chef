@@ -14,6 +14,8 @@ struct RecipeDetailView: View {
     @State private var publishing = false
     @State private var confirmDelete = false
     @State private var toast: String?
+    /// Unfolded or on a wide screen, the recipe sits beside its ingredients and steps.
+    @State private var twoPane = false
 
     private var plan: CookingPlan {
         CookingPlanner.plan(ingredients: recipe.ingredients, stock: pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) })
@@ -26,57 +28,12 @@ struct RecipeDetailView: View {
 
     var body: some View {
         let plan = plan
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                RecipeImage(data: recipe.photo, maxPixel: 1600)
-                    .frame(height: 280)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .overlay(alignment: .bottom) {
-                        LinearGradient(colors: [.clear, Color(uiColor: .systemBackground)], startPoint: .center, endPoint: .bottom)
-                    }
-                    .padding(.bottom, -60)
-
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    readiness(plan)
-                    ingredients(plan)
-                    steps
-                    RecipeNutritionCard(recipe: recipe, pantry: pantry)
-                    if let notes = recipe.notes?.nilIfEmpty {
-                        Card {
-                            Eyebrow("Notes", systemImage: "note.text")
-                            Text(notes).font(.callout)
-                        }
-                    }
-                    if let source = recipe.sourceURL, let url = URL(string: source) {
-                        Link(destination: url) {
-                            Label(url.host ?? source, systemImage: "safari")
-                                .font(.footnote)
-                        }
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 100)
-            }
+        Group {
+            if twoPane { twoPaneLayout(plan) } else { singleColumn(plan) }
         }
-        .ignoresSafeArea(edges: .top)
+        .tracksTwoPaneWidth($twoPane)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                cooking = true
-            } label: {
-                Label("Start cooking", systemImage: "flame.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.glassProminent)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("startCooking")
-        }
         .overlay(alignment: .top) {
             if let toast {
                 Text(toast)
@@ -122,6 +79,93 @@ struct RecipeDetailView: View {
         .userActivity(RecipeEntity.activityType) { activity in
             activity.title = recipe.title
             activity.appEntityIdentifier = EntityIdentifier(for: RecipeEntity.self, identifier: recipe.uuid)
+        }
+    }
+
+    private func singleColumn(_ plan: CookingPlan) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                RecipeImage(data: recipe.photo, maxPixel: 1600)
+                    .frame(height: 280)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, Color(uiColor: .systemBackground)], startPoint: .center, endPoint: .bottom)
+                    }
+                    .padding(.bottom, -60)
+
+                VStack(alignment: .leading, spacing: 20) {
+                    header
+                    readiness(plan)
+                    ingredients(plan)
+                    steps
+                    details
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 100)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+        .safeAreaInset(edge: .bottom) { startCooking }
+    }
+
+    /// The recipe and what the pantry has for it on one half, keeping Start
+    /// cooking in reach, and the ingredients and steps on the other.
+    private func twoPaneLayout(_ plan: CookingPlan) -> some View {
+        TwoPane {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    RecipeImage(data: recipe.photo, maxPixel: 1600)
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                    header
+                    readiness(plan)
+                    details
+                }
+                .padding()
+            }
+            .safeAreaInset(edge: .bottom) { startCooking }
+        } secondary: {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ingredients(plan)
+                    steps
+                }
+                .padding()
+            }
+        }
+    }
+
+    private var startCooking: some View {
+        Button {
+            cooking = true
+        } label: {
+            Label("Start cooking", systemImage: "flame.fill")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.glassProminent)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .accessibilityIdentifier("startCooking")
+    }
+
+    /// Nutrition, notes and where the recipe came from.
+    @ViewBuilder private var details: some View {
+        RecipeNutritionCard(recipe: recipe, pantry: pantry)
+        if let notes = recipe.notes?.nilIfEmpty {
+            Card {
+                Eyebrow("Notes", systemImage: "note.text")
+                Text(notes).font(.callout)
+            }
+        }
+        if let source = recipe.sourceURL, let url = URL(string: source) {
+            Link(destination: url) {
+                Label(url.host ?? source, systemImage: "safari")
+                    .font(.footnote)
+            }
         }
     }
 

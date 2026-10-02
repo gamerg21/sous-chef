@@ -179,6 +179,17 @@ struct MiscTests {
         #expect(CookTimer.clock(3700) == "1:01:40")
     }
 
+    @Test func findsIngredientsInSteps() {
+        let step = RecipeStep(text: "Toss the potatoes with olive oil, zest a lemon and add the berries.")
+        #expect(step.mentions(Ingredient(name: "Potatoes")))
+        #expect(step.mentions(Ingredient(name: "Olive oil")))
+        #expect(step.mentions(Ingredient(name: "Lemons")))
+        #expect(step.mentions(Ingredient(name: "berry")))
+        #expect(!step.mentions(Ingredient(name: "Garlic")))
+        #expect(!RecipeStep(text: "Bring to a boil.").mentions(Ingredient(name: "Olive oil")))
+        #expect(!step.mentions(Ingredient(name: "")))
+    }
+
     @Test func detectsInsecureRemoteServers() throws {
         #expect(!ServerClient.isInsecureRemote(try ServerClient.normalize("192.168.1.20:3000")))
         #expect(!ServerClient.isInsecureRemote(try ServerClient.normalize("http://kitchen.local")))
