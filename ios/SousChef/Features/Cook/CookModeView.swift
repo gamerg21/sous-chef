@@ -18,28 +18,30 @@ struct CookModeView: View {
     @State private var chatting = false
     /// Unfolded or on a wide screen, the ingredients stay beside the steps.
     @State private var twoPane = false
-    /// An iPhone Duo propped half open on the counter.
-    @State private var halfOpen = false
+    /// How an iPhone Duo is being held.
+    @State private var posture = FoldPosture.flat
 
-    /// Propped half open like a laptop with a timer running, the half lying
-    /// on the counter shows the countdown. Propped like a book, the phone is
-    /// wide and keeps its two panes.
-    private var onCounter: Bool { halfOpen && !twoPane && !timers.isEmpty }
+    /// Propped half open like a laptop, the steps stand up facing the cook and
+    /// the half lying on the counter holds the ingredients or the timers.
+    /// Propped like a book, the phone keeps its two panes.
+    private var onCounter: Bool { posture == .laptop }
+    /// With the ingredients in a pane of their own, beside or below the steps.
+    private var ingredientsBeside: Bool { twoPane || onCounter }
     private var steps: [RecipeStep] { recipe.steps }
     private var pageCount: Int { steps.count + 2 }
     /// Beside the steps, the ingredients no longer need a page of their own.
-    private var firstPage: Int { twoPane ? 1 : 0 }
+    private var firstPage: Int { ingredientsBeside ? 1 : 0 }
     private var currentStep: RecipeStep? { steps.indices.contains(page - 1) ? steps[page - 1] : nil }
 
     var body: some View {
         NavigationStack {
             Group {
-                if twoPane { twoPaneLayout } else if onCounter { counterLayout } else { pagedLayout }
+                if onCounter { counterLayout } else if twoPane { twoPaneLayout } else { pagedLayout }
             }
             .animation(.snappy, value: onCounter)
             .tracksTwoPaneWidth($twoPane)
-            .tracksHalfOpen($halfOpen)
-            .onChange(of: twoPane) { page = max(page, firstPage) }
+            .tracksFoldPosture($posture)
+            .onChange(of: ingredientsBeside) { page = max(page, firstPage) }
             .navigationTitle(recipe.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,22 +91,20 @@ struct CookModeView: View {
     }
 
     /// Propped on the counter: the steps stand up facing the cook, and the
-    /// half lying flat shows the timers in big type, with the controls in
-    /// easy reach.
+    /// half lying flat shows the timers in big type once one is running, the
+    /// ingredients until then, with the controls in easy reach.
     private var counterLayout: some View {
         TwoPane(axis: .vertical) {
-            TabView(selection: $page) {
-                ingredientsPage.tag(0)
-                stepPages
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.snappy, value: page)
+            TabView(selection: $page) { stepPages }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.snappy, value: page)
         } secondary: {
             VStack(spacing: 16) {
-                timerBoard
+                if timers.isEmpty { ingredientsPage } else { timerBoard }
                 controls
             }
             .padding(.top)
+            .animation(.snappy, value: timers.isEmpty)
         }
     }
 
@@ -120,11 +120,11 @@ struct CookModeView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Eyebrow("Mise en place", systemImage: "basket")
                 Text(gatherTitle)
-                    .font(.system(twoPane ? .title2 : .largeTitle, design: .rounded, weight: .bold))
+                    .font(.system(ingredientsBeside ? .title2 : .largeTitle, design: .rounded, weight: .bold))
                     .contentTransition(.numericText())
-                VStack(alignment: .leading, spacing: twoPane ? 4 : 16) {
+                VStack(alignment: .leading, spacing: ingredientsBeside ? 4 : 16) {
                     ForEach(recipe.ingredients) { ingredient in
-                        ingredientRow(ingredient, inStep: twoPane && currentStep?.mentions(ingredient) == true)
+                        ingredientRow(ingredient, inStep: ingredientsBeside && currentStep?.mentions(ingredient) == true)
                     }
                 }
             }
@@ -153,7 +153,7 @@ struct CookModeView: View {
                     .foregroundStyle(inStep ? Color.brand : .secondary)
             }
             .padding(.vertical, 6)
-            .padding(.horizontal, twoPane ? 12 : 0)
+            .padding(.horizontal, ingredientsBeside ? 12 : 0)
             .background(inStep ? Color.brandSoft : .clear, in: .rect(cornerRadius: 16, style: .continuous))
             .contentShape(.rect)
         }
@@ -179,16 +179,24 @@ struct CookModeView: View {
                 .fontDesign(.rounded)
                     .fixedSize(horizontal: false, vertical: true)
                 ForEach(CookTimer.durations(in: step.text), id: \.self) { seconds in
+                    let label = "Step \(index + 1)"
+                    // One timer per step and duration; removing it offers the button again.
+                    let running = timers.contains { $0.label == label && $0.seconds == seconds }
                     Button {
-                        timers.append(CookTimer(label: "Step \(index + 1)", seconds: seconds))
+                        timers.append(CookTimer(label: label, seconds: seconds))
                     } label: {
-                        Label("Start \(CookTimer.describe(seconds)) timer", systemImage: "timer")
-                            .font(.headline)
+                        Label(
+                            running ? "\(CookTimer.describe(seconds)) timer running" : "Start \(CookTimer.describe(seconds)) timer",
+                            systemImage: running ? "timer.circle.fill" : "timer"
+                        )
+                        .font(.headline)
+                        .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.glass)
+                    .disabled(running)
                 }
                 // With room to spare, a glance at what's coming.
-                if twoPane, steps.indices.contains(index + 1) {
+                if ingredientsBeside, steps.indices.contains(index + 1) {
                     VStack(alignment: .leading, spacing: 6) {
                         Eyebrow("Up next", systemImage: "arrow.turn.down.right")
                         Text(steps[index + 1].text).font(.body).foregroundStyle(.secondary).lineLimit(3)
