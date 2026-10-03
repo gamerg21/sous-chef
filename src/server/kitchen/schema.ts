@@ -12,6 +12,13 @@ export const nutritionPer100g = v.object({
   saltG: v.optional(v.number()),
 });
 
+export const mealSlot = v.union(
+  v.literal("breakfast"),
+  v.literal("lunch"),
+  v.literal("dinner"),
+  v.literal("snack"),
+);
+
 export default defineSchema({
   users: defineTable({ name: v.optional(v.string()), email: v.optional(v.string()), image: v.optional(v.string()), emailVerificationTime: v.optional(v.number()), demoExpiresAt: v.optional(v.number()) }).index("email", ["email"]),
 
@@ -195,6 +202,20 @@ export default defineSchema({
     .index("by_shoppingListId", ["shoppingListId"])
     .index("by_foodItemId", ["foodItemId"]),
 
+  // ── Meal Plan ──────────────────────────────────────────────────────────
+  mealPlanEntries: defineTable({
+    householdId: v.id("households"),
+    date: v.string(), // "YYYY-MM-DD" on the kitchen's calendar
+    slot: mealSlot,
+    recipeId: v.id("recipes"),
+    // Servings to cook; recipe amounts scale by servings / recipe.servings.
+    servings: v.optional(v.number()),
+    note: v.optional(v.string()),
+    cookedAt: v.optional(v.number()),
+  })
+    .index("by_householdId_and_date", ["householdId", "date"])
+    .index("by_recipeId", ["recipeId"]),
+
   // ── Community ──────────────────────────────────────────────────────────
   communityRecipeLikes: defineTable({
     recipeId: v.id("recipes"),
@@ -282,7 +303,21 @@ export default defineSchema({
     defaultVolumeUnit: v.string(),
     timezone: v.optional(v.string()),
     dateFormat: v.optional(v.string()),
-  }).index("by_userId", ["userId"]),
+    // Expiry reminders: the "expiring soon" window in days (default 3).
+    expiringWithinDays: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"]),
+
+  // ── Pantry outcomes ───────────────────────────────────────────────────
+  // What became of dated items when they left the pantry: cooked or marked
+  // used ("used"), or thrown away ("wasted"). `on` is the cook's local day.
+  pantryOutcomes: defineTable({
+    householdId: v.id("households"),
+    name: v.string(),
+    outcome: v.union(v.literal("used"), v.literal("wasted")),
+    on: v.string(),
+    expiresOn: v.optional(v.string()),
+  }).index("by_householdId_and_on", ["householdId", "on"]),
 
   // ── User Unit Usage ───────────────────────────────────────────────────
   userUnitUsage: defineTable({

@@ -1,12 +1,15 @@
 import { useMemo } from 'react'
-import { CheckCircle2, Clock, Play, ShoppingCart, Users } from 'lucide-react'
+import { CheckCircle2, Clock, Hourglass, Play, ShoppingCart, Users } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe } from './types'
 import { bucketForMissingCount, computeRecipeCookability, cx, titleCaseBucket } from './utils'
-import { buttonClassName, cardClassName, headingFont, Pill, type Tone } from '../ui/kit'
+import { buttonClassName, cardClassName, headingFont, Pill, StatusDot, type Tone } from '../ui/kit'
+import { expiryPhrase } from '@/lib/expiring'
 
 export interface RecipeMatchCardProps {
   recipe: Recipe
   pantrySnapshot: PantrySnapshotItem[]
+  /** Pantry items expiring soon that this recipe would use. */
+  expiring?: { id: string; name: string; daysLeft: number }[]
   onCook?: (recipeId: string) => void
   onAddMissingToList?: (recipeId: string) => void
 }
@@ -17,7 +20,7 @@ const bucketTone: Record<ReturnType<typeof bucketForMissingCount>, Tone> = {
   missing: 'neutral',
 }
 
-export function RecipeMatchCard({ recipe, pantrySnapshot, onCook, onAddMissingToList }: RecipeMatchCardProps) {
+export function RecipeMatchCard({ recipe, pantrySnapshot, expiring = [], onCook, onAddMissingToList }: RecipeMatchCardProps) {
   const cookability = useMemo(() => computeRecipeCookability(recipe.ingredients, pantrySnapshot, recipe.plan), [recipe, pantrySnapshot])
   const bucket = bucketForMissingCount(cookability.missingCount)
   const canAddMissing = cookability.missingCount > 0
@@ -54,6 +57,22 @@ export function RecipeMatchCard({ recipe, pantrySnapshot, onCook, onAddMissingTo
         ) : null}
         {recipe.tags?.length ? <span>{recipe.tags.slice(0, 3).join(' · ')}</span> : null}
       </div>
+
+      {expiring.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+            <Hourglass className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+            Uses up
+          </span>
+          {expiring.map((item) => (
+            <Pill key={item.id} tone={item.daysLeft <= 0 ? 'danger' : 'warning'}>
+              <StatusDot tone={item.daysLeft <= 0 ? 'danger' : 'warning'} />
+              {item.name}
+              <span className="font-normal opacity-80">· {expiryPhrase(item.daysLeft).replace(/^expires? /, '')}</span>
+            </Pill>
+          ))}
+        </div>
+      )}
 
       {/* How much of the recipe the kitchen already covers */}
       <div className="mt-3">

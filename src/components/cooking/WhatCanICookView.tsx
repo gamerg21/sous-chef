@@ -3,6 +3,7 @@ import { ChefHat, Search, ShoppingCart, Sparkles } from 'lucide-react'
 import type { PantrySnapshotItem, Recipe } from './types'
 import { RecipeMatchCard } from './RecipeMatchCard'
 import { bucketForMissingCount, computeRecipeCookability, cx } from './utils'
+import { DEFAULT_EXPIRING_WITHIN_DAYS, expiringUsedBy, findExpiring, localDay, rankByExpiring } from '@/lib/expiring'
 import {
   buttonClassName,
   cardClassName,
@@ -17,7 +18,7 @@ import {
   Stat,
 } from '../ui/kit'
 
-export type CookabilityFilter = 'all' | 'cook-now' | 'almost' | 'missing'
+export type CookabilityFilter = 'all' | 'cook-now' | 'almost' | 'missing' | 'expiring'
 
 export type CookSort = 'recent' | 'time-asc' | 'title-asc'
 
@@ -30,6 +31,8 @@ export interface WhatCanICookViewProps {
   activeTag?: string | 'all'
   cookability?: CookabilityFilter
   sort?: CookSort
+  /** The cook's "expiring soon" window in days. */
+  expiringWithinDays?: number
   onSearchChange?: (query: string) => void
   onSetTag?: (tag: string | 'all') => void
   onSetCookability?: (filter: CookabilityFilter) => void
@@ -49,6 +52,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
     activeTag = 'all',
     cookability = 'all',
     sort = 'recent',
+    expiringWithinDays = DEFAULT_EXPIRING_WITHIN_DAYS,
     onSearchChange,
     onSetTag,
     onSetCookability,
@@ -69,6 +73,12 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
   const effectiveCookability = onSetCookability ? cookability : localCookability
   const effectiveSort = onSetSort ? sort : localSort
 
+  // Pantry rows expiring soon, and which of them each recipe would use.
+  const expiringUses = useMemo(() => {
+    const expiring = findExpiring(pantrySnapshot, { today: localDay(), withinDays: expiringWithinDays })
+    return new Map(recipes.map((r) => [r.id, expiringUsedBy(r.plan, expiring)]))
+  }, [recipes, pantrySnapshot, expiringWithinDays])
+
   const derived = useMemo(() => {
     const q = effectiveQuery.trim().toLowerCase()
     let list = recipes
@@ -84,7 +94,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
       list = list.filter((r) => (r.tags ?? []).includes(effectiveTag))
     }
 
-    if (effectiveCookability !== 'all') {
+    if (effectiveCookability !== 'all' && effectiveCookability !== 'expiring') {
       list = list.filter((r) => {
         const { missingCount } = computeRecipeCookability(r.ingredients, pantrySnapshot, r.plan)
         return bucketForMissingCount(missingCount) === effectiveCookability
@@ -92,10 +102,11 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
     }
 
     // Sort (mirrors Recipes header style: Recent / Fast / A–Z)
+    let compare: (a: Recipe, b: Recipe) => number
     if (effectiveSort === 'title-asc') {
-      list = [...list].sort((a, b) => a.title.localeCompare(b.title))
+      compare = (a, b) => a.title.localeCompare(b.title)
     } else if (effectiveSort === 'time-asc') {
-      list = [...list].sort((a, b) => (a.totalTimeMinutes ?? 10_000) - (b.totalTimeMinutes ?? 10_000))
+      compare = (a, b) => (a.totalTimeMinutes ?? 10_000) - (b.totalTimeMinutes ?? 10_000)
     } else {
       // "Recent" in this section acts like "Best match":
       // Cook-now first, then almost, then missing; within buckets: fewer missing first; then time; then title.
@@ -104,7 +115,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
         almost: 1,
         missing: 2,
       }
-      list = [...list].sort((a, b) => {
+      compare = (a, b) => {
         const ca = computeRecipeCookability(a.ingredients, pantrySnapshot, a.plan)
         const cb = computeRecipeCookability(b.ingredients, pantrySnapshot, b.plan)
         const ba = bucketForMissingCount(ca.missingCount)
@@ -116,8 +127,12 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
         const dt = (a.totalTimeMinutes ?? 10_000) - (b.totalTimeMinutes ?? 10_000)
         if (dt !== 0) return dt
         return a.title.localeCompare(b.title)
-      })
+      }
     }
+    // "Use it up" keeps recipes that use expiring food, most of it first; the chosen sort breaks ties.
+    list = effectiveCookability === 'expiring'
+      ? rankByExpiring(list, (r) => expiringUses.get(r.id) ?? [], compare)
+      : [...list].sort(compare)
 
     const counts = { cookNow: 0, almost: 0, missing: 0 }
     for (const r of recipes) {
@@ -128,8 +143,10 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
       else counts.missing += 1
     }
 
-    return { list, counts }
-  }, [recipes, pantrySnapshot, effectiveQuery, effectiveTag, effectiveCookability, effectiveSort])
+    const usingExpiring = recipes.filter((r) => (expiringUses.get(r.id)?.length ?? 0) > 0).length
+
+    return { list, counts, usingExpiring }
+  }, [recipes, pantrySnapshot, effectiveQuery, effectiveTag, effectiveCookability, effectiveSort, expiringUses])
 
   const empty = derived.list.length === 0
   const showSearchEmpty = Boolean(effectiveQuery.trim()) && empty
@@ -225,6 +242,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
               { value: 'cook-now', label: 'Cook now' },
               { value: 'almost', label: 'Almost' },
               { value: 'missing', label: 'Needs a run' },
+              { value: 'expiring', label: derived.usingExpiring ? `Use it up · ${derived.usingExpiring}` : 'Use it up' },
             ]}
             className="max-w-full overflow-x-auto"
           />
@@ -262,8 +280,14 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
           <div className={cardClassName}>
             <EmptyState
               icon={showSearchEmpty ? Search : ChefHat}
-              title={showSearchEmpty ? 'No matching recipes' : 'No recipes available'}
-              description={showSearchEmpty ? 'Try a different search term, or clear filters.' : 'Add some recipes in the Recipes section first.'}
+              title={showSearchEmpty ? 'No matching recipes' : effectiveCookability === 'expiring' && recipes.length ? 'Nothing to use up' : 'No recipes available'}
+              description={
+                showSearchEmpty
+                  ? 'Try a different search term, or clear filters.'
+                  : effectiveCookability === 'expiring' && recipes.length
+                    ? `None of your recipes use food expiring in the next ${expiringWithinDays} day${expiringWithinDays === 1 ? '' : 's'}.`
+                    : 'Add some recipes in the Recipes section first.'
+              }
             />
           </div>
         ) : (
@@ -273,6 +297,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
                 key={r.id}
                 recipe={r}
                 pantrySnapshot={pantrySnapshot}
+                expiring={expiringUses.get(r.id)}
                 onCook={onCookRecipe}
                 onAddMissingToList={onAddMissingToShoppingList}
               />

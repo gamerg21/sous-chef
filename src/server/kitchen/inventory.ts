@@ -4,6 +4,7 @@ import { getAuthUserId, resolveHouseholdId, locationNameToId, locationIdToName }
 import { nutritionPer100g } from "./schema";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+import { recordOutcome, todayFor } from "./expiry";
 
 type Nutrition = typeof nutritionPer100g.type;
 
@@ -255,7 +256,8 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("inventoryItems") },
+  // `outcome` records whether a dated item was used up or thrown away.
+  args: { id: v.id("inventoryItems"), outcome: v.optional(v.union(v.literal("used"), v.literal("wasted"))) },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     const item = await ctx.db.get(args.id);
@@ -269,6 +271,10 @@ export const remove = mutation({
       .unique();
     if (!membership) throw new Error("Permission denied");
 
+    if (args.outcome) {
+      const name = (await ctx.db.get(item.foodItemId))?.name ?? "Unknown";
+      await recordOutcome(ctx, item.householdId, { name, outcome: args.outcome, on: await todayFor(ctx, userId), expiresOn: item.expiresOn });
+    }
     await ctx.db.delete(args.id);
     return { success: true };
   },

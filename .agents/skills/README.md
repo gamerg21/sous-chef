@@ -1,7 +1,7 @@
 # Convex skills in Sous Chef
 
 All 39 Convex skills listed in [skills-lock.json](../../skills-lock.json) are
-installed here. Claude uses relative symlinks in `.claude/skills/` to these same
+installed here, plus `swiftui-pro` for the iOS app in `ios/`. Claude uses relative symlinks in `.claude/skills/` to these same
 files. Installation of a skill does not install its external services or MCP tools.
 
 Read [AGENTS.md](../../AGENTS.md) and the following adaptations before following
@@ -108,3 +108,4 @@ restore the relative link to the existing canonical skill instead.
 - [convex-suggest](convex-suggest/SKILL.md)
 - [convex-test](convex-test/SKILL.md)
 - [convex-verify](convex-verify/SKILL.md)
+- [swiftui-pro](swiftui-pro/SKILL.md) (iOS app; installed with `npx skills add https://github.com/twostraws/swiftui-agent-skill --skill swiftui-pro`, then moved here and linked from `.claude/skills/`)

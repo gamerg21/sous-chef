@@ -46,7 +46,7 @@ export const resetDelivery = query({
 // at runtime, but the Email() config type only declares one parameter (the
 // library itself carries a @ts-expect-error at the call site) — hence the
 // cast below where this handler is registered.
-async function sendPasswordResetEmail(
+export async function sendPasswordResetEmail(
   {
     identifier,
     url,
@@ -103,11 +103,15 @@ async function sendPasswordResetEmail(
       return;
     }
 
+    // Never log the address or link: anyone reading logs could take over
+    // the account. Without email delivery, recovery fails closed.
     console.warn(
-      "[auth] Password reset email delivery is not configured. " +
-        "Set RESEND_API_KEY to send emails automatically.",
+      "[auth] Password reset requested, but email delivery is not configured. " +
+        "Set RESEND_API_KEY and SMTP_FROM to send reset emails.",
     );
-    console.info(`[auth] Password reset link for ${identifier}: ${url}`);
+    throw new Error(
+      "Password reset email isn't available on this community. Contact the community operator.",
+    );
 }
 
 const passwordResetProvider = Email({

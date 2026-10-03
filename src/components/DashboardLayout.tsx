@@ -19,6 +19,7 @@ const navigationItems = [
   { label: "Kitchen Inventory", href: "/inventory" },
   { label: "Recipes", href: "/recipes" },
   { label: "What can I cook?", href: "/cooking" },
+  { label: "Plan", href: "/plan" },
   { label: "Shopping List", href: "/shopping-list" },
   { label: "Community", href: "/community" },
 ];

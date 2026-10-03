@@ -1,0 +1,334 @@
+# Sous Chef for iOS
+
+A native SwiftUI port of Sous Chef for iPhone and iPad (iOS 26+). It works on
+its own, syncs through the person's iCloud, and can optionally act as a
+companion to a self-hosted Sous Chef server.
+
+## What's in it
+
+| Tab | Web equivalent | Notes |
+| --- | --- | --- |
+| Pantry | Inventory | Pantry, fridge and freezer with brand, amounts, expiry (quick durations or a calendar) and nutrition; VisionKit barcode scanning with Open Food Facts lookup, and label scanning for products it doesn't know. |
+| Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
+| Cook | Cooking, Plan | Recipes ranked by what you have, cook mode with timers, and pantry deduction. "This week's plan" plans recipes by day and meal, shows their readiness, and adds the week's combined shortages to the shopping list. |
+| Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
+| Community | Community | Browse and save community recipes; publish with Sign in with Apple or through a server. |
+
+Settings (the toolbar button on every tab) covers iCloud, the companion server,
+Apple Intelligence, Open Food Facts, expiry reminders, and recipe import/export
+in the same JSON format as the web app.
+
+## Expiry reminders
+
+Pantry's "Use soon" section and Cook's **Use it up** list use the window set in
+Settings (3 days unless changed). The opt-in daily reminder is a local
+notification at the chosen time, 09:00 by default. The app schedules one per day
+for the next 14 days, each built from that day's list. Days with nothing expiring
+get no notification. Pantry changes and bringing the app to the foreground
+reschedule them. Tapping a reminder opens Cook's **Use it up** list; **Show in
+Pantry** opens "Use soon". The rules (`Shared/ExpiringFood.swift`, Foundation
+only) and the schedule (`Domain/ExpiryReminderSchedule.swift`) are unit tested.
+See [expiry reminders](../docs/EXPIRY_REMINDERS.md).
+
+The main navigation is the system `TabView`, so it gets the Liquid Glass tab bar,
+minimizes while scrolling, and becomes a sidebar on iPad.
+
+## Build and run
+
+Open `ios/SousChef.xcodeproj` in Xcode 27 and run the **SousChef** scheme. The
+project uses folder-synchronized groups, so new files under `SousChef/` are
+picked up without editing the project file.
+
+From the command line:
+
+```sh
+cd ios
+xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build
+xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 17' test
+```
+
+Launch arguments: `-seedSample` fills an empty kitchen with sample data, and
+`-uiTesting` uses an in-memory store.
+
+### On a Mac
+
+The App Store also offers the iPad app on Apple silicon Macs ("Designed for
+iPad"). To run it there, choose the **My Mac (Designed for iPad)** destination in
+Xcode; the Mac has to be registered to the team, which Xcode offers to do the first
+time.
+
+On a Mac the app uses an ordinary sidebar (`NavigationSplitView`) instead of the
+adaptable tab view, whose sidebar button turns into the iPad tab bar there.
+Its toggle, `SidebarButton`, sits at the leading edge like other Mac apps and
+moves into the content toolbar when the sidebar is hidden.
+
+On a Mac, full-screen covers and sheets presented from other sheets don't
+inherit the SwiftUI environment. Views that read `Kitchen`, the community objects
+or the model container crash when that happens, so every `.sheet` and
+`.fullScreenCover` passes them on again with `.kitchenEnvironment()`. Test new
+sheets on a Mac, including onboarding on a fresh install.
+
+### Signing and capabilities
+
+The target uses team `X423ZKYPDN` and bundle ID `com.georgevina.souschef`. The first
+signed device build registers these capabilities for the App ID:
+
+- **Sign in with Apple** (`com.apple.developer.applesignin`), for the optional
+  community account.
+- **iCloud (CloudKit)** with container `iCloud.com.georgevina.souschef`, plus push
+  notifications and the remote-notification background mode for CloudKit changes.
+
+Private Cloud Compute (`com.apple.developer.private-cloud-compute`) is a managed
+entitlement that automatic signing can't add until Apple grants it to the team.
+It isn't in `SousChef.entitlements` yet, so device builds use the on-device
+model. Once the team has it, add the key back (`<true/>`) and the app picks
+Apple's larger model automatically.
+
+iCloud containers can't be deleted once created, so choose the final bundle ID
+and container name before the first signed build. Unsigned simulator builds
+detect the missing entitlements and fall back to local storage and the
+on-device model instead of crashing.
+
+## Data
+
+Everything lives in a SwiftData store. Models follow CloudKit's rules (no unique
+constraints, every property optional or defaulted), and the store syncs through
+the person's private CloudKit database when iCloud is on. There is no Sous
+Chef-operated backend.
+
+## Apple Intelligence
+
+`AI/KitchenAI.swift` picks the first available engine:
+
+1. **Private Cloud Compute** (iOS 27+): Apple's larger model, run on Apple silicon
+   servers that don't retain requests. No API key or third-party service.
+2. **On-device Foundation Model** (iOS 26+).
+3. **The connected Sous Chef server**, using the AI provider configured there.
+
+It powers recipe ideas, from the pantry or open-ended (streamed with guided generation), reading package labels, reading recipes
+from pasted text or pages without structured data, aisle sorting, and the
+"Ask Sous Chef" chat in recipe and cook views. Ingredient amounts from pasted
+text are parsed deterministically, so the model can't invent them.
+
+Recipe and label scanning read photos on device with Vision. For recipe pages,
+the plain text reader's ingredient and step lists win when the page has clear
+sections and the model returns fewer lines. For package labels, the model
+extracts name, brand, net contents, storage and the nutrition panel. Nutrition
+is rescaled to per 100 g in code, and a value is kept only when its row appears
+in the label text.
+
+Brands are stored on the device and in iCloud. The server keeps brands only on
+barcode records, so a connected server doesn't receive hand-entered brands.
+
+## Siri and Shortcuts
+
+`Intents/` exposes the kitchen through App Intents, so the same actions work
+in Siri, Shortcuts, Spotlight and the Action button. Everything runs on the
+device against the local store; no API key is involved.
+
+Apple's app schema domains don't include food, recipes or grocery lists, so
+these are custom intents. Siri reaches them through the App Shortcut phrases in
+`SousChefShortcuts.swift` (Apple allows ten), which work as soon as the app is
+installed:
+
+| Say | Intent |
+| --- | --- |
+| "What can I make with Sous Chef" | Ranks saved recipes by pantry coverage, favoring food that expires soon |
+| "What's in my fridge in Sous Chef" | Lists what's on hand, optionally by location |
+| "What's expiring in Sous Chef" | Food expiring in the next few days |
+| "Add to my Sous Chef shopping list" | Siri asks what; "milk, eggs and bread" becomes three items |
+| "What's on my Sous Chef shopping list" | Reads the open items |
+| "I ran out of something in Sous Chef" | Empties the pantry item and adds it to the list; asks before acting on a close name match |
+| "Give me a new recipe idea in Sous Chef" | Apple Intelligence drafts a pantry-first recipe and saves it if you say yes |
+| "Shop for Pesto Pasta in Sous Chef" | Adds the recipe's missing ingredients to the list |
+| "Save this recipe to Sous Chef" | Imports a recipe link, such as one Siri found or the page open in Safari, and saves it; a link already saved isn't duplicated |
+| "Open Pesto Pasta in Sous Chef" | Opens the recipe |
+
+"Check off" an item, Start Cooking, and Save Recipe from Text (copied or
+dictated recipe text; text that's only a link imports the page) are available in
+Shortcuts. The save actions take a link or text parameter, which is what lets
+Siri pass along a recipe it found or content from the screen; whether it chains
+those steps is up to Siri. On iOS 27, recipes also adopt
+the `.system.open` schema, so Apple Intelligence can open them without an
+exact phrase. Recipes are indexed in Spotlight (Siri searches that index to
+find them), share as plain text, and the recipe screen tells Siri which recipe
+"this recipe" means. The answers themselves live in
+`Domain/KitchenAssistant.swift` and are unit tested.
+
+`SousChefUITests` runs every intent out of process through Apple's App Intents
+Testing framework (iOS 27 simulator), against a kitchen seeded by the
+debug-only `ResetKitchenForTestsIntent`:
+
+```sh
+xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SousChefUITests test
+```
+
+Spoken phrases still need checking by voice on a device with Siri, since
+automated tests can't exercise speech recognition.
+
+## Widgets and Live Activities
+
+The `SousChefWidgets` extension (`SousChefWidgets/`, bundle ID
+`com.georgevina.souschef.widgets`) adds Home Screen and Lock Screen widgets and
+cook mode's Live Activity. Like the share extension, it's signed with the
+`group.com.georgevina.souschef` App Group and carries the app's
+`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`. Code both targets need lives
+in `WidgetShared/`.
+
+| Widget | Sizes | Tap opens |
+| --- | --- | --- |
+| Tonight's Meal | small, medium, Lock Screen rectangular and inline | The week plan (medium also links the recipe) |
+| Use Soon | small, medium, Lock Screen rectangular | Pantry's "Use soon" section |
+| Shopping List | small, Lock Screen rectangular, circular and inline | Shopping |
+
+Widgets never open the iCloud-synced SwiftData store. The app writes a small
+JSON `KitchenSnapshot` (`WidgetShared/KitchenSnapshot.swift`) to the App Group
+after each kitchen change, including meal plan changes (`Kitchen.changed()`),
+after a server sync, when it becomes active, and when it goes to the
+background, and reloads the widget timelines only when the snapshot changed
+(`Domain/WidgetSnapshotWriter.swift`). Widgets add an entry at each midnight so
+day counts stay right between changes.
+
+Use Soon lists what `ExpiringFood.find(in:within:)` (`Shared/ExpiringFood.swift`)
+finds with the "expiring soon" window from Settings, read from the App Group, so
+it matches the Pantry's "Use soon" section and the reminders. Changing the window
+refreshes the snapshot.
+
+**Tonight's Meal** shows `Kitchen.tonightsMeal(now:)`: today's uncooked dinner,
+otherwise today's next uncooked meal. It shows the recipe, meal, servings and
+pantry readiness at the planned servings ("Ready" or "Missing 2"). The snapshot
+also carries tomorrow's meal, so the widget moves on at midnight before the app
+runs again. Cooked meals drop out as soon as they're cooked. When nothing is
+planned it says "Nothing planned" and opens the plan. Recipe photos are shrunk
+to a small JPEG in the App Group (`WidgetPhotos/`, named after the photo's
+contents, old ones removed); without one it shows an icon.
+
+Older snapshots decode without the newer sections (`tonight`, `tomorrow`,
+`expiringWindowDays`), and an unreadable section is dropped rather than losing
+the whole snapshot. To add a widget for new data, add an optional property to
+`KitchenSnapshot`, decode it in `init(from:)`, fill it in
+`WidgetSnapshotWriter.snapshot(of:)`, and add a widget to `SousChefWidgetsBundle`.
+
+**Links.** Widgets and notifications lead to the same places through
+`KitchenLink` and `AppNavigator.go(to:)`: `souschef://pantry`, `recipes`, `cook`,
+`shopping`, `community`, `souschef://pantry/use-soon`,
+`souschef://cook/use-it-up`, `souschef://plan` (Cook's week plan) and
+`souschef://recipe/<id>`.
+
+**Notifications.** `Domain/AppNotifications.swift` is the app's one
+notification delegate and registers every category together (expiry
+reminders' `expiry-reminder` and cook timers' `SOUSCHEF_COOK_TIMER`), since
+`setNotificationCategories` replaces the whole set. Expiry reminder taps are
+routed as described under Expiry reminders.
+
+**Cook timers.** Starting a timer in cook mode starts one Live Activity for the
+recipe (`NSSupportsLiveActivities` is in `SousChef-Info.plist`). It lists every
+timer, counts down the next to finish in the Dynamic Island, and uses
+`Text(timerInterval:)` and `ProgressView(timerInterval:)` so it ticks without
+updates from the app. Removing timers updates it, and closing cook mode ends it;
+activities left over from a previous launch end when the app starts
+(`Features/Cook/CookTimerAlerts.swift`). Each timer also schedules a local
+notification with sound (identifiers `souschef.cook-timer.<id>`, category
+`SOUSCHEF_COOK_TIMER`), so it's heard with the app in the background or the phone
+locked. Notification permission is asked the first time a timer starts. With
+the app in the foreground the alert still shows as a banner with sound, since
+the cook may be on another screen, alongside the in-app timer strip and haptic.
+
+On a Mac ("Designed for iPad") and wherever Live Activities are turned off, only
+the notifications are used. The in-app timers never depend on either.
+
+## Share sheet
+
+`ShareExtension/` puts Sous Chef in the share sheet, so a recipe page in
+Safari (or any app that shares a link) is two taps away: Share, then Sous Chef.
+Shared recipe text works too, and text that's only a link imports the page.
+
+The extension doesn't import anything itself. It drops the link or text into
+`Shared/SharedRecipeInbox.swift`, an App Group (`group.com.georgevina.souschef`)
+that both targets are signed with, and closes. The next time Sous Chef becomes
+active it switches to Recipes and runs each shared item through the usual
+import sheet and recipe editor, so nothing is saved without review and the
+extension needs neither the kitchen store nor Apple Intelligence. A page that's
+already saved opens instead of importing again.
+
+The confirmation stays up with an "Open Sous Chef" button, since the recipe
+isn't saved until it's reviewed. Share extensions have no API for opening their
+app, so the button asks the application found up the responder chain to open
+`souschef://shared` (the app's URL scheme); if that ever stops working, the
+sheet tells the cook to open Sous Chef from the Home Screen instead.
+
+## Companion server sync
+
+`Server/CompanionServer.swift` talks to an existing Sous Chef server through the
+same `/api/auth` and `/api/kitchen` endpoints as the web app. No server changes
+are required.
+
+- The device store is the working copy, so the app works offline.
+- Each sync pushes local changes (creates, updates and deletion tombstones), then
+  mirrors the server's pantry, recipes, shopping list and meal plan (servers without meal planning are skipped for plans). Conflicts resolve as
+  "latest pusher wins".
+- On first connection, records that already exist on both sides (same name, and
+  for pantry items the same location and unit) are paired instead of duplicated,
+  and take the server's copy.
+- Cooking while connected runs `cooking:cookRecipe` on the server, preserving
+  its atomic inventory deduction. Offline, the same plan is applied locally.
+- Recipe photos upload through `/api/files`, and server photos download.
+- The session token is kept in the Keychain; switching kitchens replaces the
+  device's server-linked data with the chosen kitchen.
+
+With iCloud on and several devices connected to the same server, each device
+syncs with both. Brief duplicates are possible if two devices create the same
+item before either syncs.
+
+## Community account
+
+Browsing, saving and reporting community recipes need no account. Publishing
+without a connected server uses a community account from Sign in with Apple
+(`Server/CommunityAccount.swift`, `Features/Community/CommunityAccountViews.swift`).
+
+- The community address defaults to `SousChefCommunityURL` in
+  `SousChef-Info.plist`, the production community
+  (`https://silent-gerbil-530.convex.site`). A custom address in Settings
+  overrides it, and a connected server uses its own community connection.
+- The system button asks only for the name scope, with a SHA-256 nonce the
+  server checks. The server returns a 90-day publisher token, kept in the Keychain
+  with the account's name and Apple user ID.
+- The app checks the Apple ID credential state at launch and when it becomes
+  active, and listens for credential revocation; a revoked or missing credential
+  signs out locally.
+- Settings → Community account shows the name, an optional display name editor,
+  Sign out, and Delete community account, which removes the account and its
+  recipes on the server and revokes the Apple sign-in.
+- Unsigned simulator builds lack the entitlement: sign-in shows an error
+  instead of crashing.
+
+## App Review notes
+
+- **AI:** only Apple's Foundation Models framework runs in the app. The optional
+  server fallback uses the person's own server and their own provider key.
+- **Companion server:** a client for self-hosted software the person runs, like
+  Home Assistant or Jellyfin apps. The app is fully functional without one.
+  Reviewers can use the web demo or a test server.
+- **App Transport Security:** `NSAllowsArbitraryLoads` is set because home servers
+  are often plain HTTP on LAN IPs, `.local` names or Tailscale addresses. The app
+  warns before sending a password over HTTP to a public host.
+- **User-generated content (1.2):** community recipes are hidden until the person
+  agrees to the community guidelines (zero tolerance for objectionable content and
+  abusive users; versioned, stored on the device). Every community recipe has
+  **Report recipe** (reason plus optional note, emailed to community-souschef@georgevina.com
+  through Mail, a `mailto:` link, or copyable text) and **Block <cook>** in its
+  detail menu and long-press menu. Reported recipes and blocked cooks disappear
+  at once and can be restored in Settings → Blocked cooks and hidden recipes. A
+  built-in whole-word profanity and slur filter hides matching recipes. Publishing
+  also requires accepting the guidelines. Reports are reviewed within 24 hours;
+  Settings links the guidelines and the contact address. Code:
+  `Domain/CommunityModeration.swift`, `Features/Community/CommunitySafety.swift`.
+- **Sign in with Apple (4.8, 5.1.1(v)):** sign-in is only needed to publish
+  recipes; browsing, saving and reporting work without an account. The app uses
+  the system Sign in with Apple button, requests only the name, and never asks for
+  a name or email afterwards (the name comes from Apple, or "Community cook"). A
+  display name can optionally be changed in Settings. Settings → Community account
+  → **Delete community account** deletes the account and everything it published
+  on the server and revokes the Apple tokens through Apple's REST API.
+- **Privacy:** barcode lookups send only the barcode to Open Food Facts. Kitchen
+  data stays on the device, in the person's iCloud, or on their own server.

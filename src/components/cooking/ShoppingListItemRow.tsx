@@ -82,10 +82,12 @@ export function ShoppingListItemRow({ item, onToggle, onEdit, onRemove, isDeleti
               <span className={cx('text-sm tabular-nums', checked ? 'text-stone-400 dark:text-stone-500' : 'text-stone-500 dark:text-stone-400')}>{amount}</span>
             )}
           </span>
-          {(item.source === 'from-recipe' || item.source === 'low-stock' || item.note) && (
+          {(item.source === 'from-recipe' || item.source === 'meal-plan' || item.source === 'low-stock' || item.note) && (
             <span className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
               {item.source === 'from-recipe' ? (
                 <Pill tone="success">From recipe</Pill>
+              ) : item.source === 'meal-plan' ? (
+                <Pill tone="success">Meal plan</Pill>
               ) : item.source === 'low-stock' ? (
                 <Pill tone="warning">Low stock</Pill>
               ) : null}

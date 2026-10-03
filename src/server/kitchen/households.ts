@@ -152,6 +152,12 @@ export const remove = mutation({
       await ctx.db.delete(r._id);
     }
 
+    const planned = await ctx.db
+      .query("mealPlanEntries")
+      .withIndex("by_householdId_and_date", (q) => q.eq("householdId", args.householdId))
+      .collect();
+    for (const entry of planned) await ctx.db.delete(entry._id);
+
     const sl = await ctx.db
       .query("shoppingLists")
       .withIndex("by_householdId", (q) => q.eq("householdId", args.householdId))

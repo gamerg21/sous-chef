@@ -1,0 +1,326 @@
+import PhotosUI
+import SwiftData
+import SwiftUI
+
+struct RecipeEditorView: View {
+    @State private var draft: RecipeDraft
+    let recipe: Recipe?
+    var onSave: (Recipe) -> Void
+
+    init(draft: RecipeDraft, recipe: Recipe?, onSave: @escaping (Recipe) -> Void = { _ in }) {
+        _draft = State(initialValue: draft)
+        self.recipe = recipe
+        self.onSave = onSave
+    }
+
+    @Environment(Kitchen.self) private var kitchen
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \PantryItem.name) private var pantry: [PantryItem]
+    @State private var photoItem: PhotosPickerItem?
+    @State private var choosingPhoto = false
+    @State private var newIngredient = ""
+    @State private var newStep = ""
+    @State private var newTag = ""
+    @State private var editingIngredient: Ingredient?
+    @State private var reorderingSteps = false
+    @FocusState private var focus: Field?
+
+    enum Field { case title, ingredient, step, tag }
+
+    private var pantryNames: [String] {
+        Array(Set(pantry.map(\.name))).sorted()
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if !draft.warnings.isEmpty {
+                    Section {
+                        ForEach(draft.warnings, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange) }
+                    } header: {
+                        Eyebrow("Check before saving")
+                    }
+                }
+
+                Section {
+                    // A button rather than PhotosPicker, whose label closure isn't
+                    // main-actor isolated and can't read the draft.
+                    Button { choosingPhoto = true } label: {
+                        RecipeImage(data: draft.photo, symbol: "camera", maxPixel: 1200)
+                            .frame(height: 170)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(.rect(cornerRadius: 16, style: .continuous))
+                            .overlay(alignment: .bottomTrailing) {
+                                Label(draft.photo == nil ? "Add photo" : "Change", systemImage: "photo")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .glassEffect(.regular, in: .capsule)
+                                    .padding(10)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .photosPicker(isPresented: $choosingPhoto, selection: $photoItem, matching: .images)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    if draft.photo != nil {
+                        Button("Remove photo", role: .destructive) { draft.photo = nil }
+                    }
+                    TextField("Recipe title", text: $draft.title, axis: .vertical)
+                        .font(.system(.title2, design: .rounded, weight: .bold))
+                        .focused($focus, equals: .title)
+                        .accessibilityIdentifier("recipeTitle")
+                    TextField("Short description", text: $draft.summaryText, axis: .vertical)
+                        .lineLimit(1...4)
+                } header: {
+                    Eyebrow("Recipe")
+                }
+
+                Section {
+                    Stepper(value: $draft.servingsCount, in: 0...48) {
+                        LabeledContent("Servings", value: draft.servings.map(String.init) ?? "—")
+                    }
+                    Stepper(value: $draft.totalMinutes, in: 0...1440, step: 5) {
+                        LabeledContent("Total time", value: draft.totalTimeMinutes.map { "\($0) min" } ?? "—")
+                    }
+                } header: {
+                    Eyebrow("Details")
+                }
+
+                Section {
+                    ForEach($draft.ingredients) { $ingredient in
+                        Button { editingIngredient = ingredient } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ingredient.name).foregroundStyle(.primary)
+                                    if let label = ingredient.mappingLabel?.nilIfEmpty, normalizeName(label) != normalizeName(ingredient.name) {
+                                        Label("Uses \(label)", systemImage: "link").font(.caption).foregroundStyle(Color.brand)
+                                    } else if let note = ingredient.note?.nilIfEmpty {
+                                        Text(note).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                Text(Units.amount(ingredient.quantity, ingredient.unit)).foregroundStyle(.secondary).monospacedDigit()
+                            }
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .deleteDisabled(reorderingSteps)
+                        .moveDisabled(reorderingSteps)
+                    }
+                    .onDelete { draft.ingredients.remove(atOffsets: $0) }
+                    .onMove { draft.ingredients.move(fromOffsets: $0, toOffset: $1) }
+                    HStack {
+                        TextField("Add ingredient, e.g. 2 cups flour", text: $newIngredient)
+                            .focused($focus, equals: .ingredient)
+                            .submitLabel(.next)
+                            .onSubmit(addIngredient)
+                            .accessibilityIdentifier("newIngredient")
+                        Button(action: addIngredient) { Image(systemName: "plus.circle.fill") }
+                            .disabled(newIngredient.nilIfEmpty == nil)
+                    }
+                } header: {
+                    Eyebrow("Ingredients · \(draft.ingredients.count)")
+                } footer: {
+                    Text("Type amounts naturally. Tap an ingredient to link it to a pantry item with a different name.")
+                }
+
+                Section {
+                    ForEach($draft.steps) { $step in
+                        if reorderingSteps {
+                            // Text fields swallow the drag, so reorder plain rows.
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text("\((draft.steps.firstIndex { $0.id == step.id } ?? 0) + 1)")
+                                    .font(.callout.weight(.semibold)).monospacedDigit()
+                                    .foregroundStyle(Color.brand)
+                                Text(step.text).lineLimit(3)
+                            }
+                        } else {
+                            TextField("Step", text: $step.text, axis: .vertical)
+                        }
+                    }
+                    .onDelete { draft.steps.remove(atOffsets: $0) }
+                    .onMove { draft.steps.move(fromOffsets: $0, toOffset: $1) }
+                    if !reorderingSteps {
+                        HStack {
+                            TextField("Add a step", text: $newStep, axis: .vertical)
+                                .focused($focus, equals: .step)
+                            Button(action: addStep) { Image(systemName: "plus.circle.fill") }
+                                .disabled(newStep.nilIfEmpty == nil)
+                                .accessibilityIdentifier("addStep")
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Eyebrow("Steps · \(draft.steps.count)")
+                        Spacer()
+                        if draft.steps.count > 1 || reorderingSteps {
+                            Button(reorderingSteps ? "Done" : "Reorder") {
+                                focus = nil
+                                withAnimation { reorderingSteps.toggle() }
+                            }
+                            .font(.caption.weight(.semibold))
+                            .textCase(nil)
+                            .accessibilityIdentifier("reorderSteps")
+                        }
+                    }
+                } footer: {
+                    if reorderingSteps { Text("Drag the handles to change the order.") }
+                }
+
+                Section {
+                    if !draft.tags.isEmpty {
+                        ScrollView(.horizontal) {
+                            HStack {
+                                ForEach(draft.tags, id: \.self) { tag in
+                                    Button { draft.tags.removeAll { $0 == tag } } label: { Chip(text: tag, systemImage: "xmark") }
+                                        .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .scrollIndicators(.hidden)
+                    }
+                    TextField("Add tag", text: $newTag)
+                        .focused($focus, equals: .tag)
+                        .textInputAutocapitalization(.never)
+                        .onSubmit {
+                            let tag = newTag.lowercased().trimmingCharacters(in: .whitespaces)
+                            if !tag.isEmpty && !draft.tags.contains(tag) { draft.tags.append(tag) }
+                            newTag = ""
+                            focus = .tag
+                        }
+                } header: {
+                    Eyebrow("Tags")
+                }
+
+                Section {
+                    optionalNumber("Calories", "kcal", $draft.caloriesKcal)
+                    optionalNumber("Protein", "g", $draft.proteinGrams)
+                    optionalNumber("Carbs", "g", $draft.carbsGrams)
+                    optionalNumber("Fat", "g", $draft.fatGrams)
+                } header: {
+                    Eyebrow("Nutrition per serving")
+                } footer: {
+                    Text("Leave blank to estimate from pantry nutrition facts.")
+                }
+
+                Section {
+                    TextField("Source link", text: $draft.sourceText)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                    TextField("Notes", text: $draft.notesText, axis: .vertical)
+                        .lineLimit(2...6)
+                } header: {
+                    Eyebrow("Source & notes")
+                }
+            }
+            .environment(\.editMode, .constant(reorderingSteps ? .active : .inactive))
+            .navigationTitle(recipe == nil ? "New recipe" : "Edit recipe")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", role: .confirm, action: save)
+                        .disabled(draft.title.nilIfEmpty == nil)
+                        .accessibilityIdentifier("saveRecipe")
+                }
+            }
+            .sheet(item: $editingIngredient) { ingredient in
+                IngredientEditor(ingredient: ingredient, pantryNames: pantryNames) { updated in
+                    if let index = draft.ingredients.firstIndex(where: { $0.id == updated.id }) { draft.ingredients[index] = updated }
+                }
+            }
+            .onChange(of: photoItem) { _, item in
+                guard let item else { return }
+                Task {
+                    if let data = try? await item.loadTransferable(type: Data.self) { draft.photo = ImageTools.compressed(data) }
+                }
+            }
+            .onAppear { if recipe == nil && draft.title.isEmpty { focus = .title } }
+        }
+    }
+
+    private func optionalNumber(_ title: String, _ unit: String, _ value: Binding<Double?>) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 4) {
+                TextField("—", value: value, format: .number.precision(.fractionLength(0...1)))
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                Text(unit).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func addIngredient() {
+        guard let line = newIngredient.nilIfEmpty else { return }
+        var ingredient = IngredientParser.parse(line)
+        if let match = pantryNames.first(where: { normalizeName($0) == normalizeName(ingredient.name) }) { ingredient.name = match }
+        withAnimation { draft.ingredients.append(ingredient) }
+        newIngredient = ""
+        focus = .ingredient
+    }
+
+    private func addStep() {
+        guard let text = newStep.nilIfEmpty else { return }
+        withAnimation { draft.steps.append(RecipeStep(text: text)) }
+        newStep = ""
+        focus = .step
+    }
+
+    private func save() {
+        let saved = kitchen.save(draft, into: recipe)
+        dismiss()
+        onSave(saved)
+    }
+}
+
+struct IngredientEditor: View {
+    @State private var ingredient: Ingredient
+    let pantryNames: [String]
+    let onSave: (Ingredient) -> Void
+
+    init(ingredient: Ingredient, pantryNames: [String], onSave: @escaping (Ingredient) -> Void) {
+        _ingredient = State(initialValue: ingredient)
+        self.pantryNames = pantryNames
+        self.onSave = onSave
+    }
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Ingredient", text: $ingredient.name)
+                        .font(.title3.weight(.semibold))
+                    TextField("Amount", value: $ingredient.quantity, format: .number.precision(.fractionLength(0...3)))
+                        .keyboardType(.decimalPad)
+                    UnitPicker(unit: $ingredient.unitText, allowNone: true)
+                    TextField("Note (e.g. finely chopped)", text: $ingredient.noteText)
+                }
+                Section {
+                    Picker(selection: $ingredient.mappingText) {
+                        Text("Same name").tag("")
+                        ForEach(pantryNames, id: \.self) { Text($0).tag($0) }
+                    } label: {
+                        Label("Pantry item", systemImage: "link")
+                    }
+                } header: {
+                    Eyebrow("Uses from pantry")
+                } footer: {
+                    Text("Link this ingredient when your pantry calls it something else, like “Cheddar” for “cheese”.")
+                }
+            }
+            .navigationTitle("Ingredient")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", role: .confirm) {
+                        onSave(ingredient)
+                        dismiss()
+                    }
+                    .disabled(ingredient.name.nilIfEmpty == nil)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}

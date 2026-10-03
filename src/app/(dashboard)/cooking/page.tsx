@@ -14,6 +14,7 @@ import {
 } from "@/components/cooking";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { PageLoader } from "@/components/ui/page-loader";
+import { scaleIngredients } from "@/lib/cooking-plan";
 
 type ViewMode = "list" | "cook";
 
@@ -23,6 +24,7 @@ export default function CookingPage() {
 
   const cookingData = useQuery(api.cooking.whatCanICook, {});
   const shoppingListData = useQuery(api.shoppingList.get, {});
+  const preferencesData = useQuery(api.preferences.get, {});
   const addMissing = useMutation(api.cooking.addMissingToShoppingList);
   const cookRecipe = useMutation(api.cooking.cookRecipe);
   const cookingInFlight = useRef(false);
@@ -68,7 +70,13 @@ export default function CookingPage() {
       : "skip"
   );
 
-  const selectedPlan = useQuery(api.cooking.preview, selectedRecipeId ? { recipeId: selectedRecipeId } : "skip");
+  // Cooking a planned meal: the plan entry sets the servings and is marked cooked afterwards.
+  const [planned, setPlanned] = useState<{ id: Id<"mealPlanEntries">; week: string | null } | null>(null);
+  const plannedMeal = useQuery(api.mealPlan.get, planned ? { id: planned.id } : "skip");
+  const scale = planned ? plannedMeal?.scale : 1;
+  const selectedPlan = useQuery(api.cooking.preview, selectedRecipeId && scale !== undefined ? { recipeId: selectedRecipeId, ...(scale !== 1 && { scale }) } : "skip");
+  const cookPlannedMeal = useMutation(api.mealPlan.cook);
+  const planUrl = planned?.week ? `/plan?week=${planned.week}` : "/plan";
 
   const shoppingListCount = useMemo(
     () =>
@@ -78,11 +86,20 @@ export default function CookingPage() {
     [shoppingListData?.items]
   );
 
+  // Reminders link to /cooking?filter=expiring for the "Use it up" filter.
+  useEffect(() => {
+    if (searchParams.get("filter") !== "expiring") return;
+    setCookability("expiring");
+    router.replace("/cooking", { scroll: false });
+  }, [searchParams, router]);
+
   useEffect(() => {
     const recipeId = searchParams.get("recipeId");
     if (recipeId) {
+      const planEntryId = searchParams.get("planEntryId");
       setSelectedRecipeId(recipeId as Id<"recipes">);
       setCameFromRecipePage(recipeId);
+      setPlanned(planEntryId ? { id: planEntryId as Id<"mealPlanEntries">, week: searchParams.get("week") } : null);
       setViewMode("cook");
       router.replace("/cooking", { scroll: false });
     }
@@ -90,6 +107,7 @@ export default function CookingPage() {
 
   const handleCookRecipe = useCallback((recipeId: string) => {
     setSelectedRecipeId(recipeId as Id<"recipes">);
+    setPlanned(null);
     setCameFromRecipePage(null);
     setViewMode("cook");
   }, []);
@@ -121,11 +139,21 @@ export default function CookingPage() {
       cookingInFlight.current = true;
       setIsCooking(true);
       try {
-        await cookRecipe({
-          recipeId: selectedRecipeId,
-          addMissingToShoppingList: options.addMissingToList,
-          acknowledgeManualChecks: options.acknowledgeManualChecks,
-        });
+        if (planned) {
+          await cookPlannedMeal({
+            id: planned.id,
+            addMissingToShoppingList: options.addMissingToList,
+            acknowledgeManualChecks: options.acknowledgeManualChecks,
+          });
+          router.push(planUrl);
+          setPlanned(null);
+        } else {
+          await cookRecipe({
+            recipeId: selectedRecipeId,
+            addMissingToShoppingList: options.addMissingToList,
+            acknowledgeManualChecks: options.acknowledgeManualChecks,
+          });
+        }
 
         setViewMode("list");
         setSelectedRecipeId(null);
@@ -149,11 +177,15 @@ export default function CookingPage() {
         setIsCooking(false);
       }
     },
-    [cookRecipe, selectedRecipeId]
+    [cookRecipe, cookPlannedMeal, planned, planUrl, router, selectedRecipeId]
   );
 
   const handleBack = useCallback(() => {
-    if (cameFromRecipePage) {
+    if (planned) {
+      router.push(planUrl);
+      setPlanned(null);
+      setCameFromRecipePage(null);
+    } else if (cameFromRecipePage) {
       router.push(`/recipes/${cameFromRecipePage}`);
       setCameFromRecipePage(null);
     } else {
@@ -161,7 +193,7 @@ export default function CookingPage() {
     }
 
     setSelectedRecipeId(null);
-  }, [cameFromRecipePage, router]);
+  }, [cameFromRecipePage, planned, planUrl, router]);
 
   const handleOpenShoppingList = useCallback(() => {
     router.push("/shopping-list");
@@ -182,7 +214,15 @@ export default function CookingPage() {
     return (
       <>
         <CookRecipeView
-          recipe={{ ...selectedRecipe, plan: selectedPlan }}
+          recipe={{
+            ...selectedRecipe,
+            // A planned meal shows the amounts for its planned servings.
+            ...(scale && scale !== 1 && {
+              servings: plannedMeal?.servings,
+              ingredients: scaleIngredients(selectedRecipe.ingredients, scale),
+            }),
+            plan: selectedPlan,
+          }}
           pantrySnapshot={pantrySnapshot}
           onBack={handleBack}
           onConfirmCook={handleConfirmCook}
@@ -211,6 +251,7 @@ export default function CookingPage() {
         activeTag={activeTag}
         cookability={cookability}
         sort={sort}
+        expiringWithinDays={preferencesData?.preferences?.expiringWithinDays}
         onSearchChange={setSearchQuery}
         onSetTag={setActiveTag}
         onSetCookability={setCookability}
