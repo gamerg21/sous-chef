@@ -179,6 +179,11 @@ struct MiscTests {
         #expect(CookTimer.clock(3700) == "1:01:40")
     }
 
+    @Test func namesCookTimerAlarms() {
+        #expect(CookTimerAlarms.title(for: CookTimer(label: "Rice", seconds: 600)) == "Rice is done")
+        #expect(CookTimerAlarms.title(for: CookTimer(label: "Step 3", seconds: 60, customStep: 2)) == "Step 3 is done")
+    }
+
     @Test func detectsInsecureRemoteServers() throws {
         #expect(!ServerClient.isInsecureRemote(try ServerClient.normalize("192.168.1.20:3000")))
         #expect(!ServerClient.isInsecureRemote(try ServerClient.normalize("http://kitchen.local")))

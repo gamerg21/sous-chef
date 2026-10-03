@@ -3,9 +3,10 @@ import Foundation
 import UserNotifications
 
 /// Carries cook mode's timers outside the app: a Live Activity on the Lock
-/// Screen and in the Dynamic Island, and a local notification with sound for
-/// each timer so it's heard with the app in the background or the phone
-/// locked. Cook mode calls `sync` whenever its timers change and with no
+/// Screen and in the Dynamic Island, and an alarm for each timer
+/// (`CookTimerAlarms`) that rings like the Clock app's, even in silent mode.
+/// Where alarms aren't allowed, each timer gets a local notification with
+/// sound instead. Cook mode calls `sync` whenever its timers change and with no
 /// timers when it closes; the in-app timers never depend on either.
 ///
 /// Where Live Activities aren't available (a Mac running the iPad app, or
@@ -26,7 +27,9 @@ final class CookTimerAlerts {
     /// The running activity's ID. Activities are looked up by ID rather than
     /// kept, since `Activity` can't be held across concurrency domains.
     private var activityID: String?
+    /// Timers with a pending notification, and timers with an alarm.
     private var scheduled: Set<UUID> = []
+    private var alarms: Set<UUID> = []
     private var askedForNotifications = false
 
     /// The activity's state for a set of timers: running ones soonest to
@@ -49,7 +52,7 @@ final class CookTimerAlerts {
     /// Brings the Live Activity and scheduled notifications in line with
     /// cook mode's timers. An empty list ends everything.
     func sync(recipeTitle: String, timers: [CookTimer]) {
-        syncNotifications(recipeTitle: recipeTitle, timers: timers)
+        syncAlarmsAndNotifications(recipeTitle: recipeTitle, timers: timers)
         Task { await syncActivity(recipeTitle: recipeTitle, timers: timers) }
     }
 
@@ -99,9 +102,12 @@ final class CookTimerAlerts {
         }
     }
 
-    // MARK: Notifications
+    // MARK: Alarms and notifications
 
-    private func syncNotifications(recipeTitle: String, timers: [CookTimer]) {
+    /// Removed timers lose their alarm or notification (silencing a ringing
+    /// alarm); new running timers get an alarm, or a notification if alarms
+    /// aren't allowed or can't be scheduled.
+    private func syncAlarmsAndNotifications(recipeTitle: String, timers: [CookTimer]) {
         let center = UNUserNotificationCenter.current()
         let current = Set(timers.map(\.id))
         let removed = scheduled.subtracting(current)
@@ -111,13 +117,29 @@ final class CookTimerAlerts {
             center.removeDeliveredNotifications(withIdentifiers: ids)
         }
         scheduled.subtract(removed)
+        for id in alarms.subtracting(current) { CookTimerAlarms.cancel(id) }
+        alarms.formIntersection(current)
 
-        let new = timers.filter { !scheduled.contains($0.id) && !$0.isDone(at: .now) }
+        let new = timers.filter { !scheduled.contains($0.id) && !alarms.contains($0.id) && !$0.isDone(at: .now) }
         guard !new.isEmpty else { return }
-        scheduled.formUnion(new.map(\.id))
+        // Claimed now so a quick second sync doesn't schedule them twice.
+        alarms.formUnion(new.map(\.id))
         Task {
+            var unrung: [CookTimer] = []
+            let useAlarms = await CookTimerAlarms.authorize()
+            for timer in new where alarms.contains(timer.id) {
+                if useAlarms, (try? await CookTimerAlarms.schedule(timer, recipeTitle: recipeTitle)) != nil {
+                    // Removed while the alarm was being scheduled.
+                    if !alarms.contains(timer.id) { CookTimerAlarms.cancel(timer.id) }
+                    continue
+                }
+                alarms.remove(timer.id)
+                unrung.append(timer)
+            }
+            guard !unrung.isEmpty else { return }
+            scheduled.formUnion(unrung.map(\.id))
             guard await authorizeNotifications() else { return }
-            for timer in new {
+            for timer in unrung where scheduled.contains(timer.id) {
                 let seconds = timer.ends.timeIntervalSinceNow
                 guard seconds > 0 else { continue }
                 try? await center.add(Self.request(for: timer, recipeTitle: recipeTitle, in: seconds))

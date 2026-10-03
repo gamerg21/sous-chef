@@ -7,6 +7,34 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (7)
+
+What's in it: everything from 1.1.0 (6), plus cook timers that ring like
+an alarm.
+
+### What to Test
+
+**Timers ring like an alarm (new)**
+- Start any cook timer. The first time, Sous Chef asks to schedule alarms.
+  Allow it.
+- Put the phone on silent, lock it, and let a short timer finish. It should
+  ring like a Clock app timer, through silent mode and Focus, and keep
+  ringing until you stop it. The alarm should say "Step 2 is done", or the
+  name you gave a custom timer, like "Rice is done".
+- Tap Open on the alarm. It should stop ringing and open Sous Chef in cook
+  mode. Try Stop (or swipe) too: it should just stop ringing.
+- Let a timer finish with Sous Chef open. The alarm should ring on top of
+  the app.
+- Remove a running timer from the strip at the top. Its alarm shouldn't
+  ring. Closing cook mode should also cancel its timers' alarms.
+- Run two or three timers at once. Each should ring on its own, and the
+  Lock Screen countdown should still list them together.
+
+**If you don't allow alarms**
+- Turn Sous Chef off under Settings > Sous Chef > Alarms (or decline the
+  prompt). Timers should still alert with a notification and sound, as in
+  1.1.0 (6).
+
 ## 1.1.0 (6)
 
 What's in it: everything from 1.1.0 (5), plus a fix for a crash when tapping
