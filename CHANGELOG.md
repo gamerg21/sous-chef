@@ -3,6 +3,7 @@
 - iOS: a Plan screen inside Cook for the weekly meal plan.
 - iOS: cook mode can set a custom timer on any step from a kitchen-timer dial, with quick-add buttons and an optional name. A small + sits beside a step's own timers, or "Add a timer" when the step doesn't mention a time.
 - iOS: cook timers ring as alarms, like the Clock app's timers: through silent mode and Focus, until stopped, with an Open button that returns to cook mode. Without alarm permission they fall back to a notification with sound.
+- iOS: onboarding ends with a page that explains expiry reminders and cook timers and asks for notification and alarm permission up front, instead of prompting when the first timer starts. Saying yes also turns on the daily expiry reminder.
 - iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
 - iOS: cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
 - iOS: new widgets: Tonight's Meal (small, medium, Lock Screen), Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tonight's Meal shows the planned recipe with its servings and pantry readiness and opens the week plan; Use Soon uses the same "expiring soon" window as the Pantry and reminders. A finished cook timer also banners with sound while the app is open.

@@ -17,8 +17,9 @@ enum CookTimerAlarms {
 
     static var isAvailable: Bool { !ProcessInfo.processInfo.isiOSAppOnMac }
 
-    /// Asks the first time a timer starts. Returns false once alarms are
-    /// turned off, so the caller can use a notification instead.
+    /// Onboarding normally asks first; otherwise asks the first time a timer
+    /// starts. Returns false once alarms are turned off, so the caller can use
+    /// a notification instead.
     static func authorize() async -> Bool {
         guard isAvailable else { return false }
         switch AlarmManager.shared.authorizationState {

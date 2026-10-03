@@ -147,7 +147,8 @@ final class CookTimerAlerts {
         }
     }
 
-    /// Asks once, the first time a timer starts, and never nags afterwards.
+    /// Onboarding normally asks first. For anyone who skipped that, asks once,
+    /// the first time a timer starts, and never nags afterwards.
     private func authorizeNotifications() async -> Bool {
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
