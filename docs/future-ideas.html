@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sous Chef · Future ideas</title>
+<style>
+  /* Sous Chef tokens: Tailwind stone neutrals, emerald accent (iOS AccentColor #009966), amber secondary. */
+  :root {
+    --bg: #fafaf9; --card: #fff; --ink: #1c1917; --muted: #78716c; --line: #e7e5e4;
+    --accent: #009966; --accent-ring: rgba(16,185,129,.3); --accent-soft: #ecfdf5; --accent-ink: #047857;
+    --want: #009966; --maybe: #f59e0b; --skip: #a8a29e; --mark: #fef3c7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0c0a09; --card: rgba(28,25,23,.4); --ink: #f5f5f4; --muted: #a8a29e; --line: #292524;
+      --accent: #10b981; --accent-soft: rgba(2,44,34,.6); --accent-ink: #34d399;
+      --want: #10b981; --skip: #57534e; --mark: rgba(245,158,11,.3); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
+  h1 { margin: 4px 0 6px; font: 700 32px/1.2 Manrope, Inter, -apple-system, system-ui, sans-serif; letter-spacing: -.02em; }
+  .intro { color: var(--muted); margin: 0 0 24px; max-width: 620px; }
+  .controls { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 12px 0; display: grid; gap: 10px; }
+  input[type=search] { width: 100%; padding: 10px 14px; font: inherit; color: inherit; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; outline: none; }
+  input[type=search]:focus { box-shadow: 0 0 0 3px var(--accent-ring); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .chip[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip .n { opacity: .6; margin-left: 4px; }
+  .spacer { flex: 1; }
+  section { margin-top: 28px; }
+  section > h2 { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 10px 4px; }
+  .group { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  details + details { border-top: 1px solid var(--line); }
+  summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+  summary::-webkit-details-marker { display: none; }
+  summary .chev { color: var(--muted); transition: transform .15s; font-size: 12px; width: 12px; }
+  details[open] summary .chev { transform: rotate(90deg); }
+  summary .title { font-weight: 600; flex: 1; }
+  summary .teaser { color: var(--muted); font-size: 13px; font-weight: 400; display: block; margin-top: 1px; }
+  details[open] summary .teaser { display: none; }
+  .body { padding: 0 16px 16px 38px; }
+  .body p { margin: 0 0 10px; }
+  .body ul { margin: 0 0 10px; padding-left: 18px; }
+  .body li { margin-bottom: 6px; }
+  code { font: 12.5px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--accent-soft); color: var(--accent-ink);
+    padding: 1px 5px; border-radius: 4px; }
+  .tags { display: flex; gap: 4px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; }
+  .tag.on[data-v=want]  { background: var(--want);  border-color: var(--want);  color: #fff; }
+  .tag.on[data-v=maybe] { background: var(--maybe); border-color: var(--maybe); color: #fff; }
+  .tag.on[data-v=skip]  { background: var(--skip);  border-color: var(--skip);  color: #fff; }
+  details.skip summary .title { color: var(--muted); text-decoration: line-through; }
+  mark { background: var(--mark); color: inherit; border-radius: 2px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; display: none; }
+  .foot { margin-top: 36px; color: var(--muted); font-size: 12px; display: flex; gap: 12px; align-items: center; }
+  .foot button { font: inherit; font-size: 12px; color: var(--accent-ink); background: none; border: 0; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Sous Chef · docs/FUTURE_IDEAS.md</div>
+  <h1>Future ideas</h1>
+  <p class="intro">Ideas that came up while planning the 1.1.0 work (meal planning, expiry reminders, cook timer Live Activities and widgets) but weren't built. Nothing here is committed to; it's a list to pick from.</p>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search ideas…  (press / to focus)">
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div id="list"></div>
+  <div class="empty" id="empty">No ideas match.</div>
+
+  <div class="foot">
+    <span>Your Want / Maybe / Skip picks are saved in this browser.</span>
+    <span class="spacer"></span>
+    <button id="expand">Expand all</button>
+    <button id="collapse">Collapse all</button>
+    <button id="copy">Copy picks</button>
+    <button id="reset">Clear picks</button>
+  </div>
+</div>
+
+<script>
+const SECTIONS = [
+  { name: "Next features", items: [
+    { id: "scaling", title: "Serving scaling everywhere", teaser: "Scale any recipe and have shopping, readiness and deductions follow.", body: `
+      <p>Planned meals already cook and shop at their planned servings. Recipes opened directly don't: on iOS, cooking from a recipe page still deducts the recipe's base amounts. Let people scale any recipe (2×, or a number of servings) and have readiness, shortages, shopping amounts and cooking deductions all follow.</p>
+      <p>The cook endpoints already accept a <code>scale</code>, so most of the work is UI.</p>` },
+    { id: "history", title: "Cook history and personal notes", teaser: "Show “last made”, keep a note per cook, resurface old favorites.", body: `
+      <p>Recipes have "last cooked" data that isn't shown. Show "last made 3 weeks ago" on recipes, keep a short "what I changed" note per cook, and suggest favorites that haven't been made in a while.</p>` },
+    { id: "dietary", title: "Dietary and allergen tags", teaser: "Household tags that filter recipes, guide AI drafts and warn on imports.", body: `
+      <p>Household-level tags (vegetarian, nut-free, gluten-free and so on). Use them to filter recipes, guide AI recipe drafts, and warn when a community recipe being imported conflicts with them.</p>` },
+    { id: "reminders", title: "Reminders export", teaser: "Send the iOS shopping list to Apple Reminders.", body: `
+      <p>On iOS, add exporting the shopping list to Apple Reminders for people who shop from Reminders. (Aisle grouping on the web is covered by the store-first shopping list below.)</p>` },
+    { id: "receipts", title: "Receipt scanning and grocery prices", teaser: "Scan receipts to restock, and keep a price history per food and store.", body: `
+      <p>Label and recipe scanning already exist on iOS. Scanning a grocery receipt could fill the "Put purchases away" flow, matching receipt lines to shopping items and pantry foods, so restocking takes seconds.</p>
+      <p>The same scan can record what each item cost and where it was bought. Keep a price history per food and store, and show the last price paid on the shopping list ("$3.49 at Costco, Sep 12") so it's easy to spot a price change while shopping. Prices could also be typed in when putting purchases away, for people who don't scan receipts. Later this could estimate a shopping trip's total or a planned meal's cost.</p>` },
+    { id: "stores", title: "Preferred stores and a store-first shopping list", teaser: "Shopping list grouped store → aisle → items.", body: `
+      <p>Let a household save the grocery stores it uses and mark one as preferred. Each shopping item can be assigned a store, defaulting to the preferred one or to where it was last bought (from receipt prices above).</p>
+      <p>The shopping list then becomes a hierarchy: <strong>store → aisle or category → items</strong>. For example, Costco → Produce → spinach, then Trader Joe's → Dairy → milk. Unassigned items fall under the preferred store. Being able to collapse a store's section, or show just one store, would help on a trip. This builds on the aisle grouping iOS already has, and the web list would get the same structure.</p>` },
+    { id: "my-community", title: "Manage your own community recipes", teaser: "A “My published recipes” page, change notes, unpublish vs. delete.", body: `
+      <p>Today the community can already take a new version of a recipe: publishing again replaces its snapshot and bumps <code>revision</code> and <code>updatedAt</code> in <code>convex/hub.ts</code>. Unpublishing hides it (<code>visibility: 'private'</code>) but keeps the record. Neither is visible to other cooks: browse and detail show only <code>createdAt</code>, and there's no record of what changed.</p>
+      <ul>
+        <li><strong>My published recipes:</strong> one place on the web and iOS listing everything you've published, with its status (public, unlisted, hidden, or removed by a moderator), last update and revision. Each has actions to update, unpublish or delete it.</li>
+        <li><strong>Updates with a change note:</strong> when pushing an update, ask for an optional short note ("Cut the sugar to ½ cup, added a resting step"). Store the date and note with each revision and show "Updated Oct 3 · Cut the sugar…" on the community recipe, with the earlier notes listed below. Cooks who imported the recipe could later be told a newer version exists. Automatic syncing of imported copies isn't implemented and should stay opt-in.</li>
+        <li><strong>Unpublish vs. delete:</strong> keep unpublish as a reversible "take it down" that hides the recipe but lets you publish it again. Add a permanent delete that removes the recipe and its photos from the community after a confirmation. Copies other cooks already imported stay in their kitchens, because imports are independent copies. A "Take down all my recipes" action could sit beside the existing delete-account option.</li>
+        <li><strong>Moderation:</strong> a recipe removed by a moderator can't be republished today. Show that clearly in the list, with the removal reason, and keep reports attached to the recipe across updates.</li>
+      </ul>` },
+  ]},
+  { name: "Left over from 1.1.0", items: [
+    { id: "email", title: "Daily expiry email (tabled)", teaser: "Built, then removed to avoid a paid email dependency.", body: `
+      <p>Built and then removed before release so the project doesn't depend on a paid email service. The original code is on the <code>worktree-agent-afce70508f53c5753</code> branch (commit <code>4a03d7f</code>): a Resend sender, a once-a-day scheduler that survives restarts without sending twice, and an opt-in setting. Revisit only with a free sending option, or as a self-hoster opt-in that uses their own provider.</p>` },
+    { id: "timers", title: "Cook timers", teaser: "Lock Screen overflow, shorter formats, auto “Done”, Time Sensitive alerts.", body: `
+      <ul>
+        <li><strong>Lock Screen with four or more timers:</strong> the Lock Screen shows the next timer plus two more, so a fourth is hidden. Show two rows and a "+N more" line, as the Dynamic Island now does.</li>
+        <li><strong>Shorter format for long timers:</strong> show <code>2h 59m</code> instead of <code>2:59:11</code> in the smaller rows. iOS 18's timer text format can limit the units it shows; confirm it works in a widget before using it.</li>
+        <li><strong>"Done" without opening the app:</strong> a finished timer stays at 0:00 on the Lock Screen until the app updates the activity. Look at the activity's stale date or a scheduled update so it switches to "Done" on its own.</li>
+        <li><strong>Time Sensitive notifications:</strong> add the capability so timer alerts get through Focus modes.</li>
+      </ul>` },
+    { id: "expiry", title: "Expiry reminders", teaser: "iOS used-vs-tossed tally, fewer repeat reminders, hand-zeroed items.", body: `
+      <ul>
+        <li><strong>Used vs. thrown away on iOS:</strong> the monthly tally is web-only because it needs a new synced data model. Add it when there's another reason to change the iCloud schema.</li>
+        <li><strong>Repeat reminders for expired food:</strong> an expired item left in the pantry is mentioned in every daily reminder until it's removed. Consider mentioning it once or twice, then only on the Pantry's "Use soon" list.</li>
+        <li><strong>Items zeroed by hand:</strong> setting an item to zero, or removing it before its date, isn't counted as used or thrown away.</li>
+      </ul>` },
+    { id: "release", title: "Release tooling", teaser: "TestFlight upload signing with the API key.", body: `
+      <p><code>pnpm ios:testflight upload</code> signs with the team API key, which couldn't create the new widget extension's signing profile or sign for distribution ("Cloud signing permission error"). 1.1.0 (1) was archived and uploaded with the Apple ID signed in to Xcode instead. Either give the key the Admin role in App Store Connect or let the script fall back to Xcode's account.</p>` },
+    { id: "manual", title: "Still to check by hand", teaser: "Plan sheets on Mac; web cooking with expiring items.", body: `
+      <ul>
+        <li>The new Plan sheets on a Mac ("Designed for iPad").</li>
+        <li>Web cooking with expiring items using real data (covered only by tests).</li>
+      </ul>` },
+  ]},
+  { name: "Probably not yet", items: [
+    { id: "social", title: "Community likes, comments or federation", teaser: "Each adds moderation work; community isn't core yet.", body: `
+      <p>Each adds moderation work, and the community isn't the app's core value yet.</p>` },
+    { id: "integrations", title: "Extensions and integrations catalog", teaser: "Still a preview with no adapters.", body: `
+      <p>Still a preview with no adapters. Wait for a concrete integration someone wants, such as grocery delivery.</p>` },
+  ]},
+];
+
+const KEY = "souschef-future-ideas-picks";
+const picks = JSON.parse(localStorage.getItem(KEY) || "{}");
+const save = () => localStorage.setItem(KEY, JSON.stringify(picks));
+const FILTERS = ["All", ...SECTIONS.map(s => s.name), "Want", "Maybe", "Skip"];
+let filter = "All";
+
+const list = document.getElementById("list");
+for (const s of SECTIONS) {
+  const sec = document.createElement("section");
+  sec.dataset.section = s.name;
+  sec.innerHTML = `<h2>${s.name}</h2><div class="group"></div>`;
+  for (const it of s.items) {
+    const d = document.createElement("details");
+    d.dataset.id = it.id;
+    d.innerHTML = `
+      <summary>
+        <span class="chev">▶</span>
+        <span class="title">${it.title}<span class="teaser">${it.teaser}</span></span>
+        <span class="tags">${["want","maybe","skip"].map(v => `<button class="tag" data-v="${v}">${v[0].toUpperCase()+v.slice(1)}</button>`).join("")}</span>
+      </summary>
+      <div class="body">${it.body}</div>`;
+    d.querySelectorAll(".tag").forEach(b => b.addEventListener("click", e => {
+      e.preventDefault();
+      picks[it.id] = picks[it.id] === b.dataset.v ? undefined : b.dataset.v;
+      save(); render();
+    }));
+    it.el = d; it.text = d.textContent.toLowerCase(); it.bodyHTML = it.body;
+    sec.querySelector(".group").appendChild(d);
+  }
+  s.el = sec;
+  list.appendChild(sec);
+}
+
+const chips = document.getElementById("chips");
+function drawChips() {
+  const all = SECTIONS.flatMap(s => s.items);
+  const count = f => f === "All" ? all.length
+    : SECTIONS.find(s => s.name === f)?.items.length ?? all.filter(i => picks[i.id] === f.toLowerCase()).length;
+  chips.innerHTML = FILTERS.map(f => `<button class="chip" aria-pressed="${f === filter}" data-f="${f}">${f}<span class="n">${count(f)}</span></button>`).join("");
+  chips.querySelectorAll(".chip").forEach(c => c.onclick = () => { filter = c.dataset.f; render(); });
+}
+
+const q = document.getElementById("q");
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function highlight(html, term) {
+  if (!term) return html;
+  const re = new RegExp(`(${esc(term)})`, "gi");
+  return html.split(/(<[^>]+>)/).map(p => p.startsWith("<") ? p : p.replace(re, "<mark>$1</mark>")).join("");
+}
+
+function render() {
+  const term = q.value.trim().toLowerCase();
+  let shown = 0;
+  for (const s of SECTIONS) {
+    let any = false;
+    for (const it of s.items) {
+      const p = picks[it.id];
+      const okFilter = filter === "All" || filter === s.name || p === filter.toLowerCase();
+      const okTerm = !term || it.text.includes(term);
+      const vis = okFilter && okTerm;
+      it.el.hidden = !vis;
+      it.el.classList.toggle("skip", p === "skip");
+      it.el.querySelectorAll(".tag").forEach(b => b.classList.toggle("on", b.dataset.v === p));
+      it.el.querySelector(".body").innerHTML = highlight(it.bodyHTML, term);
+      if (term && vis) it.el.open = true;
+      if (vis) { any = true; shown++; }
+    }
+    s.el.hidden = !any;
+  }
+  document.getElementById("empty").style.display = shown ? "none" : "block";
+  drawChips();
+}
+
+q.addEventListener("input", render);
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+  if (e.key === "Escape") { q.value = ""; render(); q.blur(); }
+});
+const all = () => SECTIONS.flatMap(s => s.items);
+document.getElementById("expand").onclick = () => all().forEach(i => i.el.open = true);
+document.getElementById("collapse").onclick = () => all().forEach(i => i.el.open = false);
+document.getElementById("reset").onclick = () => { for (const k in picks) delete picks[k]; save(); render(); };
+document.getElementById("copy").onclick = async e => {
+  const lines = ["want", "maybe", "skip"].map(v => {
+    const items = all().filter(i => picks[i.id] === v).map(i => `- ${i.title}`);
+    return items.length ? `${v[0].toUpperCase() + v.slice(1)}:\n${items.join("\n")}` : "";
+  }).filter(Boolean);
+  await navigator.clipboard.writeText(lines.join("\n\n") || "No picks yet.");
+  e.target.textContent = "Copied!"; setTimeout(() => e.target.textContent = "Copy picks", 1200);
+};
+render();
+</script>
+</body>
+</html>
