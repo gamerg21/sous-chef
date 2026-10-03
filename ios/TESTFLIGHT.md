@@ -7,6 +7,30 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (5)
+
+What's in it: everything from 1.1.0 (4), plus custom cook timers.
+
+### What to Test
+
+**Custom timers in cook mode (new)**
+- Start cooking a recipe. On a step that mentions a time, there's a small +
+  next to the "Start … timer" button. On a step without a time, there's an
+  "Add a timer" button instead.
+- Tap it to open the timer dial. Drag the knob around the ring to set the
+  time: one full turn is an hour, and you can keep turning past it. You should
+  feel a light tick for each minute.
+- Try the +30s, +1m, +5m and +15m buttons and the reset button.
+- Give a timer a name, like "Rice", and start it. It should count down on the
+  step, in the strip at the top, on the Lock Screen and in the Dynamic Island,
+  and ring when it's done.
+- Start a custom timer with the same length as the step's own timer. The
+  step's "Start … timer" button should still be available.
+
+**Still worth checking**
+- The step's own timers, meal planning, expiry reminders and widgets should
+  work as in 1.1.0 (4).
+
 ## 1.1.0 (4)
 
 What's in it: everything from 1.1.0 (3), plus the security update and Finish
