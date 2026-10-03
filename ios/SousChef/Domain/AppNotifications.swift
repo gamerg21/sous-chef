@@ -38,12 +38,23 @@ final class AppNotifications: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: UNUserNotificationCenterDelegate
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard let destination = Self.destination(for: response.notification.request.identifier, action: response.actionIdentifier) else { return }
-        await MainActor.run { AppNavigator.shared.go(to: destination) }
+    // The completion-handler forms, finished on the main thread: after a tap
+    // the system updates the app's snapshot when the handler is called, and
+    // UIKit aborts if that happens off the main thread. The async forms
+    // finished wherever the task ended, which crashed on tapping a cook timer.
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping @Sendable () -> Void) {
+        let destination = Self.destination(for: response.notification.request.identifier, action: response.actionIdentifier)
+        Task { @MainActor in
+            if let destination { AppNavigator.shared.go(to: destination) }
+            completionHandler()
+        }
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        Self.presentation(for: notification.request.identifier)
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void) {
+        let options = Self.presentation(for: notification.request.identifier)
+        Task { @MainActor in completionHandler(options) }
     }
 }

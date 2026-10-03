@@ -7,6 +7,26 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (6)
+
+What's in it: everything from 1.1.0 (5), plus a fix for a crash when tapping
+a finished cook timer's notification.
+
+### What to Test
+
+**Tapping timer notifications (fixed)**
+- Start a cook timer (a step's own timer or a custom one), leave the app or
+  lock the phone, and wait for it to finish. Tap the notification. Sous Chef
+  should open back in cook mode instead of crashing.
+- Try it with the app open on another screen too: the banner should appear
+  with sound, and tapping it shouldn't crash.
+- Tap an expiry reminder notification. It should still open the Use it up
+  list (or the Pantry's Use soon section from its action).
+
+**Custom timers**
+- Everything in the 1.1.0 (5) notes below still applies: the + beside a
+  step's timers, "Add a timer" on other steps, the dial and quick buttons.
+
 ## 1.1.0 (5)
 
 What's in it: everything from 1.1.0 (4), plus custom cook timers.
