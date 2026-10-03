@@ -1,16 +1,21 @@
 ## Unreleased
 
+- iOS: a Plan screen inside Cook for the weekly meal plan.
+- iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
+- iOS: cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
+- iOS: new widgets: Tonight's Meal (small, medium, Lock Screen), Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tonight's Meal shows the planned recipe with its servings and pantry readiness and opens the week plan; Use Soon uses the same "expiring soon" window as the Pantry and reminders. A finished cook timer also banners with sound while the app is open.
+
+## 1.0.3 — Meal planning, expiry reminders, and security fixes
+
+- Version numbers now match the iOS app. The web app moves from 0.9.0 to 1.0.3 to line up with Sous Chef for iOS 1.0.3; there are no 1.0.0–1.0.2 web releases.
 - Security: Next.js 16.3.8, Auth.js core 0.41.3 and Convex Auth 0.0.96, with refreshed dependencies. `pnpm audit` reports no known advisories (previously 88, including 4 critical).
 - Community password reset no longer writes reset links or email addresses to the logs. Without email delivery configured, community reset is unavailable instead.
-- Weekly meal planning: a Plan page (and a Plan screen inside Cook on iOS) puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
+- Weekly meal planning: a Plan page puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
 - "Add week's shortages to list" combines what the week's uncooked meals need across recipes (converting units), counts the pantry once for the whole week, and tops up existing shopping list items instead of duplicating them.
 - Cooking a planned meal uses the usual cook flow and atomic pantry deduction, scaled to the planned servings, and marks the meal cooked.
 - Expiry reminders: "expiring soon" means in-stock items expiring within a window you choose (3 days by default), including anything already past its date.
 - Inventory shows a "Use it up" card, and What can I cook? gains a **Use it up** filter that ranks recipes by how many expiring items they use and shows which ones.
 - Removing an expired item asks whether it was used up or thrown away; the inventory shows this month's totals.
-- iOS: an opt-in daily local reminder at a time you choose, only on days something expires. It opens Cook's new **Use it up** list or the Pantry's "Use soon" section.
-- iOS: cook timers show as a Live Activity on the Lock Screen and in the Dynamic Island, and each timer alerts with sound when it finishes, even with the app in the background.
-- iOS: new widgets: Tonight's Meal (small, medium, Lock Screen), Use Soon (small, medium, Lock Screen) and Shopping List (small and Lock Screen). Tonight's Meal shows the planned recipe with its servings and pantry readiness and opens the week plan; Use Soon uses the same "expiring soon" window as the Pantry and reminders. A finished cook timer also banners with sound while the app is open.
 
 ## iOS 1.0.3 — Security update
 
