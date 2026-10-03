@@ -49,12 +49,21 @@ function token() {
   return `${body}.${signature.toString('base64url')}`;
 }
 
-async function api(path, { method = 'GET', body } = {}) {
-  const response = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-    body: body && JSON.stringify(body),
-  });
+async function api(path, { method = 'GET', body } = {}, attempt = 1) {
+  let response;
+  try {
+    response = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+      body: body && JSON.stringify(body),
+    });
+  } catch (error) {
+    // The connection opened before a long archive and upload is usually
+    // closed by the time it's reused (EPIPE); a fresh request works.
+    if (attempt >= 3) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+    return api(path, { method, body }, attempt + 1);
+  }
   const json = response.status === 204 ? {} : await response.json();
   if (!response.ok) fail(`${method} ${path} → ${response.status}: ${json.errors?.map((e) => e.detail ?? e.title).join('; ')}`);
   return json;
