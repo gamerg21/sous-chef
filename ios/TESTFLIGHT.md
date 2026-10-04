@@ -7,6 +7,28 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (8)
+
+What's in it: everything from 1.1.0 (7), plus a new last onboarding page
+that asks for notification and alarm permission up front.
+
+### What to Test
+
+**Notifications page in onboarding (new)**
+- Delete Sous Chef and install this build so onboarding shows again. After
+  the iCloud page, a "Get a heads-up" page should explain expiry reminders
+  and cook timers.
+- Tap "Turn on notifications". Sous Chef should ask to send notifications,
+  then to schedule alarms, and then open the app. Allow both.
+- Settings > Expiry reminders should show the daily reminder already on.
+- Start a cook timer. You shouldn't be asked for permission again, and the
+  timer should ring like an alarm as in 1.1.0 (7).
+
+**If you tap "Not now"**
+- Reinstall and tap "Not now" on that page. Onboarding should finish
+  without asking. Starting a cook timer should then ask once, as in
+  1.1.0 (7), and the daily reminder should stay off until you turn it on.
+
 ## 1.1.0 (7)
 
 What's in it: everything from 1.1.0 (6), plus cook timers that ring like
