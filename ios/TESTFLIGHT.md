@@ -2,20 +2,30 @@
 
 Each build uploaded to TestFlight gets an entry here, newest first, headed
 `## <version> (<build>)`. `pnpm ios:testflight upload` copies the text under
-"What to Test" into the build's **What to Test** field in App Store Connect
-(bold and code formatting are dropped), so write it for testers:
-plain language, under 4,000 characters, and focused on what to try and what to
-confirm. Mention big fixes by name so testers can check they're gone.
+"What to Test" into the build's **What to Test** field in App Store Connect;
+`pnpm ios:testflight print [build]` previews it. Keep entries short and in this
+shape, covering only what changed in that build:
+
+```
+What to test (please focus here)
+- Feature: what's new and the steps to try it.
+
+Fixes to verify
+- Problem: what was fixed and how to check it's gone.
+```
+
+Leave out a list that has nothing in it. The script adds the
+"Build <version> (<build>) — Sous Chef" line at the top and the TestFlight
+feedback ask at the end, so don't write either. Bold and code formatting are
+dropped, and the whole note must stay under 4,000 characters. App Store
+"What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
 ## 1.1.0 (11)
 
-What's in it: everything from 1.1.0 (10), plus a fix for cook timer alarms.
-
 ### What to Test
 
-- Timer alarms should now ring and show on screen, not just send a notification.
-- Start a short timer, put the phone on silent, lock it, and let it finish.
-- Tell us whether it rang, and send any other feedback.
+Fixes to verify
+- Timer alarms: alarms now ring and show on screen instead of only sending a notification. Put the phone on silent, lock it, and let a short timer finish.
 
 ## 1.1.0 (10)
 
