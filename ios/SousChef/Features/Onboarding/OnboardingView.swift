@@ -136,9 +136,10 @@ struct OnboardingView: View {
                 Button {
                     askingForNotifications = true
                     Task {
-                        // Notifications for expiry reminders (and timers where
-                        // alarms aren't allowed), then alarms for cook timers.
+                        // Notifications for expiry reminders and timers, then
+                        // alarms for cook timers once that prompt has gone.
                         await ExpiryReminders.shared.setEnabled(true)
+                        await AlertPermissions.untilActive()
                         _ = await CookTimerAlarms.authorize()
                         onFinish()
                     }

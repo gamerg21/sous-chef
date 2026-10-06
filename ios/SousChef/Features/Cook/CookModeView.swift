@@ -20,6 +20,10 @@ struct CookModeView: View {
     @State private var chatting = false
     /// The step a custom timer is being set for.
     @State private var customTimerStep: CustomTimerStep?
+    /// False when notifications and alarms are both off, so timers can't
+    /// alert anyone once Sous Chef is closed.
+    @State private var timersCanAlert = true
+    @Environment(\.scenePhase) private var scenePhase
 
     private var steps: [RecipeStep] { recipe.steps }
     private var pageCount: Int { steps.count + 2 }
@@ -36,7 +40,13 @@ struct CookModeView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.snappy, value: page)
             .safeAreaInset(edge: .top) {
-                if !timers.isEmpty { timerStrip.transition(.move(edge: .top).combined(with: .opacity)) }
+                if !timers.isEmpty {
+                    VStack(spacing: 4) {
+                        timerStrip
+                        if !timersCanAlert { silentTimersNotice }
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
             .animation(.bouncy, value: timers)
             .sensoryFeedback(.start, trigger: timers.count) { old, new in new > old }
@@ -68,6 +78,32 @@ struct CookModeView: View {
         // Mirrors the timers to a Live Activity and schedules their alerts.
         .onChange(of: timers) { _, timers in
             CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
+        }
+        // Rechecked once the first timer's permission prompts are answered,
+        // and after a visit to the Settings app.
+        .task(id: timers.count) {
+            guard !timers.isEmpty else { return }
+            try? await Task.sleep(for: .seconds(1))
+            timersCanAlert = await AlertPermissions.current().timersCanAlert
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, !timers.isEmpty else { return }
+            Task { timersCanAlert = await AlertPermissions.current().timersCanAlert }
+        }
+    }
+
+    /// Says why a timer won't be heard with the app closed, and where to fix it.
+    @ViewBuilder private var silentTimersNotice: some View {
+        if let url = AlertPermissions.settingsURL {
+            Link(destination: url) {
+                Label("Notifications are off, so timers only alert you in Sous Chef. Turn them on in Settings.", systemImage: "bell.slash")
+                    .font(.footnote)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .foregroundStyle(.orange)
+            .padding(.horizontal)
+            .accessibilityIdentifier("timerNotificationsOff")
         }
     }
 

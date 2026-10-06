@@ -5,8 +5,7 @@ import SwiftUI
 /// Rings cook timers as system alarms, like the Clock app's timers: they
 /// sound through silent mode and Focus and keep ringing until stopped.
 /// `CookTimerAlerts` schedules one alarm per timer when the person allows
-/// alarms, and falls back to a notification when they don't or AlarmKit
-/// isn't available (a Mac running the iPad app).
+/// alarms, alongside the notification every timer gets.
 ///
 /// The alarms only ring. The countdown stays in cook mode's own Live
 /// Activity, which lists every timer in one place.
@@ -18,8 +17,7 @@ enum CookTimerAlarms {
     static var isAvailable: Bool { !ProcessInfo.processInfo.isiOSAppOnMac }
 
     /// Onboarding normally asks first; otherwise asks the first time a timer
-    /// starts. Returns false once alarms are turned off, so the caller can use
-    /// a notification instead.
+    /// starts. Returns false once alarms are turned off.
     static func authorize() async -> Bool {
         guard isAvailable else { return false }
         switch AlarmManager.shared.authorizationState {
