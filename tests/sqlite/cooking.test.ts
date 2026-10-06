@@ -46,6 +46,7 @@ async function addInventory(
   name: string,
   quantity: number,
   unit: string,
+  expiresOn?: string,
 ) {
   return await t.run(async (ctx) => {
     const foodItemId = await ctx.db.insert("foodItems", {
@@ -58,6 +59,7 @@ async function addInventory(
       locationId: kitchen.locationId,
       quantity,
       unit,
+      expiresOn,
     });
   });
 }
@@ -311,4 +313,116 @@ test('pantry idea preparation requires configuration and limits usage within the
   const publicSettings = await kitchen.asUser.query(api.aiProviders.list, {});
   expect(JSON.stringify(publicSettings)).not.toContain('test-only');
   expect(publicSettings.providers[0]).toMatchObject({ model: 'test-model', hasKey: true });
+});
+
+describe('cooking with expiring and converted stock', () => {
+  test('a recipe amount a hair under the pantry amount in another unit uses the item up', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const beef = await addInventory(t, kitchen, 'Beef', 1, 'lb');
+    const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Beef', quantity: 453, unit: 'g' }]);
+    const preview = await kitchen.asUser.query(api.cooking.preview, { recipeId });
+    expect(preview.missingIngredients).toEqual([]);
+    expect(preview.deductions).toEqual([{ id: beef, name: 'Beef', quantity: 1, unit: 'lb', remaining: 0 }]);
+    await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId });
+    expect(await t.run(ctx => ctx.db.get(beef))).toBeNull();
+  });
+
+  test('a recipe amount a hair over the pantry amount in another unit is covered, not shopped for', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const beef = await addInventory(t, kitchen, 'Beef', 1, 'lb');
+    const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Beef', quantity: 454, unit: 'g' }]);
+    const preview = await kitchen.asUser.query(api.cooking.preview, { recipeId });
+    expect(preview.missingIngredients).toEqual([]);
+    expect(preview.availableCount).toBe(1);
+    const result = await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId, addMissingToShoppingList: true });
+    expect(result.missingIngredients).toEqual([]);
+    expect(await t.run(ctx => ctx.db.get(beef))).toBeNull();
+    expect((await kitchen.asUser.query(api.shoppingList.get, {})).items).toHaveLength(0);
+  });
+
+  test('converted amounts still leave or ask for real differences, and same-unit amounts stay exact', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const beef = await addInventory(t, kitchen, 'Beef', 1, 'lb');
+    const flour = await addInventory(t, kitchen, 'Flour', 100, 'g');
+    const recipeId = await addRecipe(t, kitchen.householdId, [
+      { name: 'Beef', quantity: 400, unit: 'g' },
+      { name: 'Flour', quantity: 99.5, unit: 'g' },
+    ]);
+    await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId });
+    expect((await t.run(ctx => ctx.db.get(beef)))?.quantity).toBeCloseTo(53.592 / 453.592, 6);
+    expect((await t.run(ctx => ctx.db.get(flour)))?.quantity).toBeCloseTo(0.5, 6);
+    const short = await addRecipe(t, kitchen.householdId, [{ name: 'Flour', quantity: 1, unit: 'g' }]);
+    expect((await kitchen.asUser.query(api.cooking.preview, { recipeId: short })).missingIngredients).toEqual([{ name: 'Flour', quantity: 0.5, unit: 'g' }]);
+  });
+
+  test('warns when an expiring batch in an incomparable unit is passed over for later stock', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const bunch = await addInventory(t, kitchen, 'Cilantro', 1, 'bunch', '2026-10-07');
+    const grams = await addInventory(t, kitchen, 'Cilantro', 50, 'g');
+    const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Cilantro', quantity: 10, unit: 'g' }]);
+    const preview = await kitchen.asUser.query(api.cooking.preview, { recipeId });
+    expect(preview.deductions).toEqual([{ id: grams, name: 'Cilantro', quantity: 10, unit: 'g', remaining: 40 }]);
+    expect(preview.uses).toContain(bunch);
+    expect(preview.checks).toHaveLength(1);
+    expect(preview.checks[0].reason).toMatch(/1 bunch expiring 2026-10-07/);
+    await expect(kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId })).rejects.toThrow('Check the ingredient');
+    await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId, acknowledgeManualChecks: true });
+    expect((await t.run(ctx => ctx.db.get(bunch)))?.quantity).toBe(1);
+    expect((await t.run(ctx => ctx.db.get(grams)))?.quantity).toBe(40);
+  });
+
+  test('no warning when the incomparable batch expires after the stock that is used', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    await addInventory(t, kitchen, 'Cilantro', 1, 'bunch', '2026-10-20');
+    await addInventory(t, kitchen, 'Cilantro', 50, 'g', '2026-10-07');
+    const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Cilantro', quantity: 10, unit: 'g' }]);
+    expect((await kitchen.asUser.query(api.cooking.preview, { recipeId })).checks).toEqual([]);
+  });
+
+  test('uses the soonest-expiring batch first', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const later = await addInventory(t, kitchen, 'Milk', 1, 'l', '2026-10-20');
+    const undated = await addInventory(t, kitchen, 'Milk', 1, 'l');
+    const sooner = await addInventory(t, kitchen, 'Milk', 1, 'l', '2026-10-07');
+    const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Milk', quantity: 1500, unit: 'ml' }]);
+    await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId });
+    expect(await t.run(ctx => ctx.db.get(sooner))).toBeNull();
+    expect((await t.run(ctx => ctx.db.get(later)))?.quantity).toBeCloseTo(0.5, 6);
+    expect((await t.run(ctx => ctx.db.get(undated)))?.quantity).toBe(1);
+  });
+
+  test('a planned meal cooked at twice the recipe deducts and shops exactly what its preview showed', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const milk = await addInventory(t, kitchen, 'Milk', 1, 'l', '2026-10-07');
+    const eggs = await addInventory(t, kitchen, 'Eggs', 3, 'each', '2026-10-08');
+    const recipeId = await addRecipe(t, kitchen.householdId, [
+      { name: 'Milk', quantity: 300, unit: 'ml' },
+      { name: 'Eggs', quantity: 2, unit: 'each' },
+    ]);
+    await t.run(ctx => ctx.db.patch(recipeId, { servings: 2 }));
+    const { id } = await kitchen.asUser.mutation(api.mealPlan.add, { date: '2026-10-06', recipeId, servings: 4 });
+
+    const preview = await kitchen.asUser.query(api.cooking.preview, { recipeId, scale: 2 });
+    const [entry] = (await kitchen.asUser.query(api.mealPlan.week, { from: '2026-10-05' })).entries;
+    expect(entry.plan).toEqual(preview);
+    expect(preview.missingIngredients).toEqual([{ name: 'Eggs', quantity: 1, unit: 'each' }]);
+    expect(preview.deductions).toEqual([
+      { id: milk, name: 'Milk', quantity: 0.6, unit: 'l', remaining: expect.closeTo(0.4, 6) },
+      { id: eggs, name: 'Eggs', quantity: 3, unit: 'each', remaining: 0 },
+    ]);
+
+    const result = await kitchen.asUser.mutation(api.mealPlan.cook, { id, addMissingToShoppingList: true });
+    expect(result.missingIngredients).toEqual(preview.missingIngredients);
+    expect((await t.run(ctx => ctx.db.get(milk)))?.quantity).toBeCloseTo(0.4, 6);
+    expect(await t.run(ctx => ctx.db.get(eggs))).toBeNull();
+    const shopping = await kitchen.asUser.query(api.shoppingList.get, {});
+    expect(shopping.items).toEqual([expect.objectContaining({ name: 'Eggs', quantity: 1, unit: 'each' })]);
+  });
 });
