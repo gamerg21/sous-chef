@@ -13,7 +13,7 @@ struct AlertPermissionsSection: View {
         Section {
             if let status {
                 row("Notifications", systemImage: "bell.badge", state: status.notifications,
-                    note: status.notificationSoundOff ? "Sounds are off" : nil)
+                    note: Self.notificationNote(for: status))
                 if status.alarms != .unavailable {
                     row("Timer alarms", systemImage: "alarm", state: status.alarms)
                 }
@@ -73,6 +73,14 @@ struct AlertPermissionsSection: View {
             Label(title, systemImage: systemImage)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// What's off within allowed notifications. Time Sensitive only matters
+    /// for timers without an alarm, which then can't break through Focus.
+    static func notificationNote(for status: AlertPermissions.Status) -> String? {
+        if status.notificationSoundOff { return "Sounds are off" }
+        if status.timeSensitiveOff, status.alarms != .allowed { return "Time Sensitive is off" }
+        return nil
     }
 
     /// Names only what can still be asked for here.
