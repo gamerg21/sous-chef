@@ -25,3 +25,6 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 ### Improved
 - **Simpler Settings**: Settings is organized into a few groups, and shows whether notifications, alarms and Live Activities are on.
 - **Notifications during setup**: The welcome screens explain expiry reminders and timers and ask for permission up front.
+
+### Fixed
+- **Cooking across units**: Cooking a recipe in grams from a pack in pounds, or in millilitres from a cup, uses up the pack instead of leaving a sliver or asking for a little more. Cook also warns when food that expires soon is measured in a unit the recipe can't use.
