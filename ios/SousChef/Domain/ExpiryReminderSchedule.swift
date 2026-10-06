@@ -33,13 +33,14 @@ nonisolated struct ExpiryReminderSchedule: Equatable, Sendable {
 
     /// Reminders at `hour`:`minute` on each of the next `daysAhead` days that
     /// are still to come, each listing what expires within `window` days of it.
+    /// Expired food appears through the day after its date, then drops out.
     init(stock: [ExpiringFood.Stock], window: Int, hour: Int, minute: Int, now: Date = .now, days: Int = daysAhead, calendar: Calendar = .current) {
         let today = calendar.startOfDay(for: now)
         reminders = (0..<days).compactMap { offset in
             guard let day = calendar.date(byAdding: .day, value: offset, to: today),
                   let fire = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day),
                   fire > now,
-                  let content = Self.content(for: ExpiringFood.find(in: stock, within: window, now: fire, calendar: calendar)) else { return nil }
+                  let content = Self.content(for: ExpiringFood.reminderItems(in: stock, within: window, now: fire, calendar: calendar)) else { return nil }
             let stamp = calendar.dateComponents([.year, .month, .day], from: day)
             let id = Self.identifierPrefix + String(format: "%04d-%02d-%02d", stamp.year ?? 0, stamp.month ?? 0, stamp.day ?? 0)
             return Reminder(id: id, fireDate: fire, title: content.title, body: content.body)

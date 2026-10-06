@@ -77,6 +77,7 @@ export default function InventoryPage() {
   const removeItem = useMutation(api.inventory.remove);
   const createItem = useMutation(api.inventory.create);
   const updateItem = useMutation(api.inventory.update);
+  const settleExpired = useMutation(api.expiry.settle);
   const lookupBarcode = useAction(api.barcodes.lookup);
 
   const items = inventoryData?.items || [];
@@ -238,6 +239,15 @@ export default function InventoryPage() {
     }
   }, [lookupBarcode]);
 
+  // "Used" or "Thrown away" from Use it up: counted, and the item stays as out of stock.
+  const handleSettleExpired = useCallback(async (id: string, outcome: "used" | "wasted") => {
+    try {
+      await settleExpired({ id: id as Id<"inventoryItems">, outcome });
+    } catch (error) {
+      setAlertModal({ isOpen: true, message: error instanceof Error ? error.message : "Could not update the item. Please try again.", variant: "error" });
+    }
+  }, [settleExpired]);
+
   const handleViewExpiringSoon = useCallback(() => {
     setFilter("expiring-soon");
   }, []);
@@ -331,6 +341,7 @@ export default function InventoryPage() {
         onRemoveItem={handleRemoveItem}
         onViewExpiringSoon={handleViewExpiringSoon}
         onCookExpiring={() => router.push("/cooking?filter=expiring")}
+        onSettleExpired={handleSettleExpired}
         deletingItems={deletingItems}
         expiringWithinDays={expiringWithinDays}
         outcomes={outcomesData}

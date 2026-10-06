@@ -1,6 +1,6 @@
 /**
  * "Expiring soon" rules shared by the inventory card, the "Use it up" cooking
- * filter. Dates are calendar days (YYYY-MM-DD), so
+ * filter and reminders. Dates are calendar days (YYYY-MM-DD), so
  * "today" is always the cook's local day rather than a UTC instant.
  * The iOS app mirrors these rules in ios/Shared/ExpiringFood.swift.
  */
@@ -9,6 +9,8 @@ import type { CookingPlan } from './cooking-plan'
 export const DEFAULT_EXPIRING_WITHIN_DAYS = 3
 export const EXPIRING_WINDOW_CHOICES = [1, 2, 3, 5, 7] as const
 export const MAX_EXPIRING_WITHIN_DAYS = 30
+/** Reminders mention expired food until this many days past its date ("expired yesterday"), then stop. */
+export const REMINDER_DAYS_PAST_DATE = 1
 
 export type ExpiringCandidate = { id: string; name: string; quantity?: number; expiresOn?: string }
 export type Expiring<T extends ExpiringCandidate> = T & { daysLeft: number }
@@ -50,6 +52,15 @@ export function findExpiring<T extends ExpiringCandidate>(items: T[], options: {
     if (daysLeft !== null && daysLeft <= within) found.push({ ...item, daysLeft })
   }
   return found.sort((a, b) => a.daysLeft - b.daysLeft || a.name.localeCompare(b.name))
+}
+
+/**
+ * What a reminder mentions: the expiring items, minus anything more than
+ * `REMINDER_DAYS_PAST_DATE` past its date, so expired food isn't repeated
+ * every day. Lists such as "Use it up" keep showing it via `findExpiring`.
+ */
+export function findReminderItems<T extends ExpiringCandidate>(items: T[], options: { today: string; withinDays?: number }): Expiring<T>[] {
+  return findExpiring(items, options).filter(item => item.daysLeft >= -REMINDER_DAYS_PAST_DATE)
 }
 
 /** "expires today", "expire in 2 days", "expired yesterday"… */

@@ -25,7 +25,8 @@ Settings (3 days unless changed). The opt-in daily reminder is a local
 notification at the chosen time, 09:00 by default. The app schedules one per day
 for the next 14 days, each built from that day's list. Days with nothing expiring
 get no notification. Pantry changes and bringing the app to the foreground
-reschedule them. Tapping a reminder opens Cook's **Use it up** list; **Show in
+reschedule them. Expired food appears in reminders through the day after its
+date ("expired yesterday"), then stops; "Use soon" keeps listing it. Tapping a reminder opens Cook's **Use it up** list; **Show in
 Pantry** opens "Use soon". The rules (`Shared/ExpiringFood.swift`, Foundation
 only) and the schedule (`Domain/ExpiryReminderSchedule.swift`) are unit tested.
 See [expiry reminders](../docs/EXPIRY_REMINDERS.md).
@@ -94,7 +95,9 @@ on-device model instead of crashing.
 Everything lives in a SwiftData store. Models follow CloudKit's rules (no unique
 constraints, every property optional or defaulted), and the store syncs through
 the person's private CloudKit database when iCloud is on. There is no Sous
-Chef-operated backend.
+Chef-operated backend. A new model is a new CloudKit record type: create it in
+the development environment (the `-initCloudKitSchema` launch argument) and
+deploy the schema to production before a TestFlight or App Store build.
 
 ## Apple Intelligence
 
@@ -273,6 +276,11 @@ are required.
 - Cooking while connected runs `cooking:cookRecipe` on the server, preserving
   its atomic inventory deduction. Offline, the same plan is applied locally.
 - Recipe photos upload through `/api/files`, and server photos download.
+- Used-versus-thrown-away outcomes (`PantryOutcome`) push through `expiry:record`,
+  which is idempotent by the outcome's UUID (`clientId`), and this month's and
+  last month's pull through `expiry:list`. Servers without those operations
+  are skipped, and outcomes stay on the device and in iCloud. Outcomes from
+  server-side cooking arrive by pull, not recorded twice on the device.
 - The session token is kept in the Keychain; switching kitchens replaces the
   device's server-linked data with the chosen kitchen.
 

@@ -43,6 +43,8 @@ struct PantryItemEditor: View {
     @State private var scanning = false
     @State private var lookupError: String?
     @State private var loaded = false
+    /// Set when saving would run an item past its date out: ask what happened first.
+    @State private var askingOutcome: PantryItem?
     @FocusState private var nameFocused: Bool
 
     private var suggestions: [String] {
@@ -187,6 +189,7 @@ struct PantryItemEditor: View {
                 .kitchenEnvironment(kitchen)
             }
             .onAppear(perform: load)
+            .pastDatePrompt(for: $askingOutcome) { _, kind in save(outcome: kind) }
         }
     }
 
@@ -235,10 +238,21 @@ struct PantryItemEditor: View {
         }
     }
 
-    private func save() {
+    /// `outcome` answers the past-date prompt when saving runs the item out.
+    private func save(outcome: PantryOutcome.Kind? = nil) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let newQuantity = max(0, quantity ?? 0)
+        if let item, item.quantity > 0, newQuantity <= 0 {
+            if let outcome {
+                kitchen.recordOutcome(outcome, name: trimmed, expiresOn: expiresOn)
+            } else if !kitchen.countRunningOut(name: trimmed, expiresOn: expiresOn, from: item.quantity, to: newQuantity) {
+                askingOutcome = item
+                return
+            }
+        }
         let target = item ?? PantryItem(name: name)
-        target.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        target.quantity = max(0, quantity ?? 0)
+        target.name = trimmed
+        target.quantity = newQuantity
         target.unit = unit
         target.location = location
         target.expiresOn = expiresOn

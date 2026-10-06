@@ -28,6 +28,13 @@ struct ExpiryRemindersTests {
         #expect(ExpiringFood.find(in: items, within: 1, now: now, calendar: calendar).map(\.name) == ["Yogurt"])
     }
 
+    @Test func remindersStopTheDayAfterSomethingExpired() {
+        let items = [stock("Milk", 0), stock("Yogurt", -1), stock("Cream", -2)]
+        #expect(ExpiringFood.reminderItems(in: items, within: 3, now: now, calendar: calendar).map(\.name) == ["Yogurt", "Milk"])
+        // "Use soon" still lists everything in stock, so it can be marked used or thrown away.
+        #expect(ExpiringFood.find(in: items, within: 3, now: now, calendar: calendar).map(\.name) == ["Cream", "Yogurt", "Milk"])
+    }
+
     @Test func summarizesInPlainLanguage() {
         func food(_ name: String, _ days: Int) -> ExpiringFood { ExpiringFood(id: UUID(), name: name, expiresOn: now, daysLeft: days) }
         #expect(ExpiringFood.summary([food("Milk", 2), food("spinach", 2)]) == "Milk and spinach expire in 2 days")
@@ -46,12 +53,13 @@ struct ExpiryRemindersTests {
         let schedule = ExpiryReminderSchedule(stock: [stock("Milk", 2), stock("Eggs", 9)], window: 3, hour: 9, minute: 0,
                                               now: now, days: 14, calendar: calendar)
         let days = schedule.reminders.map { calendar.component(.day, from: $0.fireDate) }
-        // Milk: 10–13 March (expired milk still in stock keeps reminding); eggs from 16 March.
-        #expect(days == [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+        // Milk: 10–13 March, the last saying it expired yesterday, then it stops
+        // even though it's still in stock. Eggs likewise: 16–20 March.
+        #expect(days == [10, 11, 12, 13, 16, 17, 18, 19, 20])
         #expect(schedule.reminders[0].id == "expiry-reminder-2026-03-10")
         #expect(schedule.reminders[0].body == "Milk expires in 2 days.")
         #expect(schedule.reminders[3].body == "Milk expired yesterday.")
-        #expect(schedule.reminders[6].body == "Milk expired 4 days ago; Eggs expires in 3 days.")
+        #expect(schedule.reminders[4].body == "Eggs expires in 3 days.")
         #expect(calendar.component(.hour, from: schedule.reminders[0].fireDate) == 9)
 
         // Nothing dated: nothing scheduled. A time already past today starts tomorrow.

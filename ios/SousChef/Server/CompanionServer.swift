@@ -308,7 +308,8 @@ private struct SyncPass {
             case .recipe: "recipes:remove"
             case .shopping: "shoppingList:deleteItem"
             case .mealPlan: "mealPlan:remove"
-            case nil: ""
+            // Outcomes are history and are never removed.
+            case .outcome, nil: ""
             }
             if !path.isEmpty {
                 do { _ = try await client.call(path, ["id": tombstone.serverID]) } catch where notFound(error) || unsupported(error) {}
@@ -324,7 +325,22 @@ private struct SyncPass {
         } catch where unsupported(error) {
             // A server from before meal planning: plans stay on this device and in iCloud.
         }
+        // After the pantry, so an item's quantity reaches the server before its outcome.
+        do {
+            for outcome in all(PantryOutcome.self) where outcome.needsPush { try await push(outcome) }
+        } catch where unsupported(error) {
+            // A server from before the tally: outcomes stay on this device and in iCloud.
+        }
         try context.save()
+    }
+
+    /// `expiry:record` is idempotent by `clientId`, so a retry after a lost
+    /// response, or another device pushing the same outcome, counts once.
+    private func push(_ outcome: PantryOutcome) async throws {
+        var fields: [String: Any] = ["clientId": outcome.uuid.uuidString, "name": outcome.name, "outcome": outcome.outcome.rawValue, "on": outcome.on].merging(scope) { $1 }
+        if let value = outcome.expiresOn { fields["expiresOn"] = value }
+        outcome.serverID = try await client.call("expiry:record", fields, as: DTO.Created.self).id
+        outcome.needsPush = false
     }
 
     private func push(_ meal: PlannedMeal, recipes: [UUID: Recipe]) async throws {
@@ -555,6 +571,40 @@ private struct SyncPass {
         }
 
         try await pullMealPlan(recipeByServerID: recipeByServerID)
+        try await pullOutcomes()
+    }
+
+    /// This month's and last month's outcomes, enough for the tally. Matched
+    /// by server ID, then by the `clientId` a device pushed them with.
+    private func pullOutcomes() async throws {
+        let local = all(PantryOutcome.self)
+        var byServerID = Dictionary(local.compactMap { outcome in outcome.serverID.map { ($0, outcome) } }, uniquingKeysWith: { first, _ in first })
+        let byUUID = Dictionary(local.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+        let now = Date()
+        let months = [now, Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now].map { PantryOutcome.month(of: $0) }
+        for month in Set(months) {
+            let remote: [DTO.Outcome]
+            do {
+                remote = try await client.call("expiry:list", scope.merging(["month": month]) { $1 }, as: DTO.OutcomeList.self).outcomes
+            } catch where unsupported(error) {
+                return
+            }
+            for entry in remote where byServerID[entry.id] == nil {
+                guard let kind = PantryOutcome.Kind(rawValue: entry.outcome) else { continue }
+                if let id = entry.clientId.flatMap(UUID.init(uuidString:)), let existing = byUUID[id] {
+                    existing.serverID = entry.id
+                    existing.needsPush = false
+                    byServerID[entry.id] = existing
+                    continue
+                }
+                let created = PantryOutcome(name: entry.name, outcome: kind, on: entry.on, expiresOn: entry.expiresOn)
+                if let id = entry.clientId.flatMap(UUID.init(uuidString:)) { created.uuid = id }
+                created.serverID = entry.id
+                created.needsPush = false
+                context.insert(created)
+                byServerID[entry.id] = created
+            }
+        }
     }
 
     private func pullMealPlan(recipeByServerID: [String: UUID]) async throws {
