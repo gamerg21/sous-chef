@@ -14,10 +14,11 @@ const normalize = (value?: string) => (value ?? '').trim().toLowerCase().replace
 const epsilon = 0.000001;
 /**
  * Converted amounts within this share of a pantry item count as the whole item:
- * 453 g or 454 g of a 1 lb pack uses it up instead of leaving 0.0013 lb or asking
- * for 0.4 g more. Only applies across units, where factors and recipes round.
+ * 453 g or 454 g of a 1 lb pack, or 240 ml of a 1 cup carton, uses it up instead
+ * of leaving a sliver or asking for a little more. Only applies across units,
+ * where factors and recipes round.
  */
-const conversionTolerance = 0.01;
+const conversionTolerance = 0.02;
 
 /** Unit lookup and conversion over the kitchen's unit catalog; null when units can't be compared. */
 export function unitConverter(catalog: Unit[]) {

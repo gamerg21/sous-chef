@@ -342,6 +342,16 @@ describe('cooking with expiring and converted stock', () => {
     expect((await kitchen.asUser.query(api.shoppingList.get, {})).items).toHaveLength(0);
   });
 
+  test('a recipe rounding a cup to 240 ml uses the cup up', async () => {
+    const t = newTest();
+    const kitchen = await setupKitchen(t);
+    const cream = await addInventory(t, kitchen, 'Cream', 1, 'cup');
+    const recipeId = await addRecipe(t, kitchen.householdId, [{ name: 'Cream', quantity: 240, unit: 'ml' }]);
+    expect((await kitchen.asUser.query(api.cooking.preview, { recipeId })).missingIngredients).toEqual([]);
+    await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId });
+    expect(await t.run(ctx => ctx.db.get(cream))).toBeNull();
+  });
+
   test('converted amounts still leave or ask for real differences, and same-unit amounts stay exact', async () => {
     const t = newTest();
     const kitchen = await setupKitchen(t);
