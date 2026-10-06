@@ -7,6 +7,37 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (10)
+
+What's in it: everything from 1.1.0 (9), plus a reorganized Settings page.
+
+### What to Test
+
+**New Settings layout**
+- Open Settings (the gear button on any tab). Instead of one long page, it
+  now shows a short list of groups that each open their own page:
+  - Sync and Storage: iCloud, your Sous Chef server, and recipe import and
+    export. The row shows where your kitchen syncs, such as "iCloud".
+  - Notifications: notification, timer alarm and Live Activity permissions,
+    plus expiry reminders. An orange mark appears on the row when something
+    needs your attention.
+  - Intelligence and Lookups: Apple Intelligence and Open Food Facts
+    barcode lookups.
+  - Community: your community account, blocked cooks and guidelines, and
+    the custom community address. The row shows your name when signed in.
+- Website, source code and version are still at the bottom. Tap Version to
+  see the build number.
+- Every setting from before should still be there and work the same. Tell
+  us if anything is missing or hard to find.
+
+**Please send suggestions and comments**
+- Is it easier to find what you're looking for? Which setting did you go
+  looking for first, and where did you expect it to be?
+- Do the group names make sense? Would you name or group anything
+  differently?
+- Anything that feels cluttered, confusing, or that you'd like to be able
+  to change from Settings but can't?
+
 ## 1.1.0 (9)
 
 What's in it: everything from 1.1.0 (8), plus fixes for cook timers that
