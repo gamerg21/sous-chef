@@ -42,7 +42,7 @@ struct AlertPermissionsSection: View {
                 }
             }
         } header: {
-            Eyebrow("Notifications and timers")
+            Eyebrow("Permissions")
         } footer: {
             Text(footer)
         }
