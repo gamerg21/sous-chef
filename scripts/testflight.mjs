@@ -5,6 +5,7 @@
 //
 //   pnpm ios:testflight upload   archive, upload, wait for processing, set notes
 //   pnpm ios:testflight notes    set notes for the project's current build (or: notes 5)
+//   pnpm ios:testflight print    show those notes without sending them (or: print 5)
 //   pnpm ios:testflight status   list recent builds
 //
 // The key stays outside the repository. Put the .p8 file in
@@ -49,12 +50,21 @@ function token() {
   return `${body}.${signature.toString('base64url')}`;
 }
 
-async function api(path, { method = 'GET', body } = {}) {
-  const response = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-    body: body && JSON.stringify(body),
-  });
+async function api(path, { method = 'GET', body } = {}, attempt = 1) {
+  let response;
+  try {
+    response = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+      body: body && JSON.stringify(body),
+    });
+  } catch (error) {
+    // The connection opened before a long archive and upload is usually
+    // closed by the time it's reused (EPIPE); a fresh request works.
+    if (attempt >= 3) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 2_000 * attempt));
+    return api(path, { method, body }, attempt + 1);
+  }
   const json = response.status === 204 ? {} : await response.json();
   if (!response.ok) fail(`${method} ${path} → ${response.status}: ${json.errors?.map((e) => e.detail ?? e.title).join('; ')}`);
   return json;
@@ -70,6 +80,8 @@ function projectVersion() {
   return { version, build };
 }
 
+const FEEDBACK = 'Spot something off? Send it through TestFlight feedback with a screenshot and the steps you took.';
+
 /** The "What to Test" text for a build, as plain text for TestFlight. */
 function testNotes(version, build) {
   const notes = readFileSync(join(ios, 'TESTFLIGHT.md'), 'utf8');
@@ -79,13 +91,17 @@ function testNotes(version, build) {
   const entry = notes.slice(start + heading.length).split(/\n## /)[0];
   const whatToTest = entry.split('### What to Test')[1];
   if (!whatToTest?.trim()) fail(`The "${heading}" entry has no "### What to Test" section.`);
-  const text = whatToTest
+  const body = whatToTest
     .trim()
     // Rejoin wrapped lines; keep list items, numbered steps and blank lines.
     .replace(/(?<!\n)\n(?!\n|- |\d+\. )[ \t]*/g, ' ')
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^- /gm, '• ');
+  // Every build's notes open with the build and close with the same feedback
+  // ask, so entries in TESTFLIGHT.md hold only the lists in between.
+  const text = [`Build ${version} (${build}) — Sous Chef`, body, FEEDBACK].join('\n\n');
   if (text.length > 4000) fail(`The "What to Test" text is ${text.length} characters; TestFlight allows 4,000.`);
   return text;
 }
@@ -177,10 +193,15 @@ switch (command) {
     await setNotes(current.version, argument ?? current.build);
     break;
   }
+  case 'print': {
+    const current = projectVersion();
+    console.log(testNotes(current.version, argument ?? current.build));
+    break;
+  }
   case 'status':
     await status();
     break;
   default:
-    console.log('Usage: pnpm ios:testflight <upload | notes [build] | status>');
+    console.log('Usage: pnpm ios:testflight <upload | notes [build] | print [build] | status>');
     process.exit(command ? 1 : 0);
 }

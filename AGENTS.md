@@ -50,9 +50,12 @@ The iOS app's version (`MARKETING_VERSION`) and build number
 - Before each TestFlight or App Store upload, increment the build number in the
   project file and commit it with the upload, so the next upload continues from it.
 - Every uploaded build gets testing notes: add an entry to
-  [ios/TESTFLIGHT.md](ios/TESTFLIGHT.md) in the same commit, covering new
-  features, fixes, and any big fix testers should confirm. The upload script
-  refuses to run without one and copies it into the build's "What to Test".
+  [ios/TESTFLIGHT.md](ios/TESTFLIGHT.md) in the same commit, following the
+  shape at the top of that file: "What to test (please focus here)" and
+  "Fixes to verify" lists covering only that build's changes, kept short. The
+  upload script refuses to run without one, adds the build line and feedback
+  ask, and copies it into the build's "What to Test"; preview it with
+  `pnpm ios:testflight print [build]`.
 - When the version changes (for example 1.0.1 to 1.0.2), reset the build number to 1.
 - The ShareExtension and SousChefWidgets targets carry the same
   `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` as the app; change all
@@ -72,6 +75,25 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   variables in the maintainer's shell belong to another team; don't use them.
 - In `ios/ExportOptions.plist`, never add `testFlightInternalTestingOnly`: it permanently limits a build to
   internal testers, so it can't go to external testers or App Review.
+
+## Release notes
+
+- Keep [CHANGELOG.md](CHANGELOG.md) as the detailed engineering record:
+  implementation details, migrations, tests, operations and dependency changes
+  belong there.
+- Every customer-visible iOS change in an App Store version must also be
+  summarized in [ios/RELEASE_NOTES.md](ios/RELEASE_NOTES.md), the only source
+  for the App Store's "What's New".
+- Those notes say what a customer can do, notice or retry. Include
+  recognizable bug fixes, but never architecture, frameworks, vendors or other
+  implementation detail.
+- Generate the App Store copy with
+  `pnpm ios:release-notes <version>[,<version>…]`, listing every version the
+  build covers. The output is compact by design, one short line per feature;
+  `--full` prints every detail. Update the source and regenerate instead of
+  hand-editing a different version in App Store Connect.
+- TestFlight builds are not App Store releases; don't describe TestFlight
+  availability as a release.
 
 ## Installed skills
 

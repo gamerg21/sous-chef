@@ -18,6 +18,12 @@ struct CookModeView: View {
     @State private var finishing = false
     @State private var result: Kitchen.CookResult?
     @State private var chatting = false
+    /// The step a custom timer is being set for.
+    @State private var customTimerStep: CustomTimerStep?
+    /// False when notifications and alarms are both off, so timers can't
+    /// alert anyone once Sous Chef is closed.
+    @State private var timersCanAlert = true
+    @Environment(\.scenePhase) private var scenePhase
 
     private var steps: [RecipeStep] { recipe.steps }
     private var pageCount: Int { steps.count + 2 }
@@ -34,7 +40,13 @@ struct CookModeView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.snappy, value: page)
             .safeAreaInset(edge: .top) {
-                if !timers.isEmpty { timerStrip.transition(.move(edge: .top).combined(with: .opacity)) }
+                if !timers.isEmpty {
+                    VStack(spacing: 4) {
+                        timerStrip
+                        if !timersCanAlert { silentTimersNotice }
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
             .animation(.bouncy, value: timers)
             .sensoryFeedback(.start, trigger: timers.count) { old, new in new > old }
@@ -52,6 +64,11 @@ struct CookModeView: View {
                 }
             }
             .sheet(isPresented: $chatting) { RecipeChatView(recipe: recipe).kitchenEnvironment(kitchen) }
+            .sheet(item: $customTimerStep) { target in
+                CustomTimerSheet(defaultLabel: "Step \(target.id + 1)") { label, seconds in
+                    timers.append(CookTimer(label: label, seconds: seconds, customStep: target.id))
+                }
+            }
         }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear {
@@ -61,6 +78,32 @@ struct CookModeView: View {
         // Mirrors the timers to a Live Activity and schedules their alerts.
         .onChange(of: timers) { _, timers in
             CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
+        }
+        // Rechecked once the first timer's permission prompts are answered,
+        // and after a visit to the Settings app.
+        .task(id: timers.count) {
+            guard !timers.isEmpty else { return }
+            try? await Task.sleep(for: .seconds(1))
+            timersCanAlert = await AlertPermissions.current().timersCanAlert
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, !timers.isEmpty else { return }
+            Task { timersCanAlert = await AlertPermissions.current().timersCanAlert }
+        }
+    }
+
+    /// Says why a timer won't be heard with the app closed, and where to fix it.
+    @ViewBuilder private var silentTimersNotice: some View {
+        if let url = AlertPermissions.settingsURL {
+            Link(destination: url) {
+                Label("Notifications are off, so timers only alert you in Sous Chef. Turn them on in Settings.", systemImage: "bell.slash")
+                    .font(.footnote)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .foregroundStyle(.orange)
+            .padding(.horizontal)
+            .accessibilityIdentifier("timerNotificationsOff")
         }
     }
 
@@ -115,8 +158,20 @@ struct CookModeView: View {
                     .font(.title.weight(.medium))
                 .fontDesign(.rounded)
                     .fixedSize(horizontal: false, vertical: true)
-                ForEach(CookTimer.durations(in: step.text), id: \.self) { seconds in
-                    timerButton(label: "Step \(index + 1)", seconds: seconds)
+                let found = CookTimer.durations(in: step.text)
+                ForEach(Array(found.enumerated()), id: \.element) { position, seconds in
+                    if position == found.count - 1 {
+                        HStack(spacing: 10) {
+                            timerButton(label: "Step \(index + 1)", seconds: seconds)
+                            addTimerButton(step: index, compact: true)
+                        }
+                    } else {
+                        timerButton(label: "Step \(index + 1)", seconds: seconds)
+                    }
+                }
+                if found.isEmpty { addTimerButton(step: index, compact: false) }
+                ForEach(timers.filter { $0.customStep == index }) { timer in
+                    runningTimer(timer)
                 }
             }
             .padding()
@@ -128,21 +183,8 @@ struct CookModeView: View {
     /// it's clear the tap worked even before looking at the strip up top.
     @ViewBuilder
     private func timerButton(label: String, seconds: Int) -> some View {
-        if let timer = timers.first(where: { $0.label == label && $0.seconds == seconds }) {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                let remaining = timer.remaining(at: context.date)
-                Label(remaining == 0 ? "Timer done" : "Timer running · \(CookTimer.clock(remaining))",
-                      systemImage: remaining == 0 ? "bell.and.waves.left.and.right.fill" : "timer")
-                    .font(.headline.monospacedDigit())
-                    .contentTransition(.numericText(countsDown: true))
-                    .symbolEffect(.pulse, isActive: remaining > 0)
-                    .foregroundStyle(remaining == 0 ? .orange : Color.brand)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.brandSoft, in: .capsule)
-                    .overlay(Capsule().strokeBorder(remaining == 0 ? .orange : Color.brand, lineWidth: 1.5))
-            }
-            .transition(.scale(scale: 0.85).combined(with: .opacity))
+        if let timer = timers.first(where: { $0.customStep == nil && $0.label == label && $0.seconds == seconds }) {
+            runningTimer(timer)
         } else {
             Button {
                 timers.append(CookTimer(label: label, seconds: seconds))
@@ -154,6 +196,46 @@ struct CookModeView: View {
             .tint(Color.brand)
             .transition(.scale(scale: 0.85).combined(with: .opacity))
         }
+    }
+
+    /// A step's timer counting down in place of the button that started it.
+    private func runningTimer(_ timer: CookTimer) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = timer.remaining(at: context.date)
+            let name = timer.customStep == nil ? "Timer" : timer.label
+            Label(remaining == 0 ? "\(name) done" : "\(name) running · \(CookTimer.clock(remaining))",
+                  systemImage: remaining == 0 ? "bell.and.waves.left.and.right.fill" : "timer")
+                .font(.headline.monospacedDigit())
+                .contentTransition(.numericText(countsDown: true))
+                .symbolEffect(.pulse, isActive: remaining > 0)
+                .foregroundStyle(remaining == 0 ? .orange : Color.brand)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.brandSoft, in: .capsule)
+                .overlay(Capsule().strokeBorder(remaining == 0 ? .orange : Color.brand, lineWidth: 1.5))
+        }
+        .transition(.scale(scale: 0.85).combined(with: .opacity))
+    }
+
+    /// Opens the custom timer dial: a small "+" beside a step's own timers,
+    /// or a labeled button on steps that don't mention a time.
+    private func addTimerButton(step: Int, compact: Bool) -> some View {
+        Button {
+            customTimerStep = CustomTimerStep(id: step)
+        } label: {
+            if compact {
+                Image(systemName: "plus")
+                    .font(.headline)
+                    .frame(width: 22, height: 22)
+            } else {
+                Label("Add a timer", systemImage: "plus").font(.subheadline.weight(.semibold))
+            }
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(compact ? .circle : .capsule)
+        .tint(Color.brand)
+        .accessibilityLabel("Add a custom timer")
+        .accessibilityIdentifier("addCustomTimer")
     }
 
     private var finishPage: some View {
@@ -300,11 +382,19 @@ struct CookModeView: View {
     }
 }
 
+/// The step index the custom timer sheet is open for.
+private struct CustomTimerStep: Identifiable {
+    let id: Int
+}
+
 nonisolated struct CookTimer: Identifiable, Hashable, Sendable {
     var id = UUID()
     let label: String
     let seconds: Int
     var started = Date()
+    /// The step a timer was set on by hand from the custom timer dial; nil
+    /// for timers started from a duration written in the step.
+    var customStep: Int?
 
     var ends: Date { started.addingTimeInterval(TimeInterval(seconds)) }
 

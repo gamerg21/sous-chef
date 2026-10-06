@@ -19,6 +19,7 @@
     "doctor": "node scripts/doctor.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "ios:testflight": "node scripts/testflight.mjs",
+    "ios:release-notes": "node scripts/release-notes.mjs",
     "setup:backend": "tsx scripts/seed-local.ts",
     "backup": "node scripts/backup.mjs",
     "reset-password": "node scripts/local-admin.mjs reset-password",

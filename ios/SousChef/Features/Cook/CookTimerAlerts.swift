@@ -3,10 +3,11 @@ import Foundation
 import UserNotifications
 
 /// Carries cook mode's timers outside the app: a Live Activity on the Lock
-/// Screen and in the Dynamic Island, and a local notification with sound for
-/// each timer so it's heard with the app in the background or the phone
-/// locked. Cook mode calls `sync` whenever its timers change and with no
-/// timers when it closes; the in-app timers never depend on either.
+/// Screen and in the Dynamic Island, a local notification with sound for each
+/// timer, and, where alarms are allowed, an alarm (`CookTimerAlarms`) that
+/// rings like the Clock app's, even in silent mode. Cook mode calls `sync`
+/// whenever its timers change and with no timers when it closes; the in-app
+/// timers never depend on any of them.
 ///
 /// Where Live Activities aren't available (a Mac running the iPad app, or
 /// the person turned them off) only the notifications are used.
@@ -26,7 +27,9 @@ final class CookTimerAlerts {
     /// The running activity's ID. Activities are looked up by ID rather than
     /// kept, since `Activity` can't be held across concurrency domains.
     private var activityID: String?
+    /// Timers with a notification, and those of them that also have an alarm.
     private var scheduled: Set<UUID> = []
+    private var alarms: Set<UUID> = []
     private var askedForNotifications = false
 
     /// The activity's state for a set of timers: running ones soonest to
@@ -49,7 +52,7 @@ final class CookTimerAlerts {
     /// Brings the Live Activity and scheduled notifications in line with
     /// cook mode's timers. An empty list ends everything.
     func sync(recipeTitle: String, timers: [CookTimer]) {
-        syncNotifications(recipeTitle: recipeTitle, timers: timers)
+        syncAlarmsAndNotifications(recipeTitle: recipeTitle, timers: timers)
         Task { await syncActivity(recipeTitle: recipeTitle, timers: timers) }
     }
 
@@ -99,9 +102,14 @@ final class CookTimerAlerts {
         }
     }
 
-    // MARK: Notifications
+    // MARK: Alarms and notifications
 
-    private func syncNotifications(recipeTitle: String, timers: [CookTimer]) {
+    /// Removed timers lose their notification and alarm (silencing a ringing
+    /// alarm). New running timers always get a notification with sound, and
+    /// also an alarm when alarms are allowed. The notification isn't only a
+    /// fallback for when alarms aren't allowed: an alarm that was scheduled
+    /// can still fail to ring, and then the notification is all the cook gets.
+    private func syncAlarmsAndNotifications(recipeTitle: String, timers: [CookTimer]) {
         let center = UNUserNotificationCenter.current()
         let current = Set(timers.map(\.id))
         let removed = scheduled.subtracting(current)
@@ -109,15 +117,29 @@ final class CookTimerAlerts {
             let ids = removed.map(Self.notificationID)
             center.removePendingNotificationRequests(withIdentifiers: ids)
             center.removeDeliveredNotifications(withIdentifiers: ids)
+            for id in removed where alarms.contains(id) { CookTimerAlarms.cancel(id) }
         }
         scheduled.subtract(removed)
+        alarms.subtract(removed)
 
         let new = timers.filter { !scheduled.contains($0.id) && !$0.isDone(at: .now) }
         guard !new.isEmpty else { return }
+        // Claimed now so a quick second sync doesn't schedule them twice.
         scheduled.formUnion(new.map(\.id))
         Task {
+            if await CookTimerAlarms.authorize() {
+                for timer in new where scheduled.contains(timer.id) {
+                    guard (try? await CookTimerAlarms.schedule(timer, recipeTitle: recipeTitle)) != nil else { continue }
+                    alarms.insert(timer.id)
+                    // Removed while the alarm was being scheduled.
+                    if !scheduled.contains(timer.id) {
+                        CookTimerAlarms.cancel(timer.id)
+                        alarms.remove(timer.id)
+                    }
+                }
+            }
             guard await authorizeNotifications() else { return }
-            for timer in new {
+            for timer in new where scheduled.contains(timer.id) {
                 let seconds = timer.ends.timeIntervalSinceNow
                 guard seconds > 0 else { continue }
                 try? await center.add(Self.request(for: timer, recipeTitle: recipeTitle, in: seconds))
@@ -125,7 +147,8 @@ final class CookTimerAlerts {
         }
     }
 
-    /// Asks once, the first time a timer starts, and never nags afterwards.
+    /// Onboarding normally asks first. For anyone who skipped that, asks once,
+    /// the first time a timer starts, and never nags afterwards.
     private func authorizeNotifications() async -> Bool {
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
@@ -133,6 +156,8 @@ final class CookTimerAlerts {
         case .authorized, .provisional, .ephemeral: return true
         case .notDetermined where !askedForNotifications:
             askedForNotifications = true
+            // The alarm prompt may have just closed.
+            await AlertPermissions.untilActive()
             return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
         default: return false
         }

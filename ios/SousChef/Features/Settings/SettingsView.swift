@@ -1,28 +1,17 @@
-import SwiftData
 import SwiftUI
-import UniformTypeIdentifiers
 
+/// The Settings home: a short list of groups, each opening its own page.
 struct SettingsView: View {
     @Environment(Kitchen.self) private var kitchen
-    @Environment(CommunityModeration.self) private var moderation
     @Environment(CommunityAccount.self) private var account
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmICloudDelete = false
-    @State private var deletingICloud = false
-    @State private var iCloudMessage: String?
-    @State private var connecting = false
-    @State private var exportFile: ExportFile?
-    @State private var importing = false
-    @State private var message: String?
-    @State private var communityURL = CommunityService.directURL
-    @State private var offEnabled = OpenFoodFacts.enabled
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var alerts: AlertPermissions.Status?
     @State private var showsBuild = false
     private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     private let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 
     var body: some View {
-        @Bindable var ai = kitchen.ai
-        @Bindable var server = kitchen.server
         NavigationStack {
             Form {
                 Section {
@@ -37,134 +26,41 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle(isOn: Binding(get: { kitchen.usesICloud }, set: { kitchen.setICloud($0) })) {
-                        Label("Sync with iCloud", systemImage: "icloud")
-                    }
-                    .disabled(!kitchen.iCloudAvailable || deletingICloud)
-                    LabeledContent("Status") {
-                        HStack(spacing: 6) {
-                            StatusDot(color: kitchen.usesICloud ? .green : .secondary)
-                            Text(iCloudStatus)
+                    NavigationLink { SyncSettingsView() } label: {
+                        LabeledContent { Text(SyncSettingsView.summary(kitchen)) } label: {
+                            SettingsIcon("Sync and Storage", systemImage: "icloud.fill", color: .blue)
                         }
                     }
-                    if kitchen.iCloudAvailable {
-                        Button(role: .destructive) { confirmICloudDelete = true } label: {
-                            HStack {
-                                Label("Remove kitchen from iCloud", systemImage: "icloud.slash")
-                                if deletingICloud { Spacer(); ProgressView() }
+                    .accessibilityIdentifier("syncSettings")
+                    NavigationLink { NotificationSettingsView() } label: {
+                        LabeledContent {
+                            if let alerts, alerts.needsSettings || !alerts.timersCanAlert {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundStyle(.orange)
+                                    .accessibilityLabel("Needs attention")
                             }
+                        } label: {
+                            SettingsIcon("Notifications", systemImage: "bell.badge.fill", color: .red)
                         }
-                        .disabled(deletingICloud)
                     }
-                    if let iCloudMessage { Text(iCloudMessage).font(.footnote).foregroundStyle(.secondary) }
+                    .accessibilityIdentifier("notificationSettings")
                 } header: {
-                    Eyebrow("iCloud")
-                } footer: {
-                    Text(kitchen.usesICloud
-                         ? "Your kitchen is stored on this device and in your private iCloud, so it follows you to your other Apple devices. Sous Chef has no servers of its own."
-                         : "Your kitchen is stored only on this device. Turn on iCloud to keep it on your other Apple devices too.")
-                }
-                .confirmationDialog("Remove your kitchen from iCloud?", isPresented: $confirmICloudDelete, titleVisibility: .visible) {
-                    Button("Remove from iCloud", role: .destructive) { Task { await deleteICloudData() } }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("This turns off iCloud sync and deletes your pantry, recipes and shopping list from iCloud. This device keeps its copy. Other devices using your iCloud will clear theirs the next time they sync.")
+                    Eyebrow("Kitchen")
                 }
 
                 Section {
-                    if server.isConnected {
-                        LabeledContent("Server", value: URL(string: server.address)?.host() ?? server.address)
-                        LabeledContent("Account", value: server.email)
-                        if server.households.count > 1 {
-                            Picker("Kitchen", selection: Binding(get: { server.householdID ?? "" }, set: { id in
-                                if let household = server.households.first(where: { $0.id == id }) { Task { await server.switchHousehold(household) } }
-                            })) {
-                                ForEach(server.households) { Text($0.name).tag($0.id) }
-                            }
-                        } else if let name = server.householdName {
-                            LabeledContent("Kitchen", value: name)
+                    NavigationLink { IntelligenceSettingsView() } label: {
+                        SettingsIcon("Intelligence and Lookups", systemImage: "apple.intelligence", color: .purple)
+                    }
+                    .accessibilityIdentifier("intelligenceSettings")
+                    NavigationLink { CommunitySettingsView() } label: {
+                        LabeledContent { Text(account.session?.name ?? "Not signed in") } label: {
+                            SettingsIcon("Community", systemImage: "person.2.fill", color: .green)
                         }
-                        LabeledContent("Sync") {
-                            HStack(spacing: 6) {
-                                switch server.status {
-                                case .syncing: ProgressView().controlSize(.small); Text("Syncing…")
-                                case .failed(let reason): StatusDot(color: .orange); Text(reason).lineLimit(2)
-                                default:
-                                    StatusDot(color: .green)
-                                    Text(server.lastSynced.map { "Synced \($0.formatted(.relative(presentation: .named)))" } ?? "Ready")
-                                }
-                            }
-                            .font(.callout)
-                        }
-                        Toggle("Sync automatically", isOn: $server.autoSync)
-                        Button { Task { await server.syncNow() } } label: { Label("Sync now", systemImage: "arrow.triangle.2.circlepath") }
-                            .disabled(server.status == .syncing)
-                        Button(role: .destructive) { Task { await server.disconnect() } } label: { Label("Disconnect", systemImage: "link.badge.minus") }
-                    } else {
-                        Button { connecting = true } label: { Label("Connect your Sous Chef server", systemImage: "server.rack") }
-                            .accessibilityIdentifier("connectServer")
-                        if case .failed(let reason) = server.status { Text(reason).font(.footnote).foregroundStyle(.orange) }
                     }
+                    .accessibilityIdentifier("communitySettings")
                 } header: {
-                    Eyebrow("Companion server")
-                } footer: {
-                    Text("Running Sous Chef at home? Connect it to keep this app and your web kitchen in sync. The app keeps working offline and catches up when it can reach your server.")
-                }
-
-                Section {
-                    LabeledContent("In use") { AIEngineBadge() }
-                    LabeledContent("On-device model", value: ai.onDeviceStatus)
-                    LabeledContent("Private Cloud Compute", value: ai.privateCloudStatus)
-                    if ai.privateCloudEnabled {
-                        Toggle("Prefer Private Cloud Compute", isOn: $ai.preferPrivateCloud)
-                    }
-                } header: {
-                    Eyebrow("Apple Intelligence")
-                } footer: {
-                    Text("Recipe ideas, label reading, recipe reading and aisle sorting use Apple's on-device model. Where available, Private Cloud Compute runs Apple's larger model on Apple silicon servers that don't keep your data. With a server connected and no Apple Intelligence, Sous Chef uses the AI provider set up on your server.")
-                }
-
-                Section {
-                    Toggle(isOn: $offEnabled) { Label("Open Food Facts lookups", systemImage: "barcode") }
-                        .onChange(of: offEnabled) { _, value in OpenFoodFacts.enabled = value }
-                    TextField("Custom community address (optional)", text: $communityURL)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .onSubmit(saveCommunityURL)
-                } header: {
-                    Eyebrow("Services")
-                } footer: {
-                    Text("Barcode lookups send only the barcode to Open Food Facts. Leave the community address empty to use the Sous Chef recipe community; a connected server uses its own.")
-                }
-
-                ExpiryReminderSection()
-
-                CommunityAccountSection()
-
-                Section {
-                    NavigationLink { CommunityModerationSettingsView() } label: {
-                        Label("Blocked cooks and hidden recipes", systemImage: "hand.raised")
-                    }
-                    .badge(moderation.blockedAuthors.count + moderation.hiddenRecipes.count)
-                    Link(destination: CommunityModeration.guidelinesURL) { Label("Community guidelines", systemImage: "person.2") }
-                    Link(destination: URL(string: "mailto:\(CommunityModeration.contactEmail)")!) {
-                        LabeledContent { Text(CommunityModeration.contactEmail) } label: { Label("Contact", systemImage: "envelope") }
-                    }
-                } header: {
-                    Eyebrow("Community")
-                } footer: {
-                    Text("Report a recipe or block a cook from the recipe's menu. Reports are reviewed within 24 hours, and offending recipes and cooks are removed.")
-                }
-
-                Section {
-                    Button { exportRecipes() } label: { Label("Export recipes", systemImage: "square.and.arrow.up") }
-                    Button { importing = true } label: { Label("Import recipes", systemImage: "square.and.arrow.down") }
-                    if let message { Text(message).font(.footnote).foregroundStyle(.secondary) }
-                } header: {
-                    Eyebrow("Your data")
-                } footer: {
-                    Text("Uses the same JSON format as the web app's recipe export.")
+                    Eyebrow("Features")
                 }
 
                 Section {
@@ -181,54 +77,36 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } } }
-            .sheet(isPresented: $connecting) { ServerConnectView().kitchenEnvironment(kitchen) }
-            .sheet(item: $exportFile) { file in ShareSheet(items: [file.url]) }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-                guard case .success(let url) = result else { return }
-                let access = url.startAccessingSecurityScopedResource()
-                defer { if access { url.stopAccessingSecurityScopedResource() } }
-                do {
-                    let count = try kitchen.importRecipes(from: Data(contentsOf: url))
-                    message = "Imported \(count) recipe\(count == 1 ? "" : "s")."
-                } catch {
-                    message = error.localizedDescription
-                }
+            // Also refreshed on return from a subpage or the Settings app.
+            .onAppear { Task { alerts = await AlertPermissions.current() } }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { alerts = await AlertPermissions.current() } }
             }
-            .task { await server.refreshHouseholds() }
         }
     }
+}
 
-    private func saveCommunityURL() {
-        CommunityService.directURL = communityURL.trimmingCharacters(in: .whitespaces)
-        // A community account belongs to one community.
-        if let session = account.session, session.origin != CommunityService.communityURL?.absoluteString { account.signOut() }
+/// A row title with a small colored icon tile, like the Settings app's.
+struct SettingsIcon: View {
+    let title: String
+    let systemImage: String
+    let color: Color
+
+    init(_ title: String, systemImage: String, color: Color) {
+        self.title = title
+        self.systemImage = systemImage
+        self.color = color
     }
 
-    private func deleteICloudData() async {
-        deletingICloud = true
-        defer { deletingICloud = false }
-        do {
-            try await kitchen.deleteICloudData()
-            iCloudMessage = "Your kitchen was removed from iCloud. It's still on this device."
-        } catch {
-            iCloudMessage = "Couldn't reach iCloud: \(error.localizedDescription)"
-        }
-    }
-
-    private var iCloudStatus: String {
-        if !kitchen.iCloudAvailable { return "Not available in this build" }
-        if kitchen.usesICloud { return FileManager.default.ubiquityIdentityToken == nil ? "On · sign in to iCloud to sync" : "On" }
-        return "Off"
-    }
-
-    private func exportRecipes() {
-        do {
-            let data = try kitchen.exportRecipes()
-            let url = FileManager.default.temporaryDirectory.appending(path: "sous-chef-recipes-\(Date.now.formatted(.iso8601.year().month().day())).json")
-            try data.write(to: url)
-            exportFile = ExportFile(url: url)
-        } catch {
-            message = error.localizedDescription
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(color.gradient, in: .rect(cornerRadius: 7, style: .continuous))
         }
     }
 }

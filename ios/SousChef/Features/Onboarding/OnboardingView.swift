@@ -5,14 +5,20 @@ struct OnboardingView: View {
     let onFinish: () -> Void
     @Environment(Kitchen.self) private var kitchen
     @State private var connecting = false
-    /// `-onboardingPage 1` opens the iCloud page directly, for screenshots.
+    /// `-onboardingPage 1` opens the iCloud page directly, for screenshots;
+    /// `-onboardingPage 2` the notifications page.
     @State private var page = UserDefaults.standard.integer(forKey: "onboardingPage")
     /// On unless the person already turned it off; sync starts only when they continue.
     @State private var syncWithICloud = UserDefaults.standard.object(forKey: "icloud.enabled") as? Bool ?? true
+    @State private var askingForNotifications = false
 
     var body: some View {
         Group {
-            if page == 0 { welcome } else { iCloudConsent }
+            switch page {
+            case 0: welcome
+            case 1: iCloudConsent
+            default: notifications
+            }
         }
         .padding(28)
         .animation(.snappy, value: page)
@@ -91,12 +97,63 @@ struct OnboardingView: View {
             Spacer()
             Button {
                 kitchen.setICloud(syncWithICloud)
-                onFinish()
+                page = 2
             } label: {
                 Text("Continue").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
             }
             .buttonStyle(.glassProminent)
-            .accessibilityIdentifier("finishOnboarding")
+            .accessibilityIdentifier("continueOnboarding")
+        }
+        .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+
+    /// Asks for notification and alarm permission here, with the reasons,
+    /// rather than out of the blue when the first cook timer starts. Saying yes also turns
+    /// on the daily expiry reminder, which can be changed in Settings.
+    private var notifications: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            Image(systemName: "bell.badge.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(Color.brand)
+                .symbolEffect(.bounce, value: askingForNotifications)
+            VStack(spacing: 8) {
+                Text("Get a heads-up").font(.system(.title, design: .rounded, weight: .bold))
+                    .multilineTextAlignment(.center)
+                Text("Sous Chef can let you know when food is about to go off and when a timer is done.")
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 18) {
+                feature("hourglass", "Use it before it expires", "One daily reminder listing what's expiring soon, so less goes to waste.")
+                feature("timer", "Cook timers", "Timers ring like an alarm, even in silent mode or with your phone locked.")
+                feature("bell.slash", "Only what matters", "Days with nothing expiring stay quiet. Change it anytime in Settings.")
+            }
+            .padding(.horizontal, 8)
+            Spacer()
+            VStack(spacing: 12) {
+                Button {
+                    askingForNotifications = true
+                    Task {
+                        // Notifications for expiry reminders and timers, then
+                        // alarms for cook timers once that prompt has gone.
+                        await ExpiryReminders.shared.setEnabled(true)
+                        await AlertPermissions.untilActive()
+                        _ = await CookTimerAlarms.authorize()
+                        onFinish()
+                    }
+                } label: {
+                    Text("Turn on notifications").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(askingForNotifications)
+                .accessibilityIdentifier("enableNotifications")
+                Button("Not now", action: onFinish)
+                    .font(.callout)
+                    .disabled(askingForNotifications)
+                    .accessibilityIdentifier("finishOnboarding")
+            }
         }
         .transition(.move(edge: .trailing).combined(with: .opacity))
     }

@@ -2,10 +2,178 @@
 
 Each build uploaded to TestFlight gets an entry here, newest first, headed
 `## <version> (<build>)`. `pnpm ios:testflight upload` copies the text under
-"What to Test" into the build's **What to Test** field in App Store Connect
-(bold and code formatting are dropped), so write it for testers:
-plain language, under 4,000 characters, and focused on what to try and what to
-confirm. Mention big fixes by name so testers can check they're gone.
+"What to Test" into the build's **What to Test** field in App Store Connect;
+`pnpm ios:testflight print [build]` previews it. Keep entries short and in this
+shape, covering only what changed in that build:
+
+```
+What to test (please focus here)
+- Feature: what's new and the steps to try it.
+
+Fixes to verify
+- Problem: what was fixed and how to check it's gone.
+```
+
+Leave out a list that has nothing in it. The script adds the
+"Build <version> (<build>) — Sous Chef" line at the top and the TestFlight
+feedback ask at the end, so don't write either. Bold and code formatting are
+dropped, and the whole note must stay under 4,000 characters. App Store
+"What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
+
+## 1.1.0 (11)
+
+### What to Test
+
+Fixes to verify
+- Timer alarms: alarms now ring and show on screen instead of only sending a notification. Put the phone on silent, lock it, and let a short timer finish.
+
+## 1.1.0 (10)
+
+What's in it: everything from 1.1.0 (9), plus a reorganized Settings page.
+
+### What to Test
+
+- Settings now opens on a short list of groups (Sync and Storage,
+  Notifications, Intelligence and Lookups, Community), each with its own page.
+- Check that every setting is still there and easy to find.
+- Send us any suggestions or comments on the new layout.
+
+## 1.1.0 (9)
+
+What's in it: everything from 1.1.0 (8), plus fixes for cook timers that
+didn't alert and a new place to see your notification settings.
+
+### What to Test
+
+**Cook timers always alert (fix)**
+- In build 8, a timer could finish with no alarm, no notification and no
+  sound. Every timer now also sends a notification with sound, and still
+  rings as an alarm when alarms are allowed.
+- Start a short timer, lock the phone, and wait. You should hear it and see
+  "... timer is done". With alarms on, you may see both the alarm and a
+  notification; tell us if that feels like too much.
+- Try it with Sous Chef open, too. You should get a banner with sound.
+
+**Notifications and timers in Settings (new)**
+- Open Settings in Sous Chef. "Notifications and timers" should show
+  whether Notifications, Timer alarms and Live Activities are On, Off or
+  Not set up, and if notification sounds are off.
+- If something isn't set up, the button there should ask for it. If
+  something is off, "Change in Settings" should open Sous Chef's page in
+  the Settings app. Change a switch, come back, and the status should update.
+
+**Onboarding asks for alarms properly (fix)**
+- On a fresh install, tap "Turn on notifications" at the end of onboarding.
+  You should be asked about notifications and then about alarms. Before,
+  the alarm question could be skipped and alarms quietly turned off.
+
+**Cook mode warning (new)**
+- With notifications and alarms both off, start a timer. Cook mode should
+  say timers can only alert you inside Sous Chef, with a link to Settings.
+
+**Dynamic Island**
+- Start a timer and leave the app. Do you see the countdown in the Dynamic
+  Island and on the Lock Screen? If not, check whether Live Activities shows
+  Off in Sous Chef's Settings and tell us what it says.
+
+**Please send feedback**
+- Tell us whether each timer alerted, how you heard it (alarm, notification,
+  or nothing), and whether the phone was locked, silent or in a Focus.
+  Screenshots of the new Settings section help a lot.
+
+## 1.1.0 (8)
+
+What's in it: everything from 1.1.0 (7), plus a new last onboarding page
+that asks for notification and alarm permission up front.
+
+### What to Test
+
+**Notifications page in onboarding (new)**
+- Delete Sous Chef and install this build so onboarding shows again. After
+  the iCloud page, a "Get a heads-up" page should explain expiry reminders
+  and cook timers.
+- Tap "Turn on notifications". Sous Chef should ask to send notifications,
+  then to schedule alarms, and then open the app. Allow both.
+- Settings > Expiry reminders should show the daily reminder already on.
+- Start a cook timer. You shouldn't be asked for permission again, and the
+  timer should ring like an alarm as in 1.1.0 (7).
+
+**If you tap "Not now"**
+- Reinstall and tap "Not now" on that page. Onboarding should finish
+  without asking. Starting a cook timer should then ask once, as in
+  1.1.0 (7), and the daily reminder should stay off until you turn it on.
+
+## 1.1.0 (7)
+
+What's in it: everything from 1.1.0 (6), plus cook timers that ring like
+an alarm.
+
+### What to Test
+
+**Timers ring like an alarm (new)**
+- Start any cook timer. The first time, Sous Chef asks to schedule alarms.
+  Allow it.
+- Put the phone on silent, lock it, and let a short timer finish. It should
+  ring like a Clock app timer, through silent mode and Focus, and keep
+  ringing until you stop it. The alarm should say "Step 2 is done", or the
+  name you gave a custom timer, like "Rice is done".
+- Tap Open on the alarm. It should stop ringing and open Sous Chef in cook
+  mode. Try Stop (or swipe) too: it should just stop ringing.
+- Let a timer finish with Sous Chef open. The alarm should ring on top of
+  the app.
+- Remove a running timer from the strip at the top. Its alarm shouldn't
+  ring. Closing cook mode should also cancel its timers' alarms.
+- Run two or three timers at once. Each should ring on its own, and the
+  Lock Screen countdown should still list them together.
+
+**If you don't allow alarms**
+- Turn Sous Chef off under Settings > Sous Chef > Alarms (or decline the
+  prompt). Timers should still alert with a notification and sound, as in
+  1.1.0 (6).
+
+## 1.1.0 (6)
+
+What's in it: everything from 1.1.0 (5), plus a fix for a crash when tapping
+a finished cook timer's notification.
+
+### What to Test
+
+**Tapping timer notifications (fixed)**
+- Start a cook timer (a step's own timer or a custom one), leave the app or
+  lock the phone, and wait for it to finish. Tap the notification. Sous Chef
+  should open back in cook mode instead of crashing.
+- Try it with the app open on another screen too: the banner should appear
+  with sound, and tapping it shouldn't crash.
+- Tap an expiry reminder notification. It should still open the Use it up
+  list (or the Pantry's Use soon section from its action).
+
+**Custom timers**
+- Everything in the 1.1.0 (5) notes below still applies: the + beside a
+  step's timers, "Add a timer" on other steps, the dial and quick buttons.
+
+## 1.1.0 (5)
+
+What's in it: everything from 1.1.0 (4), plus custom cook timers.
+
+### What to Test
+
+**Custom timers in cook mode (new)**
+- Start cooking a recipe. On a step that mentions a time, there's a small +
+  next to the "Start … timer" button. On a step without a time, there's an
+  "Add a timer" button instead.
+- Tap it to open the timer dial. Drag the knob around the ring to set the
+  time: one full turn is an hour, and you can keep turning past it. You should
+  feel a light tick for each minute.
+- Try the +30s, +1m, +5m and +15m buttons and the reset button.
+- Give a timer a name, like "Rice", and start it. It should count down on the
+  step, in the strip at the top, on the Lock Screen and in the Dynamic Island,
+  and ring when it's done.
+- Start a custom timer with the same length as the step's own timer. The
+  step's "Start … timer" button should still be available.
+
+**Still worth checking**
+- The step's own timers, meal planning, expiry reminders and widgets should
+  work as in 1.1.0 (4).
 
 ## 1.1.0 (4)
 
