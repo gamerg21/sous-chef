@@ -59,6 +59,14 @@ struct PantryOutcomeTests {
         #expect(tally.used == 0 && tally.wasted == 1)
     }
 
+    @Test func deletingAsksOnlyForExpiredFoodInStock() {
+        let kitchen = Kitchen(inMemory: true)
+        #expect(kitchen.asksBeforeRemoving(item(kitchen, "Yogurt", 1, expiresInDays: -1)))
+        #expect(!kitchen.asksBeforeRemoving(item(kitchen, "Cream", 0, expiresInDays: -1)))
+        #expect(!kitchen.asksBeforeRemoving(item(kitchen, "Milk", 1, expiresInDays: 2)))
+        #expect(!kitchen.asksBeforeRemoving(item(kitchen, "Rice", 1)))
+    }
+
     @Test func cookingADatedItemToTheLastCrumbCountsAsUsed() async {
         let kitchen = Kitchen(inMemory: true)
         _ = item(kitchen, "Eggs", 2, expiresInDays: 4)

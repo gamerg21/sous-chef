@@ -149,16 +149,26 @@ export default function InventoryPage() {
     setItemToDelete(id);
   }, []);
 
-  // `outcome` is set when an expired item is marked used up or thrown away.
+  // `outcome` is set when an expired item is marked used up or thrown away:
+  // it's counted and kept as out of stock instead of being deleted.
   const handleConfirmDelete = useCallback(async (outcome?: "used" | "wasted") => {
     const id = itemToDelete;
     if (!id) return;
+    if (outcome) {
+      setItemToDelete(null);
+      try {
+        await settleExpired({ id: id as Id<"inventoryItems">, outcome });
+      } catch (error) {
+        setAlertModal({ isOpen: true, message: error instanceof Error ? error.message : "Could not update the item. Please try again.", variant: "error" });
+      }
+      return;
+    }
 
     setDeletingItems((prev) => new Set(prev).add(id));
 
     setTimeout(async () => {
       try {
-        await removeItem({ id: id as Id<"inventoryItems">, outcome });
+        await removeItem({ id: id as Id<"inventoryItems"> });
 
         setDeletingItems((prev) => {
           const next = new Set(prev);
@@ -183,7 +193,7 @@ export default function InventoryPage() {
     }, 300);
 
     setItemToDelete(null);
-  }, [itemToDelete, removeItem]);
+  }, [itemToDelete, removeItem, settleExpired]);
 
   const handleScanBarcode = useCallback(() => {
     setShowScanner(true);
@@ -367,10 +377,10 @@ export default function InventoryPage() {
         />
       )}
       {/* Past its date: ask what happened, for the used-versus-wasted tally. */}
-      <Modal isOpen={expiredToDelete !== undefined} onClose={() => setItemToDelete(null)} title="Remove expired item">
+      <Modal isOpen={expiredToDelete !== undefined} onClose={() => setItemToDelete(null)} title="Expired item">
         <div className="space-y-5">
           <p className="text-base text-stone-600 dark:text-stone-300">
-            {expiredToDelete?.name} is past its date. Did you use it up, or throw it away?
+            {expiredToDelete?.name} is past its date. Did you use it up, or throw it away? It stays in your inventory as out of stock.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <button type="button" onClick={() => void handleConfirmDelete("used")} className={cx(buttonClassName("secondary"), "min-h-11")}>

@@ -178,11 +178,8 @@ struct PantryView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                kitchen.delete(item)
-                kitchen.changed()
-            } label: { Label("Delete", systemImage: "trash") }
-            .tint(.red)
+            Button(role: .destructive) { remove(item) } label: { Label("Delete", systemImage: "trash") }
+                .tint(.red)
             Button {
                 kitchen.addShopping(item.name)
             } label: { Label("To list", systemImage: "cart.badge.plus") }
@@ -202,7 +199,18 @@ struct PantryView: View {
                 Button { withAnimation { kitchen.settle(item, as: .wasted) } } label: { Label("Thrown away", systemImage: "xmark.bin") }
             }
             Button { kitchen.addShopping(item.name) } label: { Label("Add to shopping list", systemImage: "cart.badge.plus") }
-            Button(role: .destructive) { kitchen.delete(item); kitchen.changed() } label: { Label("Delete", systemImage: "trash") }
+            Button(role: .destructive) { remove(item) } label: { Label("Delete", systemImage: "trash") }
+        }
+    }
+
+    /// Deletes the item, except that food past its date that's still in stock
+    /// asks "Used" or "Thrown away" and stays as Out.
+    private func remove(_ item: PantryItem) {
+        if kitchen.asksBeforeRemoving(item) {
+            askingOutcome = item
+        } else {
+            kitchen.delete(item)
+            kitchen.changed()
         }
     }
 

@@ -34,6 +34,13 @@ extension Kitchen {
         changed()
     }
 
+    /// Whether deleting `item` should first ask "Used" or "Thrown away": it's
+    /// in stock and past its date. Answering settles it as Out instead of
+    /// deleting it, as on the web; an item that's already out deletes as usual.
+    func asksBeforeRemoving(_ item: PantryItem, now: Date = .now) -> Bool {
+        item.quantity > 0 && PantryOutcome.whenEmptied(expiresOn: item.expiresOn, now: now) == .ask
+    }
+
     /// This month's used and thrown-away counts.
     func outcomeTally(now: Date = .now) -> (used: Int, wasted: Int) {
         PantryOutcome.tally(fetch(PantryOutcome.self), month: PantryOutcome.month(of: now))

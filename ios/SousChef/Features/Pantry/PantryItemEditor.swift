@@ -45,6 +45,8 @@ struct PantryItemEditor: View {
     @State private var loaded = false
     /// Set when saving would run an item past its date out: ask what happened first.
     @State private var askingOutcome: PantryItem?
+    /// Set when deleting an item that's past its date and in stock.
+    @State private var askingRemoval: PantryItem?
     @FocusState private var nameFocused: Bool
 
     private var suggestions: [String] {
@@ -160,9 +162,13 @@ struct PantryItemEditor: View {
                 if let item {
                     Section {
                         Button(role: .destructive) {
-                            kitchen.delete(item)
-                            kitchen.changed()
-                            dismiss()
+                            if kitchen.asksBeforeRemoving(item) {
+                                askingRemoval = item
+                            } else {
+                                kitchen.delete(item)
+                                kitchen.changed()
+                                dismiss()
+                            }
                         } label: {
                             Label("Delete item", systemImage: "trash")
                         }
@@ -190,6 +196,10 @@ struct PantryItemEditor: View {
             }
             .onAppear(perform: load)
             .pastDatePrompt(for: $askingOutcome) { _, kind in save(outcome: kind) }
+            .pastDatePrompt(for: $askingRemoval) { item, kind in
+                kitchen.settle(item, as: kind)
+                dismiss()
+            }
         }
     }
 
