@@ -2,6 +2,7 @@
 
 - Web cooking: amounts that differ only by unit-conversion rounding now count as the whole pantry item. Cooking 453 g or 454 g from a 1 lb pack, or 240 ml from a cup, uses it up (and counts it as used if it was dated), instead of leaving 0.0013 lb behind or asking for 0.4 g more on the shopping list. The tolerance is 2% of the pantry item and applies only when the recipe and pantry units differ; same-unit amounts stay exact. Covered by new SQLite cooking and expiry tests.
 - Web cooking: when a soon-expiring batch is in a unit the recipe can't be compared with (a bunch of cilantro against a recipe in grams), and later or undated stock is used instead, the cook preview now shows a check asking to use the expiring batch and adjust by hand.
+- iOS: the cooking planner (`CookingPlanner.swift`) gets the same 2% conversion tolerance and passed-over expiring-batch check as the web, so the two apps agree. Covered by new `CookingPlannerTests`.
 - Web: the **Use it up** filter on What can I cook? works out "today" from the time-zone preference, like the used/thrown-away tally, falling back to the browser's zone.
 - Tests: a planned meal cooked at twice the recipe deducts and shops exactly what its preview showed; stock is used soonest-expiring first, including batches already past their date, which cooking still counts as used.
 - iOS: a Plan screen inside Cook for the weekly meal plan.
