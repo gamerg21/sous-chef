@@ -7,6 +7,16 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (11)
+
+What's in it: everything from 1.1.0 (10), plus a fix for cook timer alarms.
+
+### What to Test
+
+- Timer alarms should now ring and show on screen, not just send a notification.
+- Start a short timer, put the phone on silent, lock it, and let it finish.
+- Tell us whether it rang, and send any other feedback.
+
 ## 1.1.0 (10)
 
 What's in it: everything from 1.1.0 (9), plus a reorganized Settings page.
