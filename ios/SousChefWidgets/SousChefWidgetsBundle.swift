@@ -10,6 +10,7 @@ struct SousChefWidgetsBundle: WidgetBundle {
         ExpiringSoonWidget()
         ShoppingListWidget()
         CookTimerLiveActivity()
+        CookTimerAlarmLiveActivity()
     }
 }
 

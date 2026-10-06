@@ -10,9 +10,7 @@ import SwiftUI
 /// The alarms only ring. The countdown stays in cook mode's own Live
 /// Activity, which lists every timer in one place.
 enum CookTimerAlarms {
-    nonisolated struct Metadata: AlarmMetadata {
-        var recipeTitle: String
-    }
+    typealias Metadata = CookTimerAlarmMetadata
 
     static var isAvailable: Bool { !ProcessInfo.processInfo.isiOSAppOnMac }
 
