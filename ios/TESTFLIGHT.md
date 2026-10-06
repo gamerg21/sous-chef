@@ -7,6 +7,49 @@ Each build uploaded to TestFlight gets an entry here, newest first, headed
 plain language, under 4,000 characters, and focused on what to try and what to
 confirm. Mention big fixes by name so testers can check they're gone.
 
+## 1.1.0 (9)
+
+What's in it: everything from 1.1.0 (8), plus fixes for cook timers that
+didn't alert and a new place to see your notification settings.
+
+### What to Test
+
+**Cook timers always alert (fix)**
+- In build 8, a timer could finish with no alarm, no notification and no
+  sound. Every timer now also sends a notification with sound, and still
+  rings as an alarm when alarms are allowed.
+- Start a short timer, lock the phone, and wait. You should hear it and see
+  "... timer is done". With alarms on, you may see both the alarm and a
+  notification; tell us if that feels like too much.
+- Try it with Sous Chef open, too. You should get a banner with sound.
+
+**Notifications and timers in Settings (new)**
+- Open Settings in Sous Chef. "Notifications and timers" should show
+  whether Notifications, Timer alarms and Live Activities are On, Off or
+  Not set up, and if notification sounds are off.
+- If something isn't set up, the button there should ask for it. If
+  something is off, "Change in Settings" should open Sous Chef's page in
+  the Settings app. Change a switch, come back, and the status should update.
+
+**Onboarding asks for alarms properly (fix)**
+- On a fresh install, tap "Turn on notifications" at the end of onboarding.
+  You should be asked about notifications and then about alarms. Before,
+  the alarm question could be skipped and alarms quietly turned off.
+
+**Cook mode warning (new)**
+- With notifications and alarms both off, start a timer. Cook mode should
+  say timers can only alert you inside Sous Chef, with a link to Settings.
+
+**Dynamic Island**
+- Start a timer and leave the app. Do you see the countdown in the Dynamic
+  Island and on the Lock Screen? If not, check whether Live Activities shows
+  Off in Sous Chef's Settings and tell us what it says.
+
+**Please send feedback**
+- Tell us whether each timer alerted, how you heard it (alarm, notification,
+  or nothing), and whether the phone was locked, silent or in a Focus.
+  Screenshots of the new Settings section help a lot.
+
 ## 1.1.0 (8)
 
 What's in it: everything from 1.1.0 (7), plus a new last onboarding page
