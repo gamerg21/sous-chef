@@ -123,6 +123,8 @@ export default function InventoryPage() {
     null
   );
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
+  // An edit that empties food past its date waits here to ask what happened to it.
+  const [emptying, setEmptying] = useState<{ name: string; save: (outcome: "used" | "wasted") => Promise<unknown> } | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
@@ -258,6 +260,20 @@ export default function InventoryPage() {
     }
   }, [settleExpired]);
 
+  const handleEmptyingOutcome = useCallback(async (outcome: "used" | "wasted") => {
+    const pending = emptying;
+    setEmptying(null);
+    if (!pending) return;
+    try {
+      await pending.save(outcome);
+      setShowAddModal(false);
+      setEditingItemId(null);
+      setPrefillData(null);
+    } catch (error) {
+      setAlertModal({ isOpen: true, message: error instanceof Error ? error.message : "Failed to save item. Please try again.", variant: "error" });
+    }
+  }, [emptying]);
+
   const handleViewExpiringSoon = useCallback(() => {
     setFilter("expiring-soon");
   }, []);
@@ -274,7 +290,7 @@ export default function InventoryPage() {
         };
 
         if (editingItemId) {
-          await updateItem({
+          const save = (outcome?: "used" | "wasted") => updateItem({
             id: editingItemId as Id<"inventoryItems">,
             name: cleanedData.name,
             locationId: cleanedData.locationId,
@@ -285,7 +301,17 @@ export default function InventoryPage() {
             notes: cleanedData.notes,
             barcode: cleanedData.barcode,
             nutritionPer100g: itemData.nutritionPer100g,
+            outcome,
           });
+          // Running out of dated food counts it, as on iOS: used before its
+          // date, or ask "Used it up" or "Thrown away" once it's past.
+          const current = inventoryData?.items.find((item) => item.id === editingItemId);
+          const status = current && current.quantity > 0 && !((cleanedData.quantity ?? current.quantity) > 0) ? itemExpiryStatus(current) : "none";
+          if (current && status === "expired") {
+            setEmptying({ name: current.name, save });
+            return;
+          }
+          await save(status === "none" ? undefined : "used");
         } else {
           if (!itemData.name || !itemData.locationId || !itemData.quantity || !itemData.unit) {
             throw new Error("Name, location, quantity, and unit are required.");
@@ -319,7 +345,7 @@ export default function InventoryPage() {
         });
       }
     },
-    [editingItemId, createItem, updateItem]
+    [editingItemId, inventoryData, createItem, updateItem]
   );
 
   if (inventoryData === undefined) {
@@ -330,6 +356,12 @@ export default function InventoryPage() {
 
   const pendingDelete = itemToDelete ? items.find((item) => item.id === itemToDelete) : undefined;
   const expiredToDelete = pendingDelete && pendingDelete.quantity > 0 && itemExpiryStatus(pendingDelete) === "expired" ? pendingDelete : undefined;
+  // Deleting or emptying food past its date asks the same question.
+  const askOutcome = expiredToDelete
+    ? { name: expiredToDelete.name, choose: handleConfirmDelete, cancel: () => setItemToDelete(null) }
+    : emptying
+      ? { name: emptying.name, choose: handleEmptyingOutcome, cancel: () => setEmptying(null) }
+      : undefined;
 
   return (
     <>
@@ -377,20 +409,20 @@ export default function InventoryPage() {
         />
       )}
       {/* Past its date: ask what happened, for the used-versus-wasted tally. */}
-      <Modal isOpen={expiredToDelete !== undefined} onClose={() => setItemToDelete(null)} title="Expired item">
+      <Modal isOpen={askOutcome !== undefined} onClose={() => askOutcome?.cancel()} title="Expired item">
         <div className="space-y-5">
           <p className="text-base text-stone-600 dark:text-stone-300">
-            {expiredToDelete?.name} is past its date. Did you use it up, or throw it away? It stays in your inventory as out of stock.
+            {askOutcome?.name} is past its date. Did you use it up, or throw it away? It stays in your inventory as out of stock.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <button type="button" onClick={() => void handleConfirmDelete("used")} className={cx(buttonClassName("secondary"), "min-h-11")}>
+            <button type="button" onClick={() => void askOutcome?.choose("used")} className={cx(buttonClassName("secondary"), "min-h-11")}>
               Used it up
             </button>
-            <button type="button" onClick={() => void handleConfirmDelete("wasted")} className={cx(buttonClassName("danger"), "min-h-11")}>
+            <button type="button" onClick={() => void askOutcome?.choose("wasted")} className={cx(buttonClassName("danger"), "min-h-11")}>
               Thrown away
             </button>
           </div>
-          <button type="button" onClick={() => setItemToDelete(null)} className={cx(buttonClassName("ghost"), "min-h-11 w-full")}>
+          <button type="button" onClick={() => askOutcome?.cancel()} className={cx(buttonClassName("ghost"), "min-h-11 w-full")}>
             Cancel
           </button>
         </div>

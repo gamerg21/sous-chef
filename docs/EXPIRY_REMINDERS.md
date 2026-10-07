@@ -21,6 +21,8 @@ rules live in `src/lib/expiring.ts`; the iOS app mirrors them in
   out of stock (quantity 0), so it can go back on the shopping list. Removing an
   expired item that's in stock asks the same question with the same result;
   removing it again once it's out deletes it.
+  Setting a dated item's quantity to 0 in the item editor counts it as used
+  before its date and asks the same question once it's past, as on iOS.
   Cooking a dated item down to nothing counts as used. The inventory page shows
   this month's totals. An item that's already out isn't counted again, and items
   removed before their date aren't counted.

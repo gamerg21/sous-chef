@@ -89,6 +89,22 @@ describe('used versus wasted', () => {
     expect(item).toMatchObject({ quantity: 2, expiresOn: '2026-04-01' });
   });
 
+  test('an edit that empties a dated item counts it once, with its old date', async () => {
+    const kitchen = await setup();
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, expiresOn: '2026-03-11', outcome: 'wasted' });
+    // Already out: saving again doesn't count it twice.
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, outcome: 'wasted' });
+    expect((await kitchen.asUser.query(api.expiry.list, {})).outcomes).toMatchObject([{ name: 'Milk', outcome: 'wasted', expiresOn: '2026-03-11' }]);
+    expect((await kitchen.t.run(ctx => ctx.db.get(kitchen.itemId)))?.expiresOn).toBeUndefined();
+
+    // Undated food isn't tracked, and an edit without an outcome (iOS sync) records nothing.
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 2 });
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, outcome: 'used' });
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 2, expiresOn: '2026-04-01' });
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0 });
+    expect(await kitchen.asUser.query(api.expiry.outcomes, {})).toMatchObject({ used: 0, wasted: 1 });
+  });
+
   test('opening the database clears dates left on items that are already out', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'sous-chef-'));
     try {

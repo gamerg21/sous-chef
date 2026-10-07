@@ -195,6 +195,8 @@ export const update = mutation({
     photoUrl: v.optional(v.union(v.string(), v.null())),
     barcode: v.optional(v.union(v.string(), v.null())),
     nutritionPer100g: v.optional(v.union(nutritionPer100g, v.null())),
+    // Whether a dated item this edit empties was used up or thrown away.
+    outcome: v.optional(v.union(v.literal("used"), v.literal("wasted"))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -249,6 +251,11 @@ export const update = mutation({
     // An item that's out has no expiry date; restocking it brings a new one.
     if (!((args.quantity ?? item.quantity) > 0)) patch.expiresOn = undefined;
 
+    // Counted only as it runs out, with the date it had; undated food isn't tracked.
+    if (args.outcome && item.quantity > 0 && !((args.quantity ?? item.quantity) > 0) && item.expiresOn) {
+      const name = (await ctx.db.get(item.foodItemId))?.name ?? "Unknown";
+      await recordOutcome(ctx, householdId, { name, outcome: args.outcome, on: await todayFor(ctx, userId), expiresOn: item.expiresOn });
+    }
     await ctx.db.patch(args.id, patch);
     if (args.nutritionPer100g !== undefined) {
       await applyNutrition(ctx, householdId, (patch.foodItemId as Id<"foodItems"> | undefined) ?? item.foodItemId, args.nutritionPer100g);
