@@ -21,6 +21,9 @@ enum AlertPermissions {
         var notifications: State = .notAsked
         /// Notifications are allowed but their sound is switched off.
         var notificationSoundOff = false
+        /// Notifications are allowed but Time Sensitive ones are switched
+        /// off, so without alarms a timer can be held back by Focus.
+        var timeSensitiveOff = false
         var alarms: State = .notAsked
         var liveActivities: State = .notAsked
 
@@ -33,6 +36,7 @@ enum AlertPermissions {
         /// Something was turned off and only the Settings app can turn it back on.
         var needsSettings: Bool {
             notifications == .off || notificationSoundOff || alarms == .off || liveActivities == .off
+                || (timeSensitiveOff && alarms != .allowed)
         }
     }
 
@@ -46,6 +50,7 @@ enum AlertPermissions {
         @unknown default: status.notifications = .off
         }
         status.notificationSoundOff = status.notifications == .allowed && settings.soundSetting == .disabled
+        status.timeSensitiveOff = status.notifications == .allowed && settings.timeSensitiveSetting == .disabled
         status.alarms = alarms
         if ProcessInfo.processInfo.isiOSAppOnMac {
             status.liveActivities = .unavailable
