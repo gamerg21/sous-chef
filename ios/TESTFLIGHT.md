@@ -20,6 +20,18 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.0 (12)
+
+### What to Test
+
+What to test (please focus here)
+- Used or thrown away: run dated food out with the Use swipe or the editor. Before its date it counts as used; past its date, choose Used or Thrown away. Pantry shows this month's totals, and Out food drops its old date.
+- Timers on the Lock Screen: start four or more timers, including one over an hour. Check "+N more", the "2h 59m" format, and that a timer says Done after you stop its alarm from the Lock Screen.
+
+Fixes to verify
+- Cooking across units: cooking grams from a pack in pounds uses up the pack instead of leaving a sliver.
+- Fewer repeat reminders: expired food stops appearing in reminders after the day after its date.
+
 ## 1.1.0 (11)
 
 ### What to Test

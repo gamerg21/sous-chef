@@ -30,7 +30,8 @@ export class KitchenDatabase {
       CREATE TABLE IF NOT EXISTS login_limits(subject TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, mime TEXT NOT NULL, bytes BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      INSERT OR IGNORE INTO metadata VALUES('schema_version','1');`);
+      INSERT OR IGNORE INTO metadata VALUES('schema_version','1');
+      UPDATE inventoryItems SET data=json_remove(data,'$.expiresOn') WHERE json_extract(data,'$.quantity') <= 0 AND json_extract(data,'$.expiresOn') IS NOT NULL;`);
   }
   // Serialize complete async transactions, including reads, on this connection.
   // Network actions execute outside this queue and open short transactions as needed.

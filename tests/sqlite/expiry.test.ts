@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { KitchenDatabase } from '../../src/server/kitchen/database';
 import { api, internal } from '../../src/lib/kitchen/api';
 import { kitchenTest } from './harness';
 
-async function setup(options: { timezone?: string; expiresOn?: string } = {}) {
-  const database = new KitchenDatabase(':memory:');
+async function setup(options: { timezone?: string; expiresOn?: string; filename?: string } = {}) {
+  const database = new KitchenDatabase(options.filename ?? ':memory:');
   const t = kitchenTest(database);
   await t.mutation(internal.units.seed, {});
   const ids = await t.run(async (ctx) => {
@@ -67,7 +70,57 @@ describe('used versus wasted', () => {
     expect(await kitchen.asUser.mutation(api.expiry.settle, { id: kitchen.itemId, outcome: 'used' })).toEqual({ recorded: false });
     const { items } = await kitchen.asUser.query(api.inventory.list, {});
     expect(items).toMatchObject([{ id: kitchen.itemId, quantity: 0 }]);
+    expect(items[0].expiresOn).toBeUndefined();
     expect(await kitchen.asUser.query(api.expiry.outcomes, {})).toMatchObject({ used: 0, wasted: 1 });
+    expect((await kitchen.asUser.query(api.expiry.list, {})).outcomes).toMatchObject([{ expiresOn: '2026-03-11' }]);
+  });
+
+  test('marking an item down to zero clears its date, and restocking takes a new one', async () => {
+    const kitchen = await setup();
+    // The edit form sends the date it showed along with the new quantity.
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, expiresOn: '2026-03-11' });
+    let item = await kitchen.t.run(ctx => ctx.db.get(kitchen.itemId));
+    expect(item).toMatchObject({ quantity: 0 });
+    expect(item?.expiresOn).toBeUndefined();
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, expiresOn: '2026-04-01' });
+    expect((await kitchen.t.run(ctx => ctx.db.get(kitchen.itemId)))?.expiresOn).toBeUndefined();
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 2, expiresOn: '2026-04-01' });
+    item = await kitchen.t.run(ctx => ctx.db.get(kitchen.itemId));
+    expect(item).toMatchObject({ quantity: 2, expiresOn: '2026-04-01' });
+  });
+
+  test('an edit that empties a dated item counts it once, with its old date', async () => {
+    const kitchen = await setup();
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, expiresOn: '2026-03-11', outcome: 'wasted' });
+    // Already out: saving again doesn't count it twice.
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, outcome: 'wasted' });
+    expect((await kitchen.asUser.query(api.expiry.list, {})).outcomes).toMatchObject([{ name: 'Milk', outcome: 'wasted', expiresOn: '2026-03-11' }]);
+    expect((await kitchen.t.run(ctx => ctx.db.get(kitchen.itemId)))?.expiresOn).toBeUndefined();
+
+    // Undated food isn't tracked, and an edit without an outcome (iOS sync) records nothing.
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 2 });
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0, outcome: 'used' });
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 2, expiresOn: '2026-04-01' });
+    await kitchen.asUser.mutation(api.inventory.update, { id: kitchen.itemId, quantity: 0 });
+    expect(await kitchen.asUser.query(api.expiry.outcomes, {})).toMatchObject({ used: 0, wasted: 1 });
+  });
+
+  test('opening the database clears dates left on items that are already out', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'sous-chef-'));
+    try {
+      const file = join(directory, 'kitchen.db');
+      const kitchen = await setup({ filename: file });
+      const restocked = await kitchen.t.run(async (ctx) => {
+        await ctx.db.patch(kitchen.itemId, { quantity: 0 });
+        const item = (await ctx.db.get(kitchen.itemId))!;
+        return ctx.db.insert('inventoryItems', { householdId: item.householdId, foodItemId: item.foodItemId, locationId: item.locationId, quantity: 1, unit: 'each', expiresOn: '2026-03-20' });
+      });
+      const reopened = kitchenTest(new KitchenDatabase(file));
+      expect((await reopened.run(ctx => ctx.db.get(kitchen.itemId)))?.expiresOn).toBeUndefined();
+      expect((await reopened.run(ctx => ctx.db.get(restocked)))?.expiresOn).toBe('2026-03-20');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   test('outcomes recorded by another device are idempotent by client ID and listed by month', async () => {

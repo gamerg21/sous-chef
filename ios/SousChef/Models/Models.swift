@@ -82,6 +82,13 @@ final class PantryItem {
     /// Nutrition entered by hand wins over barcode facts, as on the web.
     var effectiveNutrition: Nutrition? { nutrition ?? foodFacts?.nutrition }
 
+    /// Sets the amount on hand. An item that's out has no expiry date: the food
+    /// it described is gone, and restocking it brings a new date.
+    func setQuantity(_ amount: Double) {
+        if amount <= 0 || quantity <= 0 { expiresOn = nil }
+        quantity = amount
+    }
+
     func touch() {
         updatedAt = Date()
         needsPush = true

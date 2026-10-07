@@ -134,7 +134,7 @@ extension Kitchen {
         for item in emptied {
             // Counted as used before its date; past it, there's no one to ask, so it isn't counted.
             _ = countRunningOut(name: item.name, expiresOn: item.expiresOn, from: item.quantity, to: 0)
-            item.quantity = 0
+            item.setQuantity(0)
             item.touch()
         }
         let display = emptied.first?.name ?? name.trimmingCharacters(in: .whitespacesAndNewlines)

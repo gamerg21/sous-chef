@@ -165,7 +165,7 @@ struct PantryView: View {
                     Text(item.name).font(.body.weight(.medium)).foregroundStyle(.primary)
                     HStack(spacing: 8) {
                         if let detail = item.brand ?? item.category { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
-                        ExpiryLabel(date: item.expiresOn)
+                        ExpiryLabel(date: item.quantity > 0 ? item.expiresOn : nil)
                     }
                 }
                 Spacer()

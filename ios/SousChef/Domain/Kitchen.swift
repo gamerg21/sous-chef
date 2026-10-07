@@ -168,7 +168,7 @@ final class Kitchen {
     func adjust(_ item: PantryItem, by delta: Double, now: Date = .now) -> Bool {
         let next = (max(0, item.quantity + delta) * 1000).rounded() / 1000
         guard countRunningOut(name: item.name, expiresOn: item.expiresOn, from: item.quantity, to: next, now: now) else { return false }
-        item.quantity = next
+        item.setQuantity(next)
         item.touch()
         changed()
         return true

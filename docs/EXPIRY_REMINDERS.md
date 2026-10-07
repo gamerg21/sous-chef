@@ -21,9 +21,15 @@ rules live in `src/lib/expiring.ts`; the iOS app mirrors them in
   out of stock (quantity 0), so it can go back on the shopping list. Removing an
   expired item that's in stock asks the same question with the same result;
   removing it again once it's out deletes it.
+  Setting a dated item's quantity to 0 in the item editor counts it as used
+  before its date and asks the same question once it's past, as on iOS.
   Cooking a dated item down to nothing counts as used. The inventory page shows
   this month's totals. An item that's already out isn't counted again, and items
   removed before their date aren't counted.
+- **Out items have no date:** an item that runs out, however it happens, loses
+  its expiry date; the recorded outcome keeps it. Restocking the item asks for a
+  new date. Dates left on items that were already out are cleared when the
+  server starts.
 - **Settings → Account & preferences → Expiry reminders:** the window (1, 2, 3, 5
   or 7 days).
 
@@ -48,7 +54,7 @@ rules live in `src/lib/expiring.ts`; the iOS app mirrors them in
   "I ran out of…" in Siri) counts it as used when it's not past its date. When
   it is past its date, the app asks **Used** or **Thrown away** instead; the
   item's menu offers the same choice, and so does deleting it while it's in
-  stock. Either way the item stays as **Out**.
+  stock. Either way the item stays as **Out**, without its old date.
   Siri can't ask, so an expired item it empties isn't counted. Cooking a dated
   item to nothing counts as used. Outcomes sync through iCloud and, when
   connected, with the server (`expiry:record` and `expiry:list`), so the web and
