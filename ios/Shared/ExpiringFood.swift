@@ -57,6 +57,17 @@ nonisolated struct ExpiringFood: Hashable, Sendable, Identifiable {
         .sorted { $0.daysLeft != $1.daysLeft ? $0.daysLeft < $1.daysLeft : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
+    /// Reminders mention expired food until this many days past its date
+    /// ("expired yesterday"), then stop. Mirrors `REMINDER_DAYS_PAST_DATE` on the web.
+    static let reminderDaysPastDate = 1
+
+    /// What a reminder mentions: `find`, minus anything more than
+    /// `reminderDaysPastDate` past its date, so expired food isn't repeated
+    /// every day. The Pantry's "Use soon" keeps showing it.
+    static func reminderItems(in stock: [Stock], within days: Int = windowDays, now: Date = .now, calendar: Calendar = .current) -> [ExpiringFood] {
+        find(in: stock, within: days, now: now, calendar: calendar).filter { $0.daysLeft >= -reminderDaysPastDate }
+    }
+
     // MARK: Wording
 
     /// "expires today", "expire in 2 days", "expired yesterday"…

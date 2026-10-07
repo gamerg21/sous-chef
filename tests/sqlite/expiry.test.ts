@@ -53,6 +53,43 @@ describe('used versus wasted', () => {
     await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId });
     expect((await kitchen.asUser.query(api.expiry.outcomes, {})).used).toBe(1);
   });
+
+  test('removing an item that is already out does not count it again', async () => {
+    const kitchen = await setup();
+    await kitchen.t.run(async (ctx) => { await ctx.db.patch(kitchen.itemId, { quantity: 0 }); });
+    await kitchen.asUser.mutation(api.inventory.remove, { id: kitchen.itemId, outcome: 'wasted' });
+    expect((await kitchen.asUser.query(api.expiry.outcomes, {})).wasted).toBe(0);
+  });
+
+  test('settling an expired item records it once and leaves it out of stock', async () => {
+    const kitchen = await setup();
+    expect(await kitchen.asUser.mutation(api.expiry.settle, { id: kitchen.itemId, outcome: 'wasted' })).toEqual({ recorded: true });
+    expect(await kitchen.asUser.mutation(api.expiry.settle, { id: kitchen.itemId, outcome: 'used' })).toEqual({ recorded: false });
+    const { items } = await kitchen.asUser.query(api.inventory.list, {});
+    expect(items).toMatchObject([{ id: kitchen.itemId, quantity: 0 }]);
+    expect(await kitchen.asUser.query(api.expiry.outcomes, {})).toMatchObject({ used: 0, wasted: 1 });
+  });
+
+  test('outcomes recorded by another device are idempotent by client ID and listed by month', async () => {
+    const kitchen = await setup();
+    const outcome = { clientId: 'device-1', name: 'Yogurt', outcome: 'used' as const, on: '2026-03-10', expiresOn: '2026-03-09' };
+    const first = await kitchen.asUser.mutation(api.expiry.record, { ...outcome, householdId: kitchen.householdId });
+    const again = await kitchen.asUser.mutation(api.expiry.record, { ...outcome, name: 'Something else' });
+    expect(again.id).toBe(first.id);
+    await kitchen.asUser.mutation(api.expiry.record, { clientId: 'device-2', name: 'Milk', outcome: 'wasted', on: '2026-02-27' });
+    const march = await kitchen.asUser.query(api.expiry.list, { month: '2026-03' });
+    expect(march.outcomes).toEqual([{ id: first.id, clientId: 'device-1', name: 'Yogurt', outcome: 'used', on: '2026-03-10', expiresOn: '2026-03-09' }]);
+    expect((await kitchen.asUser.query(api.expiry.list, { month: '2026-02' })).outcomes.map(row => row.name)).toEqual(['Milk']);
+    expect(await kitchen.asUser.query(api.expiry.outcomes, { month: '2026-03' })).toMatchObject({ used: 1, wasted: 0 });
+    await expect(kitchen.asUser.mutation(api.expiry.record, { ...outcome, clientId: 'device-3', on: 'today' })).rejects.toThrow(/YYYY-MM-DD/);
+  });
+
+  test("another kitchen's outcomes stay private", async () => {
+    const kitchen = await setup();
+    const otherHousehold = await kitchen.t.run(async (ctx) => ctx.db.insert('households', { name: 'Elsewhere' }));
+    await expect(kitchen.asUser.mutation(api.expiry.record, { householdId: otherHousehold, clientId: 'x', name: 'Milk', outcome: 'used', on: '2026-03-10' })).rejects.toThrow(/Permission denied/);
+    await expect(kitchen.asUser.query(api.expiry.list, { householdId: otherHousehold })).rejects.toThrow(/Permission denied/);
+  });
 });
 
 describe('cooking outcomes', () => {

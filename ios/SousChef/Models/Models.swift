@@ -221,9 +221,9 @@ final class Tombstone {
 }
 
 enum SyncKind: String {
-    case pantry, recipe, shopping, mealPlan
+    case pantry, recipe, shopping, mealPlan, outcome
 }
 
 enum KitchenSchema {
-    static let models: [any PersistentModel.Type] = [PantryItem.self, Recipe.self, ShoppingItem.self, PlannedMeal.self, Tombstone.self]
+    static let models: [any PersistentModel.Type] = [PantryItem.self, Recipe.self, ShoppingItem.self, PlannedMeal.self, Tombstone.self, PantryOutcome.self]
 }

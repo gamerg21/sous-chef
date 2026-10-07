@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { daysBetween, expiringUsedBy, expiringWindow, expiryPhrase, findExpiring, localDay, rankByExpiring, summarizeExpiring } from '../src/lib/expiring';
+import { daysBetween, expiringUsedBy, expiringWindow, expiryPhrase, findExpiring, findReminderItems, localDay, rankByExpiring, summarizeExpiring } from '../src/lib/expiring';
 import { planCooking } from '../src/lib/cooking-plan';
 
 const today = '2026-03-10';
@@ -18,6 +18,16 @@ describe('expiring items', () => {
     expect(found.map(item => [item.id, item.daysLeft])).toEqual([['yogurt', -2], ['milk', 2], ['spinach', 2]]);
     expect(findExpiring(stock, { today, withinDays: 10 }).map(item => item.id)).toContain('eggs');
     expect(findExpiring(stock, { today, withinDays: 1 }).map(item => item.id)).toEqual(['yogurt']);
+  });
+
+  test('reminders mention expired food through the day after its date, then stop', () => {
+    const items = [
+      { id: 'today', name: 'Milk', quantity: 1, expiresOn: '2026-03-10' },
+      { id: 'yesterday', name: 'Yogurt', quantity: 1, expiresOn: '2026-03-09' },
+      { id: 'older', name: 'Cream', quantity: 1, expiresOn: '2026-03-08' },
+    ];
+    expect(findReminderItems(items, { today, withinDays: 3 }).map(item => item.id)).toEqual(['yesterday', 'today']);
+    expect(findExpiring(items, { today, withinDays: 3 }).map(item => item.id)).toEqual(['older', 'yesterday', 'today']);
   });
 
   test('falls back to three days for invalid windows', () => {

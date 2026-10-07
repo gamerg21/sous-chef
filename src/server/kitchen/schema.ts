@@ -311,13 +311,18 @@ export default defineSchema({
   // ── Pantry outcomes ───────────────────────────────────────────────────
   // What became of dated items when they left the pantry: cooked or marked
   // used ("used"), or thrown away ("wasted"). `on` is the cook's local day.
+  // `clientId` is the iOS app's own ID for an outcome it recorded, so pushing
+  // it again doesn't count it twice.
   pantryOutcomes: defineTable({
     householdId: v.id("households"),
     name: v.string(),
     outcome: v.union(v.literal("used"), v.literal("wasted")),
     on: v.string(),
     expiresOn: v.optional(v.string()),
-  }).index("by_householdId_and_on", ["householdId", "on"]),
+    clientId: v.optional(v.string()),
+  })
+    .index("by_householdId_and_on", ["householdId", "on"])
+    .index("by_householdId_and_clientId", ["householdId", "clientId"]),
 
   // ── User Unit Usage ───────────────────────────────────────────────────
   userUnitUsage: defineTable({

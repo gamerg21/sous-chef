@@ -21,10 +21,12 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 - **Timers on the Lock Screen**: Running timers count down on the Lock Screen and in the Dynamic Island, show when they'll be done, and say "Done" when they finish, even if you stop the alarm without opening Sous Chef. Long timers read like "2 hr, 59 min", and with four or more timers the Lock Screen shows how many more are running.
 - **Use it up**: An optional daily reminder lists food that expires soon, and Cook's Use it up list shows recipes that use it.
 - **New widgets**: Tonight's Meal, Use Soon and Shopping List widgets for the Home Screen and Lock Screen.
+- **Used or thrown away**: Pantry shows how much dated food you used up or threw away this month. When something past its date runs out, choose Used or Thrown away, and it stays in your pantry as Out.
 
 ### Improved
 - **Simpler Settings**: Settings is organized into a few groups, and shows whether notifications, alarms and Live Activities are on.
 - **Notifications during setup**: The welcome screens explain expiry reminders and timers and ask for permission up front.
+- **Fewer repeat reminders**: Expired food is mentioned until the day after its date, instead of in every reminder until you remove it.
 
 ### Fixed
 - **Cooking across units**: Cooking a recipe in grams from a pack in pounds, or in millilitres from a cup, uses up the pack instead of leaving a sliver or asking for a little more. Cook also warns when food that expires soon is measured in a unit the recipe can't use.

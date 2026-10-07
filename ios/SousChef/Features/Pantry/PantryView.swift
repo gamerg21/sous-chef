@@ -5,12 +5,15 @@ struct PantryView: View {
     @Binding var showSettings: Bool
     @Environment(Kitchen.self) private var kitchen
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
+    @Query private var outcomes: [PantryOutcome]
     @State private var search = ""
     @State private var scope: LocationScope = .all
     @State private var editing: PantryItem?
     @State private var adding = false
     @State private var scanning = false
     @State private var scannedPrefill: PantryPrefill?
+    /// An item past its date that "Use" would run out: ask what happened.
+    @State private var askingOutcome: PantryItem?
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
     private var navigator = AppNavigator.shared
 
@@ -46,6 +49,7 @@ struct PantryView: View {
                                 Eyebrow("Use soon", systemImage: "clock.badge.exclamationmark")
                             }
                         }
+                        if search.isEmpty { outcomeTally }
                         ForEach(StorageLocation.allCases) { location in
                             let group = filtered.filter { $0.location == location }
                             if !group.isEmpty {
@@ -96,6 +100,27 @@ struct PantryView: View {
                 .kitchenEnvironment(kitchen)
             }
             .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0).kitchenEnvironment(kitchen) }
+            .pastDatePrompt(for: $askingOutcome) { item, kind in withAnimation { kitchen.settle(item, as: kind) } }
+        }
+    }
+
+    /// "This month: 3 used · 1 thrown away", like the web's Use it up card.
+    @ViewBuilder
+    private var outcomeTally: some View {
+        let tally = PantryOutcome.tally(outcomes, month: PantryOutcome.month())
+        if tally.used + tally.wasted > 0 {
+            Section {
+                HStack(spacing: 6) {
+                    Text("\(tally.used) used").foregroundStyle(Color.brand)
+                    Text("·").foregroundStyle(.secondary)
+                    Text("\(tally.wasted) thrown away").foregroundStyle(tally.wasted > 0 ? .red : .primary)
+                }
+                .font(.callout.weight(.medium).monospacedDigit())
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("outcomeTally")
+            } header: {
+                Eyebrow("This month", systemImage: "chart.bar")
+            }
         }
     }
 
@@ -153,25 +178,39 @@ struct PantryView: View {
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                kitchen.delete(item)
-                kitchen.changed()
-            } label: { Label("Delete", systemImage: "trash") }
-            .tint(.red)
+            Button(role: .destructive) { remove(item) } label: { Label("Delete", systemImage: "trash") }
+                .tint(.red)
             Button {
                 kitchen.addShopping(item.name)
             } label: { Label("To list", systemImage: "cart.badge.plus") }
             .tint(.blue)
         }
         .swipeActions(edge: .leading) {
-            Button { withAnimation { kitchen.adjust(item, by: -step(for: item)) } } label: { Label("Use", systemImage: "minus") }
+            Button {
+                withAnimation { if !kitchen.adjust(item, by: -step(for: item)) { askingOutcome = item } }
+            } label: { Label("Use", systemImage: "minus") }
                 .tint(.orange)
             Button { withAnimation { kitchen.adjust(item, by: step(for: item)) } } label: { Label("Add", systemImage: "plus") }
                 .tint(.brand)
         }
         .contextMenu {
+            if item.quantity > 0, PantryOutcome.whenEmptied(expiresOn: item.expiresOn) == .ask {
+                Button { withAnimation { kitchen.settle(item, as: .used) } } label: { Label("Used", systemImage: "checkmark.circle") }
+                Button { withAnimation { kitchen.settle(item, as: .wasted) } } label: { Label("Thrown away", systemImage: "xmark.bin") }
+            }
             Button { kitchen.addShopping(item.name) } label: { Label("Add to shopping list", systemImage: "cart.badge.plus") }
-            Button(role: .destructive) { kitchen.delete(item); kitchen.changed() } label: { Label("Delete", systemImage: "trash") }
+            Button(role: .destructive) { remove(item) } label: { Label("Delete", systemImage: "trash") }
+        }
+    }
+
+    /// Deletes the item, except that food past its date that's still in stock
+    /// asks "Used" or "Thrown away" and stays as Out.
+    private func remove(_ item: PantryItem) {
+        if kitchen.asksBeforeRemoving(item) {
+            askingOutcome = item
+        } else {
+            kitchen.delete(item)
+            kitchen.changed()
         }
     }
 

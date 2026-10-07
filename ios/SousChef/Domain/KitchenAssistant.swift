@@ -132,6 +132,8 @@ extension Kitchen {
     func ranOut(of name: String) -> RanOut {
         let emptied = onHand().filter { normalizeName($0.name) == normalizeName(name) }
         for item in emptied {
+            // Counted as used before its date; past it, there's no one to ask, so it isn't counted.
+            _ = countRunningOut(name: item.name, expiresOn: item.expiresOn, from: item.quantity, to: 0)
             item.quantity = 0
             item.touch()
         }

@@ -48,6 +48,8 @@ export interface KitchenInventoryDashboardViewProps {
   onRemoveItem?: (id: string) => void
   onViewExpiringSoon?: () => void
   onCookExpiring?: () => void
+  /** Records an expired item as used or thrown away and marks it out of stock. */
+  onSettleExpired?: (id: string, outcome: 'used' | 'wasted') => Promise<void> | void
   deletingItems?: Set<string>
   /** The cook's "expiring soon" window in days. */
   expiringWithinDays?: number
@@ -82,6 +84,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
     onRemoveItem,
     onViewExpiringSoon,
     onCookExpiring,
+    onSettleExpired,
     deletingItems = new Set(),
     expiringWithinDays = DEFAULT_EXPIRING_WITHIN_DAYS,
     outcomes,
@@ -278,6 +281,7 @@ export function KitchenInventoryDashboardView(props: KitchenInventoryDashboardVi
           outcomes={outcomes}
           onCookExpiring={onCookExpiring}
           onShowExpiring={() => changeFilter('expiring-soon')}
+          onSettleExpired={onSettleExpired}
         />
 
         {/* Controls */}

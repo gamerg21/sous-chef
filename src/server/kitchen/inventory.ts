@@ -271,7 +271,8 @@ export const remove = mutation({
       .unique();
     if (!membership) throw new Error("Permission denied");
 
-    if (args.outcome) {
+    // An item already out of stock was counted, or never needed counting.
+    if (args.outcome && item.quantity > 0) {
       const name = (await ctx.db.get(item.foodItemId))?.name ?? "Unknown";
       await recordOutcome(ctx, item.householdId, { name, outcome: args.outcome, on: await todayFor(ctx, userId), expiresOn: item.expiresOn });
     }

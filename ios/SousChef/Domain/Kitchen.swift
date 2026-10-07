@@ -161,11 +161,17 @@ final class Kitchen {
         fetch(PantryItem.self).map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
     }
 
-    func adjust(_ item: PantryItem, by delta: Double) {
-        let next = max(0, item.quantity + delta)
-        item.quantity = (next * 1000).rounded() / 1000
+    /// Changes stock by `delta`. Running a dated item out follows
+    /// `countRunningOut`; for food past its date it changes nothing and
+    /// returns false, so the view asks "Used" or "Thrown away" (`settle`).
+    @discardableResult
+    func adjust(_ item: PantryItem, by delta: Double, now: Date = .now) -> Bool {
+        let next = (max(0, item.quantity + delta) * 1000).rounded() / 1000
+        guard countRunningOut(name: item.name, expiresOn: item.expiresOn, from: item.quantity, to: next, now: now) else { return false }
+        item.quantity = next
         item.touch()
         changed()
+        return true
     }
 
     // MARK: Cooking
@@ -200,7 +206,11 @@ final class Kitchen {
         let items = Dictionary(fetch(PantryItem.self).map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
         for deduction in plan.deductions {
             guard let item = items[deduction.id] else { continue }
-            if deduction.remaining <= 0.000001 { delete(item) }
+            if deduction.remaining <= 0.000001 {
+                // A dated item cooked to the last crumb counts as used, as on the server.
+                if item.quantity > 0, item.expiresOn != nil { recordOutcome(.used, name: item.name, expiresOn: item.expiresOn) }
+                delete(item)
+            }
             else {
                 item.quantity = deduction.remaining
                 item.touch()
@@ -371,6 +381,7 @@ final class Kitchen {
         for recipe in fetch(Recipe.self) where recipe.serverID != nil { context.delete(recipe) }
         for item in fetch(ShoppingItem.self) where item.serverID != nil { context.delete(item) }
         for meal in fetch(PlannedMeal.self) where meal.serverID != nil { context.delete(meal) }
+        for outcome in fetch(PantryOutcome.self) where outcome.serverID != nil { context.delete(outcome) }
         for tombstone in fetch(Tombstone.self) { context.delete(tombstone) }
         try? context.save()
     }
@@ -386,6 +397,7 @@ final class Kitchen {
         }
         for item in fetch(ShoppingItem.self) { item.serverID = nil; item.needsPush = true; item.recipeServerID = nil }
         for meal in fetch(PlannedMeal.self) { meal.serverID = nil; meal.needsPush = true; meal.recipeServerID = nil }
+        for outcome in fetch(PantryOutcome.self) { outcome.serverID = nil; outcome.needsPush = true }
         for tombstone in fetch(Tombstone.self) { context.delete(tombstone) }
         try? context.save()
     }
