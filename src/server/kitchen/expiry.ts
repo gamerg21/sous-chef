@@ -100,7 +100,7 @@ export const record = mutation({
 
 /**
  * "Used" or "Thrown away" for an item past its date: records the outcome and
- * leaves the item in the pantry as out of stock (quantity 0), so its history
+ * leaves the item in the pantry as out of stock (quantity 0, no date), so its history
  * and the shopping list keep working. An item already out isn't counted again.
  */
 export const settle = mutation({
@@ -113,7 +113,7 @@ export const settle = mutation({
     if (!(item.quantity > 0)) return { recorded: false };
     const name = (await ctx.db.get(item.foodItemId))?.name ?? "Unknown";
     await recordOutcome(ctx, item.householdId, { name, outcome: args.outcome, on: await todayFor(ctx, userId), expiresOn: item.expiresOn });
-    await ctx.db.patch(args.id, { quantity: 0 });
+    await ctx.db.patch(args.id, { quantity: 0, expiresOn: undefined });
     return { recorded: true };
   },
 });

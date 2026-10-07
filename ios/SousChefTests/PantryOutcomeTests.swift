@@ -89,6 +89,22 @@ struct PantryOutcomeTests {
         #expect(outcomes(kitchen).map(\.0) == ["Milk"])
     }
 
+    @Test func runningOutClearsTheDateAndTheOutcomeKeepsIt() {
+        let kitchen = Kitchen(inMemory: true)
+        let milk = item(kitchen, "Milk", 1, expiresInDays: 2)
+        let yogurt = item(kitchen, "Yogurt", 1, expiresInDays: -1)
+        let cream = item(kitchen, "Cream", 1, expiresInDays: 1)
+        #expect(kitchen.adjust(milk, by: -1))
+        kitchen.settle(yogurt, as: .wasted)
+        _ = kitchen.ranOut(of: "Cream")
+        #expect([milk, yogurt, cream].allSatisfy { $0.expiresOn == nil })
+        #expect(kitchen.fetch(PantryOutcome.self).allSatisfy { $0.expiresOn != nil })
+        // Restocking an item that's out doesn't bring back an old date.
+        milk.expiresOn = Calendar.current.date(byAdding: .day, value: -5, to: Date())
+        #expect(kitchen.adjust(milk, by: 1))
+        #expect(milk.quantity == 1 && milk.expiresOn == nil)
+    }
+
     @Test func tallyCountsThisMonthOnceEach() {
         func outcome(_ kind: PantryOutcome.Kind, _ on: String, serverID: String? = nil, uuid: UUID = UUID()) -> PantryOutcome {
             let value = PantryOutcome(name: "Milk", outcome: kind, on: on)

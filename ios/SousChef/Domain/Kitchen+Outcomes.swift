@@ -29,7 +29,7 @@ extension Kitchen {
     func settle(_ item: PantryItem, as kind: PantryOutcome.Kind, now: Date = .now) {
         guard item.quantity > 0 else { return }
         recordOutcome(kind, name: item.name, expiresOn: item.expiresOn, now: now)
-        item.quantity = 0
+        item.setQuantity(0)
         item.touch()
         changed()
     }

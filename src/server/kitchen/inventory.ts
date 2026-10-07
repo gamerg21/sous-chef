@@ -246,6 +246,8 @@ export const update = mutation({
     if (args.photoUrl !== undefined)
       patch.photoUrl = args.photoUrl ?? undefined;
     if (args.barcode !== undefined) patch.barcode = args.barcode ?? undefined;
+    // An item that's out has no expiry date; restocking it brings a new one.
+    if (!((args.quantity ?? item.quantity) > 0)) patch.expiresOn = undefined;
 
     await ctx.db.patch(args.id, patch);
     if (args.nutritionPer100g !== undefined) {

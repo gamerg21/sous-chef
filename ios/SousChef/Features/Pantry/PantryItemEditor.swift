@@ -211,7 +211,8 @@ struct PantryItemEditor: View {
             quantity = item.quantity
             unit = item.unit
             location = item.location
-            expiresOn = item.expiresOn
+            // An item that's out has no date, even one saved before that rule.
+            expiresOn = item.quantity > 0 ? item.expiresOn : nil
             brand = item.brand ?? ""
             category = item.category
             notes = item.notes ?? ""
@@ -262,10 +263,10 @@ struct PantryItemEditor: View {
         }
         let target = item ?? PantryItem(name: name)
         target.name = trimmed
-        target.quantity = newQuantity
+        target.setQuantity(newQuantity)
         target.unit = unit
         target.location = location
-        target.expiresOn = expiresOn
+        target.expiresOn = newQuantity > 0 ? expiresOn : nil
         target.brand = brand.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         target.category = category
         target.notes = notes.nilIfEmpty
