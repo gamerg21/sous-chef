@@ -86,8 +86,11 @@ struct CookModeView: View {
             try? await Task.sleep(for: .seconds(1))
             timersCanAlert = await AlertPermissions.current().timersCanAlert
         }
+        // Timers that finished while Sous Chef was in the background move
+        // behind the running ones and say "Done" on the Lock Screen.
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, !timers.isEmpty else { return }
+            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
             Task { timersCanAlert = await AlertPermissions.current().timersCanAlert }
         }
     }

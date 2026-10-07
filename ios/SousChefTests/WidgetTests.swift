@@ -59,6 +59,74 @@ struct WidgetTests {
         #expect(!trigger.repeats)
     }
 
+    @Test func timerNotificationsAreTimeSensitiveOnlyWithoutAnAlarm() {
+        let cookTimer = timer("Step 3", seconds: 600)
+        #expect(CookTimerAlerts.request(for: cookTimer, recipeTitle: "Pesto Pasta", in: 600).content.interruptionLevel == .timeSensitive)
+        #expect(CookTimerAlerts.request(for: cookTimer, recipeTitle: "Pesto Pasta", in: 600, hasAlarm: true).content.interruptionLevel == .active)
+    }
+
+    @Test func refreshingMovesFinishedTimersBehindRunningOnes() {
+        let first = timer("Step 2", seconds: 300)
+        let second = timer("Step 5", seconds: 900)
+        let third = timer("Step 7", seconds: 1800)
+        let state = CookTimerAlerts.contentState(for: [first, second, third], now: now)
+
+        // Ten minutes on: Step 2 has finished; Step 5 is next.
+        let later = now.addingTimeInterval(600)
+        let refreshed = CookTimerAlerts.refreshed(state, now: later)
+        #expect(refreshed.timers.map(\.label) == ["Step 5", "Step 7", "Step 2"])
+        #expect(CookTimerAlerts.staleDate(for: refreshed, now: later) == now.addingTimeInterval(900))
+
+        // Everything finished: most recent first, nothing left to go stale.
+        let done = CookTimerAlerts.refreshed(state, now: now.addingTimeInterval(3600))
+        #expect(done.timers.map(\.label) == ["Step 7", "Step 5", "Step 2"])
+        #expect(CookTimerAlerts.staleDate(for: done, now: now.addingTimeInterval(3600)) == nil)
+    }
+
+    @Test func staleActivityTreatsOnlyItsNextTimerAsDone() throws {
+        let state = CookTimerAlerts.contentState(for: [timer("Step 2", seconds: 300), timer("Step 5", seconds: 900)], now: now)
+        let next = try #require(state.next)
+        let other = state.timers[1]
+        // Rendered a moment before the stale date.
+        let early = now.addingTimeInterval(299)
+        #expect(!state.isDone(next, at: early, isStale: false))
+        #expect(state.isDone(next, at: early, isStale: true))
+        #expect(!state.isDone(other, at: early, isStale: true))
+        #expect(state.isDone(other, at: now.addingTimeInterval(900), isStale: false))
+    }
+
+    @Test(arguments: [(1, 0, 0), (3, 2, 0), (4, 1, 2), (6, 1, 4)])
+    func lockScreenListsWhatFitsThenHowManyMore(count: Int, shown: Int, hidden: Int) {
+        // The last timer has finished; it still counts toward "+N more".
+        var timers = (1..<count).map { timer("Step \($0)", seconds: 300 * $0) }
+        timers.append(timer("Step \(count)", seconds: 60, startedSecondsAgo: 120))
+        let state = CookTimerAlerts.contentState(for: timers, now: now)
+
+        let others = state.others(rows: 2)
+        #expect(others.shown.count == shown)
+        #expect(others.hidden == hidden)
+        #expect(others.shown.map(\.id) == Array(state.timers.dropFirst().prefix(shown)).map(\.id))
+    }
+
+    @Test func smallerRowsShowHoursAndMinutesForLongTimers() {
+        let enUS = Locale(identifier: "en_US")
+        func countdown(_ seconds: TimeInterval) -> CookTimerAttributes.Countdown {
+            .init(id: UUID(), label: "Step 1", startedAt: now, endsAt: now.addingTimeInterval(seconds))
+        }
+        func short(_ seconds: Int) -> String {
+            CookTimerAttributes.Countdown.shortFormat.locale(enUS).format(.seconds(seconds))
+        }
+        #expect(countdown(2 * 3600 + 59 * 60 + 11).usesShortFormat(at: now))
+        #expect(short(2 * 3600 + 59 * 60 + 11) == "2h 59m")
+        // Rounded down, like a countdown, not up to "3h".
+        #expect(short(2 * 3600 + 59 * 60 + 59) == "2h 59m")
+        #expect(short(3600) == "1h")
+
+        // Under an hour the rows keep the clock, which is narrower.
+        #expect(!countdown(59 * 60 + 11).usesShortFormat(at: now))
+        #expect(!countdown(45).usesShortFormat(at: now))
+    }
+
     // MARK: Snapshot
 
     @Test func snapshotRoundTripsThroughJSON() throws {

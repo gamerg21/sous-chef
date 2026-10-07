@@ -50,4 +50,16 @@ struct AppNotificationsTests {
         // A Mac has no alarms; that isn't something to fix in Settings.
         #expect(!Status(notifications: .allowed, alarms: .unavailable, liveActivities: .unavailable).needsSettings)
     }
+
+    @Test func timeSensitiveOffMattersOnlyForTimersWithoutAlarms() {
+        typealias Status = AlertPermissions.Status
+        let withAlarms = Status(notifications: .allowed, timeSensitiveOff: true, alarms: .allowed, liveActivities: .allowed)
+        #expect(!withAlarms.needsSettings)
+        #expect(AlertPermissionsSection.notificationNote(for: withAlarms) == nil)
+        let noAlarms = Status(notifications: .allowed, timeSensitiveOff: true, alarms: .off, liveActivities: .allowed)
+        #expect(noAlarms.needsSettings)
+        #expect(AlertPermissionsSection.notificationNote(for: noAlarms) == "Time Sensitive is off")
+        let mac = Status(notifications: .allowed, timeSensitiveOff: true, alarms: .unavailable, liveActivities: .unavailable)
+        #expect(mac.needsSettings)
+    }
 }

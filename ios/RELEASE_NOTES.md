@@ -17,8 +17,8 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 ### New
 - **Plan your week**: Plan meals by day in Cook, see what each needs from your pantry, and add the week's shortages to your shopping list.
 - **Custom cook timers**: Set a timer on any step with a kitchen-timer dial, quick-add buttons and an optional name.
-- **Timers that ring like alarms**: Cook timers ring through silent mode and Focus until you stop them, and every timer also sends a notification.
-- **Timers on the Lock Screen**: Running timers count down on the Lock Screen and in the Dynamic Island.
+- **Timers that ring like alarms**: Cook timers ring through silent mode and Focus until you stop them, and every timer also sends a notification. If you don't allow alarms, timer notifications still come through Focus as Time Sensitive.
+- **Timers on the Lock Screen**: Running timers count down on the Lock Screen and in the Dynamic Island, show when they'll be done, and say "Done" when they finish, even if you stop the alarm without opening Sous Chef. Long timers read like "2 hr, 59 min", and with four or more timers the Lock Screen shows how many more are running.
 - **Use it up**: An optional daily reminder lists food that expires soon, and Cook's Use it up list shows recipes that use it.
 - **New widgets**: Tonight's Meal, Use Soon and Shopping List widgets for the Home Screen and Lock Screen.
 

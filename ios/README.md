@@ -234,6 +234,18 @@ locked. Notification permission is asked the first time a timer starts. With
 the app in the foreground the alert still shows as a banner with sound, since
 the cook may be on another screen, alongside the in-app timer strip and haptic.
 
+The activity's stale date is the next timer's end, so the system re-renders it
+then and the next timer reads "Done" without the app. A ringing alarm's Stop
+(`StopCookTimerAlarmIntent`) and Open buttons re-sort the activity from its own
+state (`CookTimerAlerts.refreshActivity()`), and cook mode re-syncs when it
+returns to the foreground. The Lock Screen fits two timers under the next one;
+from four timers it shows one and "+N more". Smaller rows show timers with an
+hour or more to go as "2h 59m" (`Text(.durationOffset(to:), format:)`, which
+also ticks on its own). A timer without an alarm gets a Time Sensitive
+notification so it breaks through Focus; this needs the
+`com.apple.developer.usernotifications.time-sensitive` entitlement and the Time
+Sensitive Notifications capability on the App ID.
+
 On a Mac ("Designed for iPad") and wherever Live Activities are turned off, only
 the notifications are used. The in-app timers never depend on either.
 

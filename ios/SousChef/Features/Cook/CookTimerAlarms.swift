@@ -46,7 +46,8 @@ enum CookTimerAlarms {
                                          metadata: Metadata(recipeTitle: recipeTitle),
                                          tintColor: Color.brand)
         let configuration = AlarmManager.AlarmConfiguration<Metadata>.alarm(
-            schedule: .fixed(timer.ends), attributes: attributes, secondaryIntent: OpenCookModeIntent())
+            schedule: .fixed(timer.ends), attributes: attributes,
+            stopIntent: StopCookTimerAlarmIntent(timerID: timer.id), secondaryIntent: OpenCookModeIntent())
         _ = try await AlarmManager.shared.schedule(id: timer.id, configuration: configuration)
     }
 
@@ -65,5 +66,32 @@ struct OpenCookModeIntent: LiveActivityIntent {
     static let isDiscoverable = false
     static let supportedModes: IntentModes = .foreground(.immediate)
 
-    func perform() async throws -> some IntentResult { .result() }
+    func perform() async throws -> some IntentResult {
+        await CookTimerAlerts.shared.refreshActivity()
+        return .result()
+    }
+}
+
+/// The alarm's "Stop" button: silences it and, without opening Sous Chef,
+/// updates the cook timer Live Activity so the finished timer says "Done".
+struct StopCookTimerAlarmIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Stop Cook Timer"
+    static let isDiscoverable = false
+
+    @Parameter(title: "Timer")
+    var timerID: String
+
+    init() {}
+
+    init(timerID: UUID) {
+        self.timerID = timerID.uuidString
+    }
+
+    func perform() async throws -> some IntentResult {
+        if let id = UUID(uuidString: timerID) {
+            try? AlarmManager.shared.stop(id: id)
+        }
+        await CookTimerAlerts.shared.refreshActivity()
+        return .result()
+    }
 }

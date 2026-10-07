@@ -38,9 +38,14 @@ final class CookTimerAlerts {
         let countdowns = timers.map {
             CookTimerAttributes.Countdown(id: $0.id, label: $0.label, startedAt: $0.started, endsAt: $0.ends)
         }
-        let running = countdowns.filter { !$0.isDone(at: now) }.sorted { $0.endsAt < $1.endsAt }
-        let done = countdowns.filter { $0.isDone(at: now) }.sorted { $0.endsAt > $1.endsAt }
-        return CookTimerAttributes.ContentState(timers: running + done)
+        return CookTimerAttributes.ContentState(ordering: countdowns, now: now)
+    }
+
+    /// An activity's state brought up to date without cook mode: the same
+    /// timers, re-sorted so the ones that have finished move behind the
+    /// running ones and read "Done".
+    nonisolated static func refreshed(_ state: CookTimerAttributes.ContentState, now: Date = .now) -> CookTimerAttributes.ContentState {
+        CookTimerAttributes.ContentState(ordering: state.timers, now: now)
     }
 
     /// When the system should treat the activity as out of date: the moment
@@ -54,6 +59,19 @@ final class CookTimerAlerts {
     func sync(recipeTitle: String, timers: [CookTimer]) {
         syncAlarmsAndNotifications(recipeTitle: recipeTitle, timers: timers)
         Task { await syncActivity(recipeTitle: recipeTitle, timers: timers) }
+    }
+
+    /// Re-sorts the Live Activity's timers as of now and moves its stale date
+    /// to the next running timer. The alarm's buttons call this when a timer
+    /// rings, so the finished timer says "Done" without opening Sous Chef.
+    /// Works from the activity's own state, which outlives cook mode.
+    func refreshActivity() async {
+        let now = Date.now
+        for activity in Activity<CookTimerAttributes>.activities
+        where activity.activityState == .active || activity.activityState == .stale {
+            let state = Self.refreshed(activity.content.state, now: now)
+            await activity.update(ActivityContent(state: state, staleDate: Self.staleDate(for: state, now: now)))
+        }
     }
 
     /// Ends activities left over from a previous launch; their timers lived
@@ -106,7 +124,8 @@ final class CookTimerAlerts {
 
     /// Removed timers lose their notification and alarm (silencing a ringing
     /// alarm). New running timers always get a notification with sound, and
-    /// also an alarm when alarms are allowed. The notification isn't only a
+    /// also an alarm when alarms are allowed. Alarms are scheduled first, so
+    /// a timer without one gets a Time Sensitive notification instead. The notification isn't only a
     /// fallback for when alarms aren't allowed: an alarm that was scheduled
     /// can still fail to ring, and then the notification is all the cook gets.
     private func syncAlarmsAndNotifications(recipeTitle: String, timers: [CookTimer]) {
@@ -142,7 +161,8 @@ final class CookTimerAlerts {
             for timer in new where scheduled.contains(timer.id) {
                 let seconds = timer.ends.timeIntervalSinceNow
                 guard seconds > 0 else { continue }
-                try? await center.add(Self.request(for: timer, recipeTitle: recipeTitle, in: seconds))
+                let request = Self.request(for: timer, recipeTitle: recipeTitle, in: seconds, hasAlarm: alarms.contains(timer.id))
+                try? await center.add(request)
             }
         }
     }
@@ -165,13 +185,18 @@ final class CookTimerAlerts {
 
     nonisolated static func notificationID(_ timer: UUID) -> String { notificationPrefix + timer.uuidString }
 
-    nonisolated static func request(for timer: CookTimer, recipeTitle: String, in seconds: TimeInterval) -> UNNotificationRequest {
+    /// A timer's notification. Without an alarm it's all the cook gets, so it
+    /// is Time Sensitive and breaks through Focus; with one, the alarm already
+    /// does, and the notification stays an ordinary one.
+    nonisolated static func request(for timer: CookTimer, recipeTitle: String, in seconds: TimeInterval,
+                                    hasAlarm: Bool = false) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = "\(timer.label) timer is done"
         content.body = recipeTitle
         content.sound = .default
         content.categoryIdentifier = notificationCategory
         content.threadIdentifier = notificationCategory
+        content.interruptionLevel = hasAlarm ? .active : .timeSensitive
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
         return UNNotificationRequest(identifier: notificationID(timer.id), content: content, trigger: trigger)
     }
