@@ -12,6 +12,13 @@ type Stock = { id: string; name: string; quantity?: number; unit?: string; expir
 type Unit = { labels: string[]; type: string; factor?: number };
 const normalize = (value?: string) => (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const epsilon = 0.000001;
+/**
+ * Converted amounts within this share of a pantry item count as the whole item:
+ * 453 g or 454 g of a 1 lb pack, or 240 ml of a 1 cup carton, uses it up instead
+ * of leaving a sliver or asking for a little more. Only applies across units,
+ * where factors and recipes round.
+ */
+const conversionTolerance = 0.02;
 
 /** Unit lookup and conversion over the kitchen's unit catalog; null when units can't be compared. */
 export function unitConverter(catalog: Unit[]) {
@@ -47,17 +54,33 @@ export function planCooking(ingredients: Ingredient[], stock: Stock[], catalog: 
     }
     let needed = ingredient.quantity;
     const compatible = matches.filter(item => convert(1, ingredient.unit, item.unit) !== null);
+    const drawnFrom: typeof remaining = [];
     for (const item of compatible) {
       if (needed <= epsilon) break;
-      const used = Math.min(convert(needed, ingredient.unit, item.unit)!, item.quantity);
-      item.quantity -= used;
-      needed -= convert(used, item.unit, ingredient.unit)!;
+      if (item.quantity > epsilon) drawnFrom.push(item);
+      const wanted = convert(needed, ingredient.unit, item.unit)!;
+      if (units.get(normalize(ingredient.unit)) !== units.get(normalize(item.unit)) && Math.abs(wanted - item.quantity) <= item.quantity * conversionTolerance) {
+        item.quantity = 0;
+        needed = 0;
+        break;
+      }
+      const taken = Math.min(wanted, item.quantity);
+      item.quantity -= taken;
+      needed -= convert(taken, item.unit, ingredient.unit)!;
     }
     if (needed > epsilon) {
       const uncertain = matches.some(item => item.quantity > epsilon && convert(1, ingredient.unit, item.unit) === null);
       if (uncertain) plan.checks.push({ name: ingredient.name, reason: `Cannot compare the remaining ${Number(needed.toPrecision(6))} ${ingredient.unit ?? 'units'} with the pantry units. Check and adjust that stock manually.` });
       else missing(Number(needed.toPrecision(6)));
-    } else plan.availableCount++;
+    } else {
+      plan.availableCount++;
+      // Stock goes soonest-expiring first, but a batch in units the recipe can't be compared with is skipped.
+      const passedOver = matches.find(item => item.expiresOn && item.quantity > epsilon && !compatible.includes(item) && drawnFrom.some(other => !other.expiresOn || other.expiresOn > item.expiresOn!));
+      if (passedOver) {
+        const amount = [Number(passedOver.quantity.toPrecision(6)), passedOver.unit].filter(Boolean).join(' ');
+        plan.checks.push({ name: ingredient.name, reason: `The ${amount} expiring ${passedOver.expiresOn} can't be compared with the recipe's ${ingredient.unit ?? 'amount'}, so later stock is used instead. Use the expiring one if you can and adjust the pantry by hand.` });
+      }
+    }
   }
   plan.uses = [...uses];
   plan.deductions = remaining.filter(item => item.original - item.quantity > epsilon).map(item => ({ id: item.id, name: item.name, quantity: item.original - item.quantity, unit: item.unit, remaining: item.quantity }));

@@ -25,6 +25,11 @@ struct StockLine {
 
 enum CookingPlanner {
     private static let epsilon = 0.000001
+    /// Converted amounts within this share of a pantry item count as the whole item:
+    /// 453 g or 454 g of a 1 lb pack, or 240 ml of a 1 cup carton, uses it up instead
+    /// of leaving a sliver or asking for a little more. Only applies across units,
+    /// where factors and recipes round.
+    private static let conversionTolerance = 0.02
 
     static func plan(ingredients: [Ingredient], stock: [StockLine]) -> CookingPlan {
         struct Remaining { var line: StockLine; var quantity: Double; let original: Double }
@@ -55,12 +60,21 @@ enum CookingPlanner {
                 continue
             }
             var needed = quantity
-            for index in matchIndexes where Units.convert(1, from: ingredient.unit, to: remaining[index].line.unit) != nil {
+            let compatible = matchIndexes.filter { Units.convert(1, from: ingredient.unit, to: remaining[$0].line.unit) != nil }
+            var drawnFrom: [Int] = []
+            for index in compatible {
                 if needed <= epsilon { break }
-                let available = remaining[index].quantity
-                let used = min(Units.convert(needed, from: ingredient.unit, to: remaining[index].line.unit)!, available)
-                remaining[index].quantity -= used
-                needed -= Units.convert(used, from: remaining[index].line.unit, to: ingredient.unit)!
+                if remaining[index].quantity > epsilon { drawnFrom.append(index) }
+                let wanted = Units.convert(needed, from: ingredient.unit, to: remaining[index].line.unit)!
+                if Units.find(ingredient.unit) != Units.find(remaining[index].line.unit),
+                   abs(wanted - remaining[index].quantity) <= remaining[index].quantity * conversionTolerance {
+                    remaining[index].quantity = 0
+                    needed = 0
+                    break
+                }
+                let taken = min(wanted, remaining[index].quantity)
+                remaining[index].quantity -= taken
+                needed -= Units.convert(taken, from: remaining[index].line.unit, to: ingredient.unit)!
             }
             if needed > epsilon {
                 let uncertain = matchIndexes.contains { remaining[$0].quantity > epsilon && Units.convert(1, from: ingredient.unit, to: remaining[$0].line.unit) == nil }
@@ -72,6 +86,18 @@ enum CookingPlanner {
                 }
             } else {
                 plan.availableCount += 1
+                // Stock goes soonest-expiring first, but a batch in units the recipe can't be compared with is skipped.
+                // Expiry dates are calendar days, so compare days as the web's YYYY-MM-DD strings do.
+                func day(_ date: Date) -> Date { Calendar.current.startOfDay(for: date) }
+                let passedOver = matchIndexes.first { index in
+                    guard let expires = remaining[index].line.expiresOn, remaining[index].quantity > epsilon, !compatible.contains(index) else { return false }
+                    return drawnFrom.contains { other in remaining[other].line.expiresOn.map { day($0) > day(expires) } ?? true }
+                }
+                if let passedOver, let expires = remaining[passedOver].line.expiresOn {
+                    let item = remaining[passedOver]
+                    let amount = [Units.format(item.quantity), item.line.unit].filter { !$0.isEmpty }.joined(separator: " ")
+                    plan.checks.append(.init(name: ingredient.name, reason: "The \(amount) expiring \(expires.formatted(date: .abbreviated, time: .omitted)) can't be compared with the recipe's \(ingredient.unit ?? "amount"), so later stock is used instead. Use the expiring one if you can and adjust the pantry by hand."))
+                }
             }
         }
         plan.deductions = remaining

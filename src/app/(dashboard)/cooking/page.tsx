@@ -252,6 +252,7 @@ export default function CookingPage() {
         cookability={cookability}
         sort={sort}
         expiringWithinDays={preferencesData?.preferences?.expiringWithinDays}
+        timeZone={preferencesData?.preferences?.timezone}
         onSearchChange={setSearchQuery}
         onSetTag={setActiveTag}
         onSetCookability={setCookability}
