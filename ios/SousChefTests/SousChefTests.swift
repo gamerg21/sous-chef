@@ -71,6 +71,51 @@ struct CookingPlannerTests {
         #expect(plan.isReady)
         #expect(plan.deductions.first?.remaining == 150)
     }
+
+    @Test(arguments: [453.0, 454.0])
+    func usesWholePackWithinConversionTolerance(grams: Double) {
+        let plan = CookingPlanner.plan(ingredients: [Ingredient(name: "Beef", quantity: grams, unit: "g")], stock: [stock("Beef", 1, "lb")])
+        #expect(plan.isReady)
+        #expect(plan.deductions.first?.remaining == 0)
+    }
+
+    @Test func usesWholeCupForMetricVolume() {
+        let plan = CookingPlanner.plan(ingredients: [Ingredient(name: "Milk", quantity: 240, unit: "ml")], stock: [stock("Milk", 1, "cup")])
+        #expect(plan.isReady)
+        #expect(plan.deductions.first?.remaining == 0)
+    }
+
+    @Test func leavesRestOutsideConversionTolerance() {
+        let plan = CookingPlanner.plan(ingredients: [Ingredient(name: "Beef", quantity: 400, unit: "g")], stock: [stock("Beef", 1, "lb")])
+        #expect(plan.isReady)
+        #expect(abs((plan.deductions.first?.remaining ?? 0) - 53.592 / 453.592) < 0.000001)
+    }
+
+    @Test func keepsSameUnitAmountsExact() {
+        let plan = CookingPlanner.plan(ingredients: [Ingredient(name: "Flour", quantity: 99.5, unit: "g")], stock: [stock("Flour", 100, "g")])
+        #expect(plan.isReady)
+        #expect(abs((plan.deductions.first?.remaining ?? 0) - 0.5) < 0.000001)
+    }
+
+    @Test func warnsWhenAnIncomparableBatchExpiresFirst() {
+        let bunch = stock("Cilantro", 1, "bunch", expires: 1)
+        let grams = stock("Cilantro", 50, "g")
+        let plan = CookingPlanner.plan(ingredients: [Ingredient(name: "Cilantro", quantity: 10, unit: "g")], stock: [bunch, grams])
+        #expect(plan.deductions.map(\.id) == [grams.id])
+        #expect(plan.deductions.first?.remaining == 40)
+        #expect(plan.missingIngredients.isEmpty)
+        #expect(plan.availableCount == 1)
+        #expect(plan.checks.count == 1)
+        let date = bunch.expiresOn!.formatted(date: .abbreviated, time: .omitted)
+        #expect(plan.checks.first?.reason == "The 1 bunch expiring \(date) can't be compared with the recipe's g, so later stock is used instead. Use the expiring one if you can and adjust the pantry by hand.")
+    }
+
+    @Test func staysQuietWhenTheIncomparableBatchExpiresLater() {
+        let plan = CookingPlanner.plan(ingredients: [Ingredient(name: "Cilantro", quantity: 10, unit: "g")],
+                                       stock: [stock("Cilantro", 1, "bunch", expires: 5), stock("Cilantro", 50, "g", expires: 1)])
+        #expect(plan.isReady)
+        #expect(plan.deductions.first?.remaining == 40)
+    }
 }
 
 struct IngredientParserTests {

@@ -33,6 +33,8 @@ export interface WhatCanICookViewProps {
   sort?: CookSort
   /** The cook's "expiring soon" window in days. */
   expiringWithinDays?: number
+  /** The cook's time zone preference, so "today" matches the used/thrown-away tally; the browser's when unset. */
+  timeZone?: string | null
   onSearchChange?: (query: string) => void
   onSetTag?: (tag: string | 'all') => void
   onSetCookability?: (filter: CookabilityFilter) => void
@@ -53,6 +55,7 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
     cookability = 'all',
     sort = 'recent',
     expiringWithinDays = DEFAULT_EXPIRING_WITHIN_DAYS,
+    timeZone,
     onSearchChange,
     onSetTag,
     onSetCookability,
@@ -75,9 +78,9 @@ export function WhatCanICookView(props: WhatCanICookViewProps) {
 
   // Pantry rows expiring soon, and which of them each recipe would use.
   const expiringUses = useMemo(() => {
-    const expiring = findExpiring(pantrySnapshot, { today: localDay(), withinDays: expiringWithinDays })
+    const expiring = findExpiring(pantrySnapshot, { today: localDay(new Date(), timeZone), withinDays: expiringWithinDays })
     return new Map(recipes.map((r) => [r.id, expiringUsedBy(r.plan, expiring)]))
-  }, [recipes, pantrySnapshot, expiringWithinDays])
+  }, [recipes, pantrySnapshot, expiringWithinDays, timeZone])
 
   const derived = useMemo(() => {
     const q = effectiveQuery.trim().toLowerCase()

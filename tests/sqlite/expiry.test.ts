@@ -91,3 +91,39 @@ describe('used versus wasted', () => {
     await expect(kitchen.asUser.query(api.expiry.list, { householdId: otherHousehold })).rejects.toThrow(/Permission denied/);
   });
 });
+
+describe('cooking outcomes', () => {
+  async function cook(kitchen: Awaited<ReturnType<typeof setup>>, ingredient: { name: string; quantity: number; unit: string }) {
+    const recipeId = await kitchen.t.run(async (ctx) => {
+      const id = await ctx.db.insert('recipes', { householdId: kitchen.householdId, title: 'Dish', visibility: 'private', favorited: false });
+      await ctx.db.insert('recipeIngredients', { recipeId: id, ...ingredient, order: 0 });
+      return id;
+    });
+    await kitchen.asUser.mutation(api.cooking.cookRecipe, { recipeId });
+  }
+  async function addDated(kitchen: Awaited<ReturnType<typeof setup>>, name: string, quantity: number, unit: string) {
+    return kitchen.t.run(async (ctx) => {
+      const locationId = (await ctx.db.query('kitchenLocations').first())!._id;
+      const foodItemId = await ctx.db.insert('foodItems', { name });
+      return ctx.db.insert('inventoryItems', { householdId: kitchen.householdId, foodItemId, locationId, quantity, unit, expiresOn: '2026-03-12' });
+    });
+  }
+
+  test('a dated pound of beef cooked as 453 g or 454 g counts as used up', async () => {
+    const kitchen = await setup();
+    const under = await addDated(kitchen, 'Beef', 1, 'lb');
+    await cook(kitchen, { name: 'Beef', quantity: 453, unit: 'g' });
+    expect(await kitchen.t.run(ctx => ctx.db.get(under))).toBeNull();
+    const over = await addDated(kitchen, 'Pork', 1, 'lb');
+    await cook(kitchen, { name: 'Pork', quantity: 454, unit: 'g' });
+    expect(await kitchen.t.run(ctx => ctx.db.get(over))).toBeNull();
+    expect((await kitchen.asUser.query(api.expiry.outcomes, {})).used).toBe(2);
+  });
+
+  test('a dated item only partly cooked is not counted', async () => {
+    const kitchen = await setup();
+    await addDated(kitchen, 'Beef', 1, 'lb');
+    await cook(kitchen, { name: 'Beef', quantity: 200, unit: 'g' });
+    expect((await kitchen.asUser.query(api.expiry.outcomes, {})).used).toBe(0);
+  });
+});
