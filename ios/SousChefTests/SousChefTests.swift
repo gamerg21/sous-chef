@@ -213,6 +213,72 @@ struct RecipeImporterTests {
         #expect(draft.ingredients.map(\.name) == ["eggs", "butter"])
         #expect(draft.steps.count == 2)
     }
+
+    @Test func readsCookbookDetails() {
+        let draft = RecipeTextReader.read("""
+        Lemon Chicken
+        Dairy-Free Gluten-Free
+        SERVES 4 • PREP TIME: 10 MINUTES • COOK TIME: 25 MINUTES • TOTAL TIME: 35 MINUTES
+        Ingredients
+        4(6-ounce) chicken thighs, skin on
+        For serving: chopped parsley, lemon wedges (optional)
+        Instructions
+        Roast the chicken.
+        Nutrition per serving
+        Protein: 31g
+        Fat: 12g
+        """)
+        #expect(draft.servings == 4)
+        #expect(draft.totalTimeMinutes == 35)
+        #expect(draft.tags == ["dairy-free", "gluten-free"])
+        #expect(draft.proteinGrams == 31)
+        #expect(draft.fatGrams == 12)
+        #expect(draft.ingredients.map(\.name) == ["chicken thighs", "chopped parsley, lemon wedges"])
+        #expect(draft.ingredients[0].quantity == 4)
+        #expect(draft.ingredients[0].note == "6-ounce; skin on")
+        #expect(draft.ingredients[1].note == "for serving; optional")
+        #expect(draft.steps.map(\.text) == ["Roast the chicken."])
+    }
+}
+
+struct ScannedRecipeLayoutTests {
+    private func block(_ text: String, x: Double, y: Double, width: Double, height: Double = 0.015) -> ScannedBlock {
+        ScannedBlock(text: text, box: CGRect(x: x, y: y, width: width, height: 0.02), lineHeight: height)
+    }
+
+    /// A two-column cookbook page without section headings: ingredients on
+    /// the left, the headnote and numbered method on the right.
+    @Test func arrangesTwoColumnPages() {
+        let page = [
+            block("Dairy-Free", x: 0.07, y: 0.90, width: 0.07),
+            block("Zest of 1 lemon", x: 0.07, y: 0.74, width: 0.19),
+            block("¼ cup lemon juice", x: 0.07, y: 0.71, width: 0.19),
+            block("4 chicken thighs", x: 0.07, y: 0.68, width: 0.2),
+            block("Fresh parsley", x: 0.07, y: 0.65, width: 0.12),
+            block("PER SERVING", x: 0.08, y: 0.11, width: 0.09),
+            block("Protein: 31g", x: 0.08, y: 0.09, width: 0.08),
+            block("30-MINUTE MAINS", x: 0.08, y: 0.03, width: 0.21),
+            block("Lemon Chicken", x: 0.37, y: 0.81, width: 0.52, height: 0.038),
+            block("SERVES 4 • TOTAL TIME: 35 MINUTES", x: 0.38, y: 0.78, width: 0.47),
+            block("This is the bright, easy roast chicken I make on busy weeknights when everyone is hungry.", x: 0.38, y: 0.64, width: 0.56),
+            block("1. Heat the oven to 220°C.", x: 0.38, y: 0.54, width: 0.53),
+            block("2.", x: 0.38, y: 0.52, width: 0.02),
+            block("Toss the chicken with the lemon and roast for 25 minutes.", x: 0.41, y: 0.46, width: 0.52),
+            block("s. Scatter with parsley and serve.", x: 0.37, y: 0.27, width: 0.53),
+            block("117", x: 0.9, y: 0.03, width: 0.02),
+        ]
+        let text = ScannedRecipeLayout.text(from: page)
+        let draft = RecipeTextReader.read(text)
+        #expect(draft.title == "Lemon Chicken")
+        #expect(draft.summary?.hasPrefix("This is the bright") == true)
+        #expect(draft.servings == 4)
+        #expect(draft.totalTimeMinutes == 35)
+        #expect(draft.tags == ["dairy-free"])
+        #expect(draft.proteinGrams == 31)
+        #expect(draft.ingredients.map(\.name) == ["Zest of 1 lemon", "lemon juice", "chicken thighs", "Fresh parsley"])
+        #expect(draft.steps.map(\.text) == ["Heat the oven to 220°C.", "Toss the chicken with the lemon and roast for 25 minutes.", "Scatter with parsley and serve."])
+        #expect(!text.contains("MAINS"))
+    }
 }
 
 struct MiscTests {

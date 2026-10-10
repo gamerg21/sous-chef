@@ -232,7 +232,7 @@ struct RecipeImportView: View {
                 case .text:
                     draft = await RecipeTextReader.read(text, ai: kitchen.ai)
                 case .photo:
-                    let read = await TextRecognition.text(in: pages)
+                    let read = await TextRecognition.recipeText(in: pages)
                     guard read.contains(where: \.isLetter) else {
                         throw KitchenAI.AIError.failed("Sous Chef couldn't find any text. Try a closer, well-lit photo of the page.")
                     }

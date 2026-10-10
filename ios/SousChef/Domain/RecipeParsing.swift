@@ -54,7 +54,7 @@ extension RecipeDraft {
 enum IngredientParser {
     private static let units = #"fl\.?\s*oz|fluid ounces?|tablespoons?|teaspoons?|tbsps?|tbs|tsps?|milliliters?|millilitres?|liters?|litres?|kilograms?|grams?|ounces?|pounds?|lbs?|cups?|quarts?|qts?|pints?|pts?|gallons?|gal|ml|cl|dl|kg|mg|oz|g|l|each|count|cloves?|slices?|cans?|tins?|jars?|bottles?|packages?|packets?|pkgs?|boxes|box|bags?|sticks?|pinch(?:es)?|dash(?:es)?|sprigs?|bunch(?:es)?|heads?|stalks?|handfuls?|pieces?|pcs?|drops?|leaves|leaf|fillets?|sheets?|envelopes?"#
     private static let amount = #"\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|\d+(?:\.\d+)?"#
-    private static let prepWords = #"\b(diced|chopped|minced|sliced|softened|melted|divided|to taste|peeled|room temperature|optional|drained|rinsed|beaten|grated|shredded|crushed|cut|halved|quartered|thinly|finely|roughly|coarsely|packed|sifted|cubed|cooked|uncooked|trimmed|seeded|cored|julienned|torn|zested|juiced|toasted|warmed|cold|chilled|thawed|at room|plus more|or more|for serving|for garnish|to serve|serving|about|such as|like)\b"#
+    private static let prepWords = #"\b(diced|chopped|minced|sliced|softened|melted|divided|to taste|peeled|room temperature|optional|drained|rinsed|beaten|grated|shredded|crushed|cut|halved|quartered|thinly|finely|roughly|coarsely|packed|sifted|cubed|cooked|uncooked|trimmed|skin[- ]on|skinless|bone[- ]in|boneless|seeded|cored|julienned|torn|zested|juiced|toasted|warmed|cold|chilled|thawed|at room|plus more|or more|for serving|for garnish|to serve|serving|about|such as|like)\b"#
 
     private static func match(_ pattern: String, _ text: String) -> [String]? {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
@@ -75,6 +75,7 @@ enum IngredientParser {
         let vulgar: [String: String] = ["¼": "1/4", "½": "1/2", "¾": "3/4", "⅓": "1/3", "⅔": "2/3", "⅛": "1/8", "⅜": "3/8", "⅝": "5/8", "⅞": "7/8", "⅙": "1/6", "⅚": "5/6", "⅕": "1/5"]
         for (char, value) in vulgar { text = text.replacingOccurrences(of: char, with: value) }
         text = text.replacingOccurrences(of: "⁄", with: "/")
+        text = text.replacingOccurrences(of: #"^(\d+)\("#, with: "$1 (", options: .regularExpression)
         text = text.replacingOccurrences(of: #"^(\d+)\s+(?:and|&|\+)\s+(\d+\s*/\s*\d+)"#, with: "$1 $2", options: [.regularExpression, .caseInsensitive])
         text = text.replacingOccurrences(of: #"^(a|an|one)\s+(?=[a-z])"#, with: "1 ", options: [.regularExpression, .caseInsensitive])
         text = text.replacingOccurrences(of: #"^half\s+(?:a\s+|an\s+)?"#, with: "1/2 ", options: [.regularExpression, .caseInsensitive])
@@ -132,6 +133,12 @@ enum IngredientParser {
     }
 
     static func parse(_ line: String) -> Ingredient {
+        // "For serving: chopped fresh cilantro, lemon wedges (optional)"
+        if let serving = clean(line).firstMatch(of: /(?i)^(for serving|for garnish|to serve|to garnish|garnish)\s*:\s*(.+)$/) {
+            var ingredient = parse(String(serving.2))
+            ingredient.note = joinNote([serving.1.lowercased(), ingredient.note])
+            return ingredient
+        }
         let original = clean(line)
         var text = normalizeAmounts(original)
         if let attached = match("^(\\d+(?:\\.\\d+)?)(\(units))\\b\\.?\\s*(.*)$", text) {
@@ -144,6 +151,11 @@ enum IngredientParser {
             return Ingredient(name: parsed.name, note: joinNote([measure, parsed.note]))
         }
         guard let single = match("^(\(amount))\\s+(.+)$", text), let quantity = Units.parseAmount(single[1]), quantity > 0 else {
+            if original.rangeOfCharacter(from: .decimalDigits) == nil, let paren = match(#"^(.+?)\s*\(([^()]*)\)$"#, original) {
+                var ingredient = parse(paren[1])
+                ingredient.note = joinNote([ingredient.note, paren[2]])
+                return ingredient
+            }
             if let comma = original.firstIndex(of: ","), comma != original.startIndex, original.rangeOfCharacter(from: .decimalDigits) == nil {
                 let after = String(original[original.index(after: comma)...])
                 if after.range(of: prepWords, options: [.regularExpression, .caseInsensitive]) != nil {
@@ -180,6 +192,15 @@ enum RecipeTextReader {
 
     static func merged(smart: RecipeDraft, plain: RecipeDraft) -> RecipeDraft {
         var draft = smart
+        // The model's schema has no tags or nutrition, and it may miss a
+        // servings or time line the plain reader found.
+        draft.servings = draft.servings ?? plain.servings
+        draft.totalTimeMinutes = draft.totalTimeMinutes ?? plain.totalTimeMinutes
+        draft.caloriesKcal = draft.caloriesKcal ?? plain.caloriesKcal
+        draft.proteinGrams = draft.proteinGrams ?? plain.proteinGrams
+        draft.carbsGrams = draft.carbsGrams ?? plain.carbsGrams
+        draft.fatGrams = draft.fatGrams ?? plain.fatGrams
+        if draft.tags.isEmpty { draft.tags = plain.tags }
         guard !plain.ingredients.isEmpty, !plain.steps.isEmpty else { return draft }
         if plain.ingredients.count > smart.ingredients.count { draft.ingredients = plain.ingredients }
         if plain.steps.count > smart.steps.count { draft.steps = plain.steps }
@@ -190,26 +211,48 @@ enum RecipeTextReader {
     static func read(_ text: String, sourceURL: String? = nil, title: String? = nil) -> RecipeDraft {
         let lines = text.components(separatedBy: .newlines).map(IngredientParser.clean).filter { !$0.isEmpty }
         var draft = RecipeDraft(sourceURL: sourceURL)
-        enum Section { case intro, ingredients, steps, notes }
+        enum Section { case intro, ingredients, steps, notes, nutrition }
         var section = Section.intro
         var intro: [String] = []
         var notes: [String] = []
+        var prepAndCook = 0
         for line in lines {
             if line.range(of: #"^(?:the\s+)?ingredients?(?:\s+(?:list|for\b.*))?\s*:?$"#, options: [.regularExpression, .caseInsensitive]) != nil { section = .ingredients; continue }
             if line.range(of: #"^(?:the\s+)?(instructions?|directions?|method|steps?|preparation|how to make(?: it| them)?)\s*:?$"#, options: [.regularExpression, .caseInsensitive]) != nil { section = .steps; continue }
             if line.range(of: #"^(?:recipe\s+)?(notes?|tips|cook'?s notes)\s*:?$"#, options: [.regularExpression, .caseInsensitive]) != nil { section = .notes; continue }
-            if section != .steps, let meta = line.range(of: #"^(servings?|serves|yield|makes)\s*:?\s*"#, options: [.regularExpression, .caseInsensitive]) {
-                draft.servings = draft.servings ?? Int(line[meta.upperBound...].prefix { $0.isNumber })
+            if line.range(of: #"^(?:nutrition(?:al)?(?:\s+(?:facts|information|info))?|per serving)(?:\s*\(?per serving\)?)?\s*:?$"#, options: [.regularExpression, .caseInsensitive]) != nil { section = .nutrition; continue }
+            if section != .steps, let row = nutritionValue(line) {
+                let value = row.value
+                switch row.label {
+                case "calories", "energy": draft.caloriesKcal = value
+                case "protein": draft.proteinGrams = value
+                case "carbohydrates", "carbohydrate", "carbs", "total carbohydrates": draft.carbsGrams = value
+                case "fat", "total fat": draft.fatGrams = value
+                default: break
+                }
                 continue
             }
-            if section != .steps, let meta = line.range(of: #"^total time\s*:?\s*"#, options: [.regularExpression, .caseInsensitive]) {
-                draft.totalTimeMinutes = minutes(String(line[meta.upperBound...]))
+            if section == .nutrition { continue }
+            if section != .steps, isMetaLine(line) {
+                if let serves = line.firstMatch(of: /(?i)^(?:servings?|serves|yield|makes)\s*:?\s*(\d+)/) { draft.servings = draft.servings ?? Int(serves.1) }
+                // "Serves 4 • Prep time: 10 minutes • Total time: 30 minutes"
+                for part in line.split(whereSeparator: { "•·|;".contains($0) }) {
+                    let part = part.trimmingCharacters(in: .whitespaces)
+                    if let total = part.firstMatch(of: /(?i)^total time\s*:?\s{0,}/) {
+                        draft.totalTimeMinutes = minutes(String(part[total.range.upperBound...]))
+                    } else if part.firstMatch(of: /(?i)^(?:prep(?:aration)?|cook(?:ing)?)\s+time\b/) != nil,
+                              let time = part.firstMatch(of: /(?i)^[a-z]+\s+time\s*:?\s*([^,]*)/), let value = minutes(String(time.1)) {
+                        prepAndCook += value
+                    }
+                }
                 continue
             }
             switch section {
             case .intro:
                 if IngredientParser.looksLikeIngredient(line) { section = .ingredients; draft.ingredients.append(IngredientParser.parse(line)) }
-                else { intro.append(line) }
+                else if isDietaryLabels(line) {
+                    draft.tags += dietaryLabels(in: line).filter { !draft.tags.contains($0) }
+                } else { intro.append(line) }
             case .ingredients:
                 if !IngredientParser.looksLikeIngredient(line) && line.split(separator: " ").count >= 8 {
                     section = .steps
@@ -221,8 +264,10 @@ enum RecipeTextReader {
                 }
             case .steps: draft.steps.append(RecipeStep(text: stripNumber(line)))
             case .notes: notes.append(line)
+            case .nutrition: break
             }
         }
+        if draft.totalTimeMinutes == nil, prepAndCook > 0 { draft.totalTimeMinutes = prepAndCook }
         draft.title = title ?? intro.first ?? ""
         if intro.count > 1 { draft.summary = intro.dropFirst().joined(separator: " ").prefix(2000).description }
         if !notes.isEmpty { draft.notes = notes.joined(separator: "\n") }
@@ -230,6 +275,32 @@ enum RecipeTextReader {
         if draft.ingredients.isEmpty { draft.warnings.append("No ingredients were found. Add them in the editor.") }
         if draft.steps.isEmpty { draft.warnings.append("No steps were found. Add them in the editor.") }
         return draft
+    }
+
+    /// "Serves 4", "Prep time: 10 minutes", "Total time 1 hr".
+    static func isMetaLine(_ line: String) -> Bool {
+        line.range(of: #"^(servings?|serves|yield|makes|prep(aration)? time|cook(ing)? time|total time|active time)\b"#, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    /// A line of diet labels such as "Dairy-Free Gluten-Free" or "Vegan".
+    static func isDietaryLabels(_ line: String) -> Bool {
+        line.range(of: #"^\#(dietaryLabel)(?:[\s,•|/]+\#(dietaryLabel))*$"#, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    private static let dietaryLabel = #"(?:(?:dairy|gluten|grain|nut|egg|soy|sugar|refined[- ]sugar)[- ]free|vegan|vegetarian|paleo|keto|whole30|low[- ]carb)"#
+
+    private static func dietaryLabels(in line: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: dietaryLabel, options: .caseInsensitive) else { return [] }
+        return regex.matches(in: line, range: NSRange(line.startIndex..., in: line)).compactMap {
+            Range($0.range, in: line).map { line[$0].lowercased() }
+        }
+    }
+
+    /// A nutrition row such as "Protein: 37g" or "Calories 420".
+    static func nutritionValue(_ line: String) -> (label: String, value: Double)? {
+        guard let row = line.firstMatch(of: /(?i)^(calories|energy|protein|total carbohydrates|carbohydrates?|carbs|total fat|fat|saturated fat|fiber|fibre|sugars?|sodium|cholesterol)\s*:?\s*(\d+(?:\.\d+)?)\s*(?:g|mg|kcal|cal)?$/),
+              let value = Double(row.2) else { return nil }
+        return (row.1.lowercased(), value)
     }
 
     static func stripNumber(_ line: String) -> String {

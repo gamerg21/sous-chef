@@ -99,6 +99,30 @@ enum TextRecognition {
         }
         return pages.joined(separator: "\n\n")
     }
+
+    /// Reads recipe pages as paragraphs, so a wrapped ingredient or step
+    /// stays one line, and arranges them into sections by layout.
+    nonisolated static func recipeText(in images: [UIImage]) async -> String {
+        var pages: [String] = []
+        for image in images {
+            guard let data = image.jpegData(compressionQuality: 0.9) else { continue }
+            var page = ""
+            if let document = try? await RecognizeDocumentsRequest().perform(on: data).first?.document {
+                let blocks = document.paragraphs.map { paragraph in
+                    ScannedBlock(text: paragraph.transcript, box: paragraph.boundingRegion.boundingBox.cgRect,
+                                 lineHeight: paragraph.lines.first.map { hypot($0.topLeft.x - $0.bottomLeft.x, $0.topLeft.y - $0.bottomLeft.y) } ?? 0)
+                }
+                page = await ScannedRecipeLayout.text(from: blocks)
+                // Keep the whole page if the paragraphs missed text, such as a table.
+                if page.filter(\.isLetter).count < document.text.transcript.filter(\.isLetter).count * 7 / 10 {
+                    page = document.text.transcript
+                }
+            }
+            if page.isEmpty { page = (try? await text(in: image)) ?? "" }
+            if !page.isEmpty { pages.append(page) }
+        }
+        return pages.joined(separator: "\n\n")
+    }
 }
 
 /// The system camera, returning one photo per capture.
