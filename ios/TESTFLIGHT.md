@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.0 (13)
+
+### What to Test
+
+Fixes to verify
+- Recipe edits stay put: import a recipe from a photo, then quickly swipe-delete several steps. The sheet should stay open, dragging it down should bounce back, and Cancel should ask before discarding.
+
 ## 1.1.0 (12)
 
 ### What to Test
