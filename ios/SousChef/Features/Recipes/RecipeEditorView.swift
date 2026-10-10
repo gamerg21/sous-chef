@@ -4,11 +4,13 @@ import SwiftUI
 
 struct RecipeEditorView: View {
     @State private var draft: RecipeDraft
+    private let original: RecipeDraft
     let recipe: Recipe?
     var onSave: (Recipe) -> Void
 
     init(draft: RecipeDraft, recipe: Recipe?, onSave: @escaping (Recipe) -> Void = { _ in }) {
         _draft = State(initialValue: draft)
+        original = draft
         self.recipe = recipe
         self.onSave = onSave
     }
@@ -23,9 +25,16 @@ struct RecipeEditorView: View {
     @State private var newTag = ""
     @State private var editingIngredient: Ingredient?
     @State private var reorderingSteps = false
+    @State private var confirmDiscard = false
     @FocusState private var focus: Field?
 
     enum Field { case title, ingredient, step, tag }
+
+    /// Edits, or an imported recipe nobody has saved yet. Either is too much
+    /// to lose to a stray swipe on the sheet while deleting rows.
+    private var hasUnsavedWork: Bool {
+        draft != original || (recipe == nil && original != RecipeDraft())
+    }
 
     private var pantryNames: [String] {
         Array(Set(pantry.map(\.name))).sorted()
@@ -216,7 +225,15 @@ struct RecipeEditorView: View {
             .navigationTitle(recipe == nil ? "New recipe" : "Edit recipe")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .cancel) {
+                        if hasUnsavedWork { confirmDiscard = true } else { dismiss() }
+                    }
+                    .confirmationDialog(recipe == nil ? "Discard this recipe?" : "Discard your changes?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+                        Button(recipe == nil ? "Discard Recipe" : "Discard Changes", role: .destructive) { dismiss() }
+                        Button("Keep Editing", role: .cancel) {}
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", role: .confirm, action: save)
                         .disabled(draft.title.nilIfEmpty == nil)
@@ -236,6 +253,7 @@ struct RecipeEditorView: View {
             }
             .onAppear { if recipe == nil && draft.title.isEmpty { focus = .title } }
         }
+        .interactiveDismissDisabled(hasUnsavedWork)
     }
 
     private func optionalNumber(_ title: String, _ unit: String, _ value: Binding<Double?>) -> some View {

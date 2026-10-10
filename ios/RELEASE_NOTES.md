@@ -29,4 +29,5 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 - **Fewer repeat reminders**: Expired food is mentioned until the day after its date, instead of in every reminder until you remove it.
 
 ### Fixed
+- **Recipe edits stay put**: Swiping down on a recipe you're adding or editing no longer closes it and loses your changes. Tap Cancel to discard them.
 - **Cooking across units**: Cooking a recipe in grams from a pack in pounds, or in millilitres from a cup, uses up the pack instead of leaving a sliver or asking for a little more. Cook also warns when food that expires soon is measured in a unit the recipe can't use.
