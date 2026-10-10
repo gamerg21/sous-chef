@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.0 (15)
+
+### What to Test
+
+Fixes to verify
+- Scanned recipe steps: rescan a cookbook page. A step number should no longer show up as its own step.
+
 ## 1.1.0 (14)
 
 ### What to Test
