@@ -268,6 +268,7 @@ enum RecipeTextReader {
             }
         }
         if draft.totalTimeMinutes == nil, prepAndCook > 0 { draft.totalTimeMinutes = prepAndCook }
+        draft.steps.removeAll { !$0.text.contains(where: \.isLetter) }
         draft.title = title ?? intro.first ?? ""
         if intro.count > 1 { draft.summary = intro.dropFirst().joined(separator: " ").prefix(2000).description }
         if !notes.isEmpty { draft.notes = notes.joined(separator: "\n") }

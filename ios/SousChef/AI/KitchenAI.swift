@@ -289,7 +289,8 @@ final class KitchenAI {
             draft.totalTimeMinutes = extracted.totalTimeMinutes > 0 ? extracted.totalTimeMinutes : nil
             // Amounts are parsed deterministically so the model can't invent them.
             draft.ingredients = extracted.ingredientLines.map(IngredientParser.parse)
-            draft.steps = extracted.steps.map { RecipeStep(text: RecipeTextReader.stripNumber($0)) }
+            // A stray step number ("4") read as its own line isn't a step.
+            draft.steps = extracted.steps.map { RecipeStep(text: RecipeTextReader.stripNumber($0)) }.filter { $0.text.contains(where: \.isLetter) }
             if text.count > textBudget { draft.warnings.append("The text was long, so only the beginning was read.") }
             return draft
         } catch {

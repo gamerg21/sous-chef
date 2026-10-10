@@ -263,7 +263,7 @@ struct ScannedRecipeLayoutTests {
             block("This is the bright, easy roast chicken I make on busy weeknights when everyone is hungry.", x: 0.38, y: 0.64, width: 0.56),
             block("1. Heat the oven to 220°C.", x: 0.38, y: 0.54, width: 0.53),
             block("2.", x: 0.38, y: 0.52, width: 0.02),
-            block("Toss the chicken with the lemon and roast for 25 minutes.", x: 0.41, y: 0.46, width: 0.52),
+            block("Toss the chicken with the lemon and roast for 25 minutes.", x: 0.41, y: 0.515, width: 0.52),
             block("s. Scatter with parsley and serve.", x: 0.37, y: 0.27, width: 0.53),
             block("117", x: 0.9, y: 0.03, width: 0.02),
         ]
@@ -278,6 +278,34 @@ struct ScannedRecipeLayoutTests {
         #expect(draft.ingredients.map(\.name) == ["Zest of 1 lemon", "lemon juice", "chicken thighs", "Fresh parsley"])
         #expect(draft.steps.map(\.text) == ["Heat the oven to 220°C.", "Toss the chicken with the lemon and roast for 25 minutes.", "Scatter with parsley and serve."])
         #expect(!text.contains("MAINS"))
+    }
+
+    /// A step number read on its own, without a period and after its step.
+    @Test func attachesStepNumbersBesideTheirSteps() {
+        let page = [
+            block("Lemon Chicken", x: 0.1, y: 0.85, width: 0.5, height: 0.038),
+            block("2 chicken thighs", x: 0.1, y: 0.75, width: 0.2),
+            block("1 lemon", x: 0.1, y: 0.72, width: 0.1),
+            block("1. Heat the oven to 220°C.", x: 0.1, y: 0.6, width: 0.6),
+            block("Roast the chicken with the lemon for 25 minutes.", x: 0.14, y: 0.5, width: 0.6),
+            block("2", x: 0.1, y: 0.51, width: 0.02),
+            block("117", x: 0.9, y: 0.02, width: 0.02),
+        ]
+        let draft = RecipeTextReader.read(ScannedRecipeLayout.text(from: page))
+        #expect(draft.steps.map(\.text) == ["Heat the oven to 220°C.", "Roast the chicken with the lemon for 25 minutes."])
+    }
+
+    @Test func dropsStepsWithoutWords() {
+        let draft = RecipeTextReader.read("""
+        Toast
+        Ingredients
+        1 slice bread
+        Instructions
+        1. Toast the bread.
+        4.
+        4
+        """)
+        #expect(draft.steps.map(\.text) == ["Toast the bread."])
     }
 }
 

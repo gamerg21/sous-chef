@@ -93,27 +93,29 @@ enum ScannedRecipeLayout {
         return block
     }
 
-    /// Vision sometimes reads a step's number ("2.") as its own paragraph.
+    /// Vision sometimes reads a step's number ("2." or just "4") as its own
+    /// paragraph, and not always just before the step in reading order.
+    /// Attach it to the paragraph that starts beside it on the same line.
     private static func joinOrphanMarkers(_ blocks: [ScannedBlock]) -> [ScannedBlock] {
-        var result: [ScannedBlock] = []
-        var pending: ScannedBlock?
-        for block in blocks {
-            if block.text.range(of: #"^\d{1,2}[.)]$"#, options: .regularExpression) != nil {
-                pending = block
-                continue
-            }
-            if let marker = pending {
-                var joined = block
-                joined.text = "\(marker.text) \(block.text)"
-                joined.box = marker.box.union(block.box)
-                result.append(joined)
-                pending = nil
-            } else {
-                result.append(block)
-            }
+        var blocks = blocks
+        var orphans: [Int] = []
+        for index in blocks.indices {
+            guard let number = blocks[index].text.firstMatch(of: /^(\d{1,2})[.)]?$/)?.1 else { continue }
+            let marker = blocks[index].box
+            let step = blocks.indices
+                .filter { other in
+                    let box = blocks[other].box
+                    return other != index && !orphans.contains(other)
+                        && box.minX >= marker.midX && box.minX - marker.maxX < 0.1
+                        && marker.midY >= box.minY && marker.midY <= box.maxY + marker.height / 2
+                }
+                .min { blocks[$0].box.minX < blocks[$1].box.minX }
+            guard let step else { continue }
+            blocks[step].text = "\(number). \(blocks[step].text)"
+            blocks[step].box = blocks[step].box.union(marker)
+            orphans.append(index)
         }
-        if let pending { result.append(pending) }
-        return result
+        return blocks.indices.filter { !orphans.contains($0) }.map { blocks[$0] }
     }
 
     /// A step number misread as a letter ("s." for "5.") follows the step before it.
