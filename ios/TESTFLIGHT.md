@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.0 (14)
+
+### What to Test
+
+Fixes to verify
+- Scanning a cookbook page: photograph a recipe page, especially one with ingredients in a side column. Each ingredient and step should be on one line, the intro should be the description (not step 1), and servings, time and nutrition should fill in.
+
 ## 1.1.0 (13)
 
 ### What to Test
