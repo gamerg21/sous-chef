@@ -7,6 +7,8 @@ import SwiftData
 //
 // `serverID` and `needsPush` belong to the optional companion-server sync.
 // They live in the synced store so any of the person's devices can push.
+// `syncBase` holds the server's fields as of the last sync, so concurrent
+// edits by household members merge field by field.
 
 nonisolated enum StorageLocation: String, CaseIterable, Identifiable, Codable {
     case pantry, fridge, freezer
@@ -56,6 +58,8 @@ final class PantryItem {
     var updatedAt: Date = Date()
     var serverID: String?
     var needsPush: Bool = true
+    /// The server's copy as of the last sync (`SyncMerge`), for field-level merges.
+    var syncBase: Data?
 
     init(name: String, location: StorageLocation = .pantry, quantity: Double = 1, unit: String = "each") {
         self.name = name
@@ -154,8 +158,10 @@ final class Recipe {
     var updatedAt: Date = Date()
     var serverID: String?
     var needsPush: Bool = true
+    /// The server's copy as of the last sync (`SyncMerge`), for field-level merges.
+    var syncBase: Data?
     var photoNeedsUpload: Bool = false
-    /// The server only toggles favorites, so remember what it last had.
+    /// What the server last had for `favorited`: the base favorites merge against.
     var syncedFavorited: Bool = false
 
     init(title: String) {
@@ -198,6 +204,8 @@ final class ShoppingItem {
     var updatedAt: Date = Date()
     var serverID: String?
     var needsPush: Bool = true
+    /// The server's copy as of the last sync (`SyncMerge`), for field-level merges.
+    var syncBase: Data?
 
     init(name: String, quantity: Double? = nil, unit: String? = nil, source: ShoppingSource = .manual) {
         self.name = name

@@ -415,6 +415,30 @@ export const toggleFavorite = mutation({
 });
 
 /**
+ * Sets the favourite flag to a given value. Unlike toggleFavorite, replaying it
+ * (an offline client syncing late, or two members agreeing) can't flip it back.
+ */
+export const setFavorite = mutation({
+  args: { id: v.id("recipes"), favorited: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const recipe = await ctx.db.get(args.id);
+    if (!recipe) throw new Error("Recipe not found");
+
+    const membership = await ctx.db
+      .query("householdMembers")
+      .withIndex("by_userId_and_householdId", (q) =>
+        q.eq("userId", userId).eq("householdId", recipe.householdId),
+      )
+      .unique();
+    if (!membership) throw new Error("Permission denied");
+
+    if (recipe.favorited !== args.favorited) await ctx.db.patch(args.id, { favorited: args.favorited });
+    return { favorited: args.favorited };
+  },
+});
+
+/**
  * Portable JSON export of the household's recipes. The client turns this
  * into a downloadable file. Round-trips with importRecipes.
  * (Replaces the removed /api/recipes/export route.)

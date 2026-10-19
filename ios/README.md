@@ -98,6 +98,8 @@ the person's private CloudKit database when iCloud is on. There is no Sous
 Chef-operated backend. A new model is a new CloudKit record type: create it in
 the development environment (the `-initCloudKitSchema` launch argument) and
 deploy the schema to production before a TestFlight or App Store build.
+New attributes on an existing model (such as `syncBase`) need the same
+re-initialization and deploy.
 
 ## Apple Intelligence
 
@@ -280,8 +282,19 @@ are required.
 
 - The device store is the working copy, so the app works offline.
 - Each sync pushes local changes (creates, updates and deletion tombstones), then
-  mirrors the server's pantry, recipes, shopping list and meal plan (servers without meal planning are skipped for plans). Conflicts resolve as
-  "latest pusher wins".
+  mirrors the server's pantry, recipes, shopping list and meal plan (servers without meal planning are skipped for plans).
+- Edits merge field by field, so two people in one household editing offline
+  don't lose each other's changes (`Server/SyncMerge.swift`, unit tested). Each
+  pantry item, recipe, shopping item and planned meal keeps `syncBase`, the
+  server's fields as of the last sync. A push sends only fields changed since
+  then; a pull keeps unpushed local edits and takes every other field. The same
+  field edited on both sides: the latest pusher wins. Records synced before
+  this have no base yet, so their first push sends every field.
+- Pantry amounts push as `quantityDelta` (or the amount itself after a unit
+  change), so concurrent deductions add up. Favorites push with
+  `recipes:setFavorite`, and new shopping items with `mergeDuplicate`, so two
+  people adding "milk" offline end up with one item. Older servers without these
+  get the absolute amount, `recipes:toggleFavorite`, and a plain add.
 - On first connection, records that already exist on both sides (same name, and
   for pantry items the same location and unit) are paired instead of duplicated,
   and take the server's copy.

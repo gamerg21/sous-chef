@@ -387,16 +387,17 @@ final class Kitchen {
     }
 
     func unlinkFromServer() {
-        for item in fetch(PantryItem.self) { item.serverID = nil; item.needsPush = true }
+        for item in fetch(PantryItem.self) { item.serverID = nil; item.needsPush = true; item.syncBase = nil }
         for recipe in fetch(Recipe.self) {
             recipe.serverID = nil
             recipe.needsPush = true
+            recipe.syncBase = nil
             recipe.syncedFavorited = false
             recipe.remotePhotoPath = nil
             recipe.photoNeedsUpload = recipe.photo != nil
         }
-        for item in fetch(ShoppingItem.self) { item.serverID = nil; item.needsPush = true; item.recipeServerID = nil }
-        for meal in fetch(PlannedMeal.self) { meal.serverID = nil; meal.needsPush = true; meal.recipeServerID = nil }
+        for item in fetch(ShoppingItem.self) { item.serverID = nil; item.needsPush = true; item.recipeServerID = nil; item.syncBase = nil }
+        for meal in fetch(PlannedMeal.self) { meal.serverID = nil; meal.needsPush = true; meal.recipeServerID = nil; meal.syncBase = nil }
         for outcome in fetch(PantryOutcome.self) { outcome.serverID = nil; outcome.needsPush = true }
         for tombstone in fetch(Tombstone.self) { context.delete(tombstone) }
         try? context.save()

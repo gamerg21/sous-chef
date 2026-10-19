@@ -45,6 +45,8 @@ final class PlannedMeal {
     var updatedAt: Date = Date()
     var serverID: String?
     var needsPush: Bool = true
+    /// The server's copy as of the last sync (`SyncMerge`), for field-level merges.
+    var syncBase: Data?
 
     init(day: String, slot: MealSlot = .dinner) {
         self.day = day
