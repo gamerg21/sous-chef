@@ -53,6 +53,19 @@ enum InviteAddress: Equatable, Hashable {
         if let phone = phone?.nilIfEmpty { return .phone(phoneString(phone)) }
         return nil
     }
+
+    /// Every way to reach a contact, best first: iPhone and mobile numbers,
+    /// then other numbers, then emails. The invite goes to the first one
+    /// that belongs to an Apple Account.
+    static func candidates(phones: [(label: String?, number: String)], emails: [String]) -> [InviteAddress] {
+        let mobileLabels: Set<String> = [CNLabelPhoneNumberiPhone, CNLabelPhoneNumberMobile]
+        let mobile = phones.filter { $0.label.map(mobileLabels.contains) ?? false }
+        let other = phones.filter { !($0.label.map(mobileLabels.contains) ?? false) }
+        let all = (mobile + other).compactMap { from(email: nil, phone: $0.number) }
+            + emails.compactMap { from(email: $0, phone: nil) }
+        var seen = Set<String>()
+        return all.filter { seen.insert($0.key).inserted }
+    }
 }
 
 /// The names of people the owner invited, by address. CloudKit doesn't tell
@@ -98,56 +111,47 @@ extension HouseholdText {
 
 // MARK: Contacts
 
-/// Picks one phone number or email from Contacts, without asking for Contacts
-/// access: the system picker only hands back what the person taps.
+/// Picks a person from Contacts, without asking for Contacts access: the
+/// system picker only hands back the person tapped. Tapping a name picks
+/// them; their numbers and emails come back best first.
 @MainActor
 final class InviteContactPicker: NSObject, CNContactPickerDelegate {
     private static var current: InviteContactPicker?
-    private let completion: (InviteAddress, String?) -> Void
+    private let completion: ([InviteAddress], String?) -> Void
 
-    private init(completion: @escaping (InviteAddress, String?) -> Void) {
+    private init(completion: @escaping ([InviteAddress], String?) -> Void) {
         self.completion = completion
     }
 
-    static func present(completion: @escaping (InviteAddress, String?) -> Void) {
+    static func present(completion: @escaping ([InviteAddress], String?) -> Void) {
         guard let presenter = UIApplication.shared.topViewController else { return }
         let picker = InviteContactPicker(completion: completion)
         current = picker
         let controller = CNContactPickerViewController()
         controller.delegate = picker
-        controller.displayedPropertyKeys = [CNContactPhoneNumbersKey, CNContactEmailAddressesKey]
         controller.predicateForEnablingContact = NSPredicate(format: "phoneNumbers.@count > 0 OR emailAddresses.@count > 0")
-        // One way to reach them: pick the contact. Several: choose which.
-        controller.predicateForSelectionOfContact = NSPredicate(
-            format: "(phoneNumbers.@count == 1 AND emailAddresses.@count == 0) OR (phoneNumbers.@count == 0 AND emailAddresses.@count == 1)")
+        controller.predicateForSelectionOfContact = NSPredicate(value: true)
         presenter.present(controller, animated: true)
     }
 
     nonisolated func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
-        let phone = contact.phoneNumbers.first?.value.stringValue
-        let email = contact.emailAddresses.first.map { $0.value as String }
+        let phones = contact.phoneNumbers.map { (label: $0.label, number: $0.value.stringValue) }
+        let emails = contact.emailAddresses.map { $0.value as String }
         let name = CNContactFormatter.string(from: contact, style: .fullName)
-        MainActor.assumeIsolated { finish(InviteAddress.from(email: email, phone: phone), name) }
-    }
-
-    nonisolated func contactPicker(_ picker: CNContactPickerViewController, didSelect contactProperty: CNContactProperty) {
-        let phone = (contactProperty.value as? CNPhoneNumber)?.stringValue
-        let email = contactProperty.value as? String
-        let name = CNContactFormatter.string(from: contactProperty.contact, style: .fullName)
-        MainActor.assumeIsolated { finish(InviteAddress.from(email: phone == nil ? email : nil, phone: phone), name) }
+        MainActor.assumeIsolated { finish(InviteAddress.candidates(phones: phones, emails: emails), name) }
     }
 
     nonisolated func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
         MainActor.assumeIsolated { Self.current = nil }
     }
 
-    private func finish(_ address: InviteAddress?, _ name: String?) {
+    private func finish(_ addresses: [InviteAddress], _ name: String?) {
         Self.current = nil
-        guard let address else { return }
+        guard !addresses.isEmpty else { return }
         // Let the picker finish closing before the next sheet appears.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(450))
-            completion(address, name)
+            completion(addresses, name)
         }
     }
 }

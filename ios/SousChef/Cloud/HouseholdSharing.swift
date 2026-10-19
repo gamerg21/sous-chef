@@ -243,38 +243,76 @@ final class HouseholdSharing {
         }
     }
 
-    /// Invites one person: adds them to the share by their phone number or
-    /// email (so the link opens only for their Apple Account), remembers
-    /// their name, and opens Messages with the link.
-    func invite(_ address: InviteAddress, name: String?) async {
-        guard !working else { return }
+    /// Invites one person: adds them to the share by a phone number or email
+    /// (so the link opens only for their Apple Account), remembers their
+    /// name, and opens Messages with the link. Given several ways to reach
+    /// them, best first, it uses the first one with an Apple Account.
+    func invite(_ addresses: [InviteAddress], name: String?) async {
+        guard !working, !addresses.isEmpty else { return }
         working = true
         defer { working = false }
         do {
             let share = try await makeShare()
-            let saved: CKShare
-            if Self.participant(for: address, in: share) != nil {
+            var changed = false
+            if share[CKShare.SystemFieldKey.thumbnailImageData] == nil, let art = Self.thumbnail() {
+                // Messages shows it with the link.
+                share[CKShare.SystemFieldKey.thumbnailImageData] = art
+                changed = true
+            }
+            let address: InviteAddress
+            if let invited = addresses.first(where: { Self.participant(for: $0, in: share) != nil }) {
                 // Already invited: just send the link again.
-                saved = share
+                address = invited
             } else {
-                let participant = switch address {
-                case .email(let email): try await container.shareParticipant(forEmailAddress: email)
-                case .phone(let phone): try await container.shareParticipant(forPhoneNumber: phone)
-                }
-                if participant.userIdentity.userRecordID != nil,
-                   participant.userIdentity.userRecordID == share.owner.userIdentity.userRecordID {
-                    throw HouseholdError.invitedSelf
-                }
+                let (found, participant) = try await lookUp(addresses, owner: share.owner)
                 participant.permission = .readWrite
                 share.addParticipant(participant)
-                saved = try await save(share)
+                address = found
+                changed = true
             }
+            let saved = changed ? try await save(share) : share
             InviteNames.remember(name, for: address)
             apply(saved, owner: true)
             error = nil
             send(to: address, share: saved)
         } catch {
             self.error = HouseholdText.message(for: error)
+        }
+    }
+
+    /// The first address that belongs to an Apple Account, or the first that
+    /// CloudKit accepts (they can still accept once they sign in with it).
+    private func lookUp(_ addresses: [InviteAddress], owner: CKShare.Participant) async throws -> (InviteAddress, CKShare.Participant) {
+        var fallback: (InviteAddress, CKShare.Participant)?
+        var lastError: Error?
+        for address in addresses {
+            do {
+                let participant = switch address {
+                case .email(let email): try await container.shareParticipant(forEmailAddress: email)
+                case .phone(let phone): try await container.shareParticipant(forPhoneNumber: phone)
+                }
+                if let id = participant.userIdentity.userRecordID, id == owner.userIdentity.userRecordID {
+                    lastError = HouseholdError.invitedSelf
+                    continue
+                }
+                if participant.userIdentity.hasiCloudAccount { return (address, participant) }
+                if fallback == nil { fallback = (address, participant) }
+            } catch {
+                lastError = error
+            }
+        }
+        if let fallback { return fallback }
+        throw lastError ?? CKError(.internalError)
+    }
+
+    /// The app's logo, small enough to travel with the share.
+    private static func thumbnail() -> Data? {
+        guard let logo = UIImage(named: "Logo") else { return nil }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let size = CGSize(width: 256, height: 256)
+        return UIGraphicsImageRenderer(size: size, format: format).pngData { _ in
+            logo.draw(in: CGRect(origin: .zero, size: size))
         }
     }
 

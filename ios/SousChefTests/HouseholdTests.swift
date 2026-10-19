@@ -1,4 +1,5 @@
 import CloudKit
+import Contacts
 import Foundation
 import Testing
 @testable import SousChef
@@ -104,6 +105,17 @@ struct HouseholdTests {
         #expect(InviteAddress.email("ana@example.com").key == InviteAddress.from(email: "ANA@example.com", phone: nil)?.key)
         #expect(InviteAddress.from(email: nil, phone: "(555) 555-0100") == .phone("5555550100"))
         #expect(InviteAddress.from(email: "", phone: nil) == nil)
+    }
+
+    @Test func contactAddressesBestFirst() {
+        let addresses = InviteAddress.candidates(
+            phones: [(label: CNLabelWork, number: "(555) 555-0199"),
+                     (label: CNLabelPhoneNumberMobile, number: "+1 555 555 0100"),
+                     (label: nil, number: "555-555-0100")],
+            emails: ["Ana@Example.com"])
+        // Mobile first; the same number written twice counts once.
+        #expect(addresses == [.phone("+15555550100"), .phone("5555550199"), .email("ana@example.com")])
+        #expect(InviteAddress.candidates(phones: [], emails: []).isEmpty)
     }
 
     @Test func inviteMessage() {

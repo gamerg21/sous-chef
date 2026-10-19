@@ -96,8 +96,8 @@ struct HouseholdView: View {
     }
 
     private func pickContact() {
-        InviteContactPicker.present { address, name in
-            Task { await sharing.invite(address, name: name) }
+        InviteContactPicker.present { addresses, name in
+            Task { await sharing.invite(addresses, name: name) }
         }
     }
 
@@ -108,7 +108,7 @@ struct HouseholdView: View {
             sharing.error = "That doesn't look like a phone number or email."
             return
         }
-        Task { await sharing.invite(address, name: name) }
+        Task { await sharing.invite([address], name: name) }
     }
 
     private var ownerKitchen: String {

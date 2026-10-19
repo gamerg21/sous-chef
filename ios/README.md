@@ -123,10 +123,13 @@ A household is the owner's "Kitchen" zone shared with other Apple IDs through
 a zone-wide `CKShare`; no server is involved, and members need an iPhone, iPad
 or Mac. `Cloud/HouseholdSharing.swift` creates the share (read-write,
 invited people only), invites, resends, removes, stops sharing and leaves.
-Inviting (`Cloud/HouseholdInvites.swift`) picks one phone number or email from
-Contacts (`CNContactPickerViewController`, no Contacts permission) or takes a
-typed one, adds that person as a participant (`shareParticipant(forPhoneNumber:)`
-/ `forEmailAddress:`), and opens Messages addressed to them with the link;
+Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
+tap (`CNContactPickerViewController`, no Contacts permission) or takes a typed
+phone number or email. A contact's addresses are tried best first (iPhone and
+mobile numbers, other numbers, emails) with `shareParticipant(forPhoneNumber:)`
+/ `forEmailAddress:`, and the first whose identity `hasiCloudAccount` becomes the
+participant (else the first CloudKit accepted). The share carries the kitchen's
+title and the app logo as its thumbnail. Messages opens addressed to them with the link;
 without Messages it falls back to the share sheet. CloudKit doesn't name a
 participant until they accept, so the name picked from Contacts is remembered
 by address (UserDefaults and iCloud key-value storage) and shown for pending
