@@ -92,14 +92,27 @@ on-device model instead of crashing.
 
 ## Data
 
-Everything lives in a SwiftData store. Models follow CloudKit's rules (no unique
-constraints, every property optional or defaulted), and the store syncs through
-the person's private CloudKit database when iCloud is on. There is no Sous
-Chef-operated backend. A new model is a new CloudKit record type: create it in
-the development environment (the `-initCloudKitSchema` launch argument) and
-deploy the schema to production before a TestFlight or App Store build.
-New attributes on an existing model (such as `syncBase`) need the same
-re-initialization and deploy.
+Everything lives in a local SwiftData store. With iCloud on, `Cloud/CloudSync.swift`
+syncs it with `CKSyncEngine` to the "Kitchen" zone in the person's private
+CloudKit database (or, for a household member, the owner's shared zone). There
+is no Sous Chef-operated backend.
+
+- Each synced model is one record: type = model name, record name = the model's
+  `uuid`. `Cloud/CloudRecordMapping.swift` lists the synced fields (unit tested);
+  `needsPush`, `syncBase`, `photoNeedsUpload`, `syncedFavorited` and `Tombstone`
+  stay on the device. Photos travel as `CKAsset`s.
+- Local edits are read from SwiftData's history; CloudSync's own writes are
+  saved under the `CloudSync` author and skipped. Conflicts merge field by
+  field against the last fetched copy (`CloudRecordMeta`): an edit on one side
+  wins, the same field edited on both keeps this device's value, and pantry
+  amounts add both changes. Duplicate unchecked shopping items are collapsed.
+- The first sync of a zone (including the upgrade from SwiftData's built-in
+  mirroring, whose `com.apple.coredata.cloudkit.zone` is left in place for
+  older versions) uploads everything on the device.
+- New models and fields need no setup step: CKSyncEngine creates record types
+  and fields in the CloudKit development environment as it saves. Deploy the
+  schema to production from the CloudKit Console before a TestFlight or App
+  Store build.
 
 ## Apple Intelligence
 
