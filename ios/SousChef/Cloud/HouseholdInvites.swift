@@ -10,20 +10,6 @@ enum InviteAddress: Equatable, Hashable {
     case email(String)
     case phone(String)
 
-    /// Reads what someone typed: an email, or a phone number with at least 7 digits.
-    init?(typed text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.contains("@") {
-            let parts = trimmed.split(separator: "@")
-            guard parts.count == 2, parts[1].contains("."), !trimmed.contains(" ") else { return nil }
-            self = .email(trimmed.lowercased())
-        } else {
-            let digits = trimmed.filter(\.isNumber)
-            guard digits.count >= 7, trimmed.allSatisfy({ $0.isNumber || " +-().".contains($0) }) else { return nil }
-            self = .phone(Self.phoneString(trimmed))
-        }
-    }
-
     /// A phone number as CloudKit looks it up: digits, keeping a leading "+".
     static func phoneString(_ text: String) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespaces)

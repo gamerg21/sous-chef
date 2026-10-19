@@ -127,8 +127,8 @@ The share is saved only together with its first invitee, and removing the last
 person (or finding a share with no one else in it) deletes it, so a kitchen
 with no one invited is never shared.
 Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
-tap (`CNContactPickerViewController`, no Contacts permission) or takes a typed
-phone number or email. A contact's addresses are tried best first (iPhone and
+tap (`CNContactPickerViewController`, no Contacts permission); it's the only
+way to invite from iOS. A contact's addresses are tried best first (iPhone and
 mobile numbers, other numbers, emails) with `shareParticipant(forPhoneNumber:)`
 / `forEmailAddress:`, and the first whose identity `hasiCloudAccount` becomes the
 participant (else the first CloudKit accepted). The share carries the kitchen's
@@ -149,8 +149,8 @@ the companion server are one or the other: the server can't be connected
 while a kitchen is shared or joined, and households are unavailable while a
 server is connected.
 
-Test with two Apple IDs on two signed devices: invite by contact and by a
-typed phone number and email, check the pending name, resend, cancel an
+Test with two Apple IDs on two signed devices: invite by contact (one with
+several numbers and emails too), check the pending name, resend, cancel an
 invitation, accept from Messages
 with the app closed and open, both join choices, simultaneous edits to the
 same pantry item and shopping list offline, leaving, removing a person, and

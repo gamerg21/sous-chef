@@ -99,12 +99,6 @@ struct HouseholdTests {
     }
 
     @Test func inviteAddresses() {
-        #expect(InviteAddress(typed: " Ana@Example.com ") == .email("ana@example.com"))
-        #expect(InviteAddress(typed: "+1 (555) 555-0100") == .phone("+15555550100"))
-        #expect(InviteAddress(typed: "555-0100") == .phone("5550100"))
-        #expect(InviteAddress(typed: "ana") == nil)
-        #expect(InviteAddress(typed: "ana@example") == nil)
-        #expect(InviteAddress(typed: "12345") == nil)
         // The same number with or without the country code is the same person.
         #expect(InviteAddress.phone("+15555550100").key == InviteAddress.phone("5555550100").key)
         #expect(InviteAddress.email("ana@example.com").key == InviteAddress.from(email: "ANA@example.com", phone: nil)?.key)

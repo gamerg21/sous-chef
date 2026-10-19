@@ -6,9 +6,6 @@ struct HouseholdView: View {
     @State private var confirmStop = false
     @State private var confirmLeave = false
     @State private var removing: HouseholdPerson?
-    @State private var typingAddress = false
-    @State private var typedAddress = ""
-    @State private var typedName = ""
 
     private var sharing: HouseholdSharing { .shared }
 
@@ -76,19 +73,6 @@ struct HouseholdView: View {
                   : "\(HouseholdText.firstName(person.name)) loses access to your kitchen right away and goes back to their own.")
                  + (last ? " No one else is in your kitchen, so it stops being shared." : ""))
         }
-        .alert("Invite by phone or email", isPresented: $typingAddress) {
-            TextField("Name (optional)", text: $typedName)
-                .textContentType(.name)
-            TextField("Phone number or email", text: $typedAddress)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            Button("Invite") { inviteTyped() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Use the phone number or email of their Apple Account.")
-        }
     }
 
     private var removeTitle: String {
@@ -101,16 +85,6 @@ struct HouseholdView: View {
         InviteContactPicker.present { addresses, name in
             Task { await sharing.invite(addresses, name: name) }
         }
-    }
-
-    private func inviteTyped() {
-        let name = typedName
-        defer { typedAddress = ""; typedName = "" }
-        guard let address = InviteAddress(typed: typedAddress) else {
-            sharing.error = "That doesn't look like a phone number or email."
-            return
-        }
-        Task { await sharing.invite([address], name: name) }
     }
 
     private var ownerKitchen: String {
@@ -131,10 +105,6 @@ struct HouseholdView: View {
                 }
             }
             .accessibilityIdentifier("householdInvite")
-            Button { typingAddress = true } label: {
-                Label("Use a phone number or email", systemImage: "at")
-            }
-            .accessibilityIdentifier("householdInviteTyped")
         } header: {
             if !sharing.isSharing { Eyebrow("Share your kitchen") }
         } footer: {
