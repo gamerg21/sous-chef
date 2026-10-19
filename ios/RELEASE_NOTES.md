@@ -15,6 +15,7 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 ## 1.1.0
 
 ### New
+- **Share your kitchen**: Invite family to your kitchen from Settings. Everyone in the household sees and edits the same pantry, recipes, shopping list and meal plan, synced through iCloud. Each person needs an iPhone, iPad or Mac and their own Apple ID.
 - **Plan your week**: Plan meals by day in Cook, see what each needs from your pantry, and add the week's shortages to your shopping list.
 - **Custom cook timers**: Set a timer on any step with a kitchen-timer dial, quick-add buttons and an optional name.
 - **Timers that ring like alarms**: Cook timers ring through silent mode and Focus until you stop them, and every timer also sends a notification. If you don't allow alarms, timer notifications still come through Focus as Time Sensitive.

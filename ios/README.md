@@ -78,6 +78,9 @@ signed device build registers these capabilities for the App ID:
   community account.
 - **iCloud (CloudKit)** with container `iCloud.com.georgevina.souschef`, plus push
   notifications and the remote-notification background mode for CloudKit changes.
+  `CKSharingSupported` in the Info.plist lets the app accept kitchen invitations.
+- **iCloud key-value storage** (`com.apple.developer.ubiquity-kvstore-identifier`),
+  so a person's other devices follow when they join or leave a household.
 
 Private Cloud Compute (`com.apple.developer.private-cloud-compute`) is a managed
 entitlement that automatic signing can't add until Apple grants it to the team.
@@ -113,6 +116,30 @@ is no Sous Chef-operated backend.
   and fields in the CloudKit development environment as it saves. Deploy the
   schema to production from the CloudKit Console before a TestFlight or App
   Store build.
+
+### Households
+
+A household is the owner's "Kitchen" zone shared with other Apple IDs through
+a zone-wide `CKShare`; no server is involved, and members need an iPhone, iPad
+or Mac. `Cloud/HouseholdSharing.swift` creates the share (`ShareLink` with
+`CKShareTransferRepresentation`, read-write, invited people only), lists
+people, stops sharing and leaves. `App/AppDelegate.swift` hands accepted
+invitations to it, and `JoinHouseholdSheet` asks whether to bring the
+member's kitchen along (uploaded into the shared zone) or start fresh with the
+owner's (the device is cleared only once its kitchen is safely in the
+member's personal zone). Either way the member's personal zone is left as it
+was and comes back if they leave or the owner stops sharing.
+
+A member's device syncs only the shared zone, through their shared database;
+the scope is saved per device and in iCloud key-value storage. Households and
+the companion server are one or the other: the server can't be connected
+while a kitchen is shared or joined, and households are unavailable while a
+server is connected.
+
+Test with two Apple IDs on two signed devices: invite, accept from Messages
+with the app closed and open, both join choices, simultaneous edits to the
+same pantry item and shopping list offline, leaving, removing a person, and
+stopping sharing.
 
 ## Apple Intelligence
 

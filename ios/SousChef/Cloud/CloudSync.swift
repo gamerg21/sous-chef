@@ -131,6 +131,9 @@ final class CloudSync: CKSyncEngineDelegate {
         _ = try await container.sharedCloudDatabase.recordZone(for: zoneID)
         // Whatever this device hasn't sent yet belongs to the kitchen it's leaving.
         await flush()
+        // Starting fresh clears this device, so its kitchen must be safely in
+        // the personal zone first; otherwise it could be lost.
+        if !mergeLocal, let engine, !engine.state.pendingRecordZoneChanges.isEmpty { throw CloudSyncError.unsaved }
         stopEngine()
         Self.removeState(for: target)
         deleteMetas(in: zoneID)
@@ -189,12 +192,13 @@ final class CloudSync: CKSyncEngineDelegate {
     }
 
     enum CloudSyncError: LocalizedError {
-        case unavailable, busy
+        case unavailable, busy, unsaved
 
         var errorDescription: String? {
             switch self {
             case .unavailable: "iCloud isn't available in this build."
             case .busy: "Sous Chef is already switching kitchens."
+            case .unsaved: "Your kitchen couldn't be saved to iCloud first, so nothing was changed. Check your connection and try again."
             }
         }
     }
@@ -387,6 +391,8 @@ final class CloudSync: CKSyncEngineDelegate {
             return
         }
         localChangesSaved()
+        // A join or leave on another device that couldn't be followed yet.
+        followOtherDevices()
         if !deferred.isEmpty {
             engine.state.add(pendingRecordZoneChanges: deferred.map { .saveRecord($0) })
             deferred = []
