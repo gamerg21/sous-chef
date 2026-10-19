@@ -20,6 +20,8 @@ final class Kitchen {
     private(set) var storeGeneration = 0
     let ai = KitchenAI()
     let server = CompanionServer()
+    /// iCloud sync and households (`CKSyncEngine`).
+    let cloud = CloudSync()
     let inMemory: Bool
 
     var context: ModelContext { container.mainContext }
@@ -31,6 +33,7 @@ final class Kitchen {
         self.inMemory = inMemory
         (container, usesICloud) = Self.openStore(inMemory: inMemory, cloud: Self.iCloudPreferred)
         server.kitchen = self
+        cloud.kitchen = self
         ai.serverConnected = { [weak server] in server?.isConnected ?? false }
         ai.serverGenerate = { [weak server] preferences in
             guard let server else { throw ServerClient.ServerError.notAuthenticated }
