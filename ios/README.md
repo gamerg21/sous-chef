@@ -121,9 +121,16 @@ is no Sous Chef-operated backend.
 
 A household is the owner's "Kitchen" zone shared with other Apple IDs through
 a zone-wide `CKShare`; no server is involved, and members need an iPhone, iPad
-or Mac. `Cloud/HouseholdSharing.swift` creates the share (`ShareLink` with
-`CKShareTransferRepresentation`, read-write, invited people only), lists
-people, stops sharing and leaves. `App/AppDelegate.swift` hands accepted
+or Mac. `Cloud/HouseholdSharing.swift` creates the share (read-write,
+invited people only), invites, resends, removes, stops sharing and leaves.
+Inviting (`Cloud/HouseholdInvites.swift`) picks one phone number or email from
+Contacts (`CNContactPickerViewController`, no Contacts permission) or takes a
+typed one, adds that person as a participant (`shareParticipant(forPhoneNumber:)`
+/ `forEmailAddress:`), and opens Messages addressed to them with the link;
+without Messages it falls back to the share sheet. CloudKit doesn't name a
+participant until they accept, so the name picked from Contacts is remembered
+by address (UserDefaults and iCloud key-value storage) and shown for pending
+invitations. `App/AppDelegate.swift` hands accepted
 invitations to it, and `JoinHouseholdSheet` asks whether to bring the
 member's kitchen along (uploaded into the shared zone) or start fresh with the
 owner's (the device is cleared only once its kitchen is safely in the
@@ -136,7 +143,9 @@ the companion server are one or the other: the server can't be connected
 while a kitchen is shared or joined, and households are unavailable while a
 server is connected.
 
-Test with two Apple IDs on two signed devices: invite, accept from Messages
+Test with two Apple IDs on two signed devices: invite by contact and by a
+typed phone number and email, check the pending name, resend, cancel an
+invitation, accept from Messages
 with the app closed and open, both join choices, simultaneous edits to the
 same pantry item and shopping list offline, leaving, removing a person, and
 stopping sharing.

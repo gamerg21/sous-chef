@@ -1,4 +1,3 @@
-import CloudKit
 import SwiftUI
 
 /// Sharing the kitchen with the people you live with, through iCloud.
@@ -6,6 +5,10 @@ struct HouseholdView: View {
     @Environment(Kitchen.self) private var kitchen
     @State private var confirmStop = false
     @State private var confirmLeave = false
+    @State private var removing: HouseholdPerson?
+    @State private var typingAddress = false
+    @State private var typedAddress = ""
+    @State private var typedName = ""
 
     private var sharing: HouseholdSharing { .shared }
 
@@ -59,6 +62,53 @@ struct HouseholdView: View {
         } message: {
             Text("You'll go back to your own kitchen, as it was before you joined. What you added here stays with \(ownerKitchen).")
         }
+        .confirmationDialog(removeTitle, isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                            titleVisibility: .visible, presenting: removing) { person in
+            Button(person.status == .invited ? "Cancel invitation" : "Remove", role: .destructive) {
+                Task { await sharing.remove(person) }
+            }
+            .accessibilityIdentifier("householdConfirmRemove")
+            Button("Keep", role: .cancel) {}
+        } message: { person in
+            Text(person.status == .invited
+                 ? "The link you sent \(HouseholdText.firstName(person.name)) stops working."
+                 : "\(HouseholdText.firstName(person.name)) loses access to your kitchen right away and goes back to their own.")
+        }
+        .alert("Invite by phone or email", isPresented: $typingAddress) {
+            TextField("Name (optional)", text: $typedName)
+                .textContentType(.name)
+            TextField("Phone number or email", text: $typedAddress)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Invite") { inviteTyped() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Use the phone number or email of their Apple Account.")
+        }
+    }
+
+    private var removeTitle: String {
+        guard let removing else { return "" }
+        let name = HouseholdText.firstName(removing.name)
+        return removing.status == .invited ? "Cancel \(HouseholdText.possessive(name)) invitation?" : "Remove \(name) from your kitchen?"
+    }
+
+    private func pickContact() {
+        InviteContactPicker.present { address, name in
+            Task { await sharing.invite(address, name: name) }
+        }
+    }
+
+    private func inviteTyped() {
+        let name = typedName
+        defer { typedAddress = ""; typedName = "" }
+        guard let address = InviteAddress(typed: typedAddress) else {
+            sharing.error = "That doesn't look like a phone number or email."
+            return
+        }
+        Task { await sharing.invite(address, name: name) }
     }
 
     private var ownerKitchen: String {
@@ -67,43 +117,39 @@ struct HouseholdView: View {
 
     // MARK: Owner
 
-    /// The invite button keeps its place whether or not the kitchen is shared
-    /// yet, so the share sheet stays open while the share is created.
     @ViewBuilder private var ownerSections: some View {
         if sharing.isSharing {
             peopleSection
         }
         Section {
-            ShareLink(item: KitchenInvitation(share: sharing.share),
-                      preview: SharePreview(sharing.share?[CKShare.SystemFieldKey.title] as? String ?? "Sous Chef Kitchen", image: Image("Logo"))) {
-                Label(sharing.isSharing ? "Invite someone else" : "Invite to kitchen", systemImage: "person.badge.plus")
+            Button(action: pickContact) {
+                HStack {
+                    Label(sharing.isSharing ? "Invite someone else" : "Invite someone", systemImage: "person.badge.plus")
+                    if sharing.working { Spacer(); ProgressView() }
+                }
             }
             .accessibilityIdentifier("householdInvite")
-            .disabled(sharing.working || (sharing.isSharing && sharing.share == nil))
+            Button { typingAddress = true } label: {
+                Label("Use a phone number or email", systemImage: "at")
+            }
+            .accessibilityIdentifier("householdInviteTyped")
         } header: {
             if !sharing.isSharing { Eyebrow("Share your kitchen") }
         } footer: {
             if sharing.isSharing {
-                Text("Invitations go to one person at a time, by Messages, Mail or a link.")
+                Text("They get a link in Messages that opens only for their Apple Account.")
             } else {
-                Text("Invite the people you cook with. Everyone sees and edits the same pantry, recipes, shopping list and plan. Each person needs an iPhone, iPad or Mac and their own Apple Account. It all stays in iCloud, with no server.")
+                Text("Invite the people you cook with. Everyone sees and edits the same pantry, recipes, shopping list and plan. Pick someone from Contacts and they get a link in Messages that opens only for their Apple Account. Each person needs an iPhone, iPad or Mac. It all stays in iCloud, with no server.")
             }
         }
+        .disabled(sharing.working)
         if sharing.isSharing {
             Section {
-                Button { sharing.managePeople() } label: { Label("Manage people", systemImage: "person.2") }
-                    .disabled(sharing.share == nil)
-                    .accessibilityIdentifier("householdManage")
                 Button(role: .destructive) { confirmStop = true } label: {
-                    HStack {
-                        Label("Stop sharing", systemImage: "person.2.slash")
-                        if sharing.working { Spacer(); ProgressView() }
-                    }
+                    Label("Stop sharing", systemImage: "person.2.slash")
                 }
                 .disabled(sharing.working)
                 .accessibilityIdentifier("householdStopSharing")
-            } footer: {
-                Text("Manage people to remove someone or resend an invitation.")
             }
         }
     }
@@ -144,17 +190,48 @@ struct HouseholdView: View {
                 }
             }
             ForEach(sharing.people) { person in
+                let manageable = !kitchen.cloud.isHouseholdMember && person.role == .member
                 LabeledContent {
-                    Text(HouseholdText.badge(for: person)).foregroundStyle(.secondary)
+                    if manageable, person.status == .invited, person.address != nil {
+                        Button("Resend") { sharing.resend(to: person) }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("householdResend")
+                    } else {
+                        Text(HouseholdText.badge(for: person)).foregroundStyle(.secondary)
+                    }
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(person.name)
-                        if let detail = person.detail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
+                        if person.status == .invited {
+                            Text(["Waiting to join", person.detail].compactMap { $0 }.joined(separator: " · "))
+                                .font(.footnote).foregroundStyle(.secondary)
+                        } else if let detail = person.detail {
+                            Text(detail).font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .swipeActions {
+                    if manageable {
+                        Button(person.status == .invited ? "Cancel" : "Remove", role: .destructive) { removing = person }
+                    }
+                }
+                .contextMenu {
+                    if manageable {
+                        if person.status == .invited, person.address != nil {
+                            Button { sharing.resend(to: person) } label: { Label("Resend invitation", systemImage: "message") }
+                        }
+                        Button(role: .destructive) { removing = person } label: {
+                            Label(person.status == .invited ? "Cancel invitation" : "Remove from kitchen", systemImage: "person.badge.minus")
+                        }
                     }
                 }
             }
         } header: {
             Eyebrow("People")
+        } footer: {
+            if !kitchen.cloud.isHouseholdMember, sharing.people.contains(where: { $0.role == .member }) {
+                Text("Swipe someone to remove them or cancel their invitation.")
+            }
         }
     }
 }

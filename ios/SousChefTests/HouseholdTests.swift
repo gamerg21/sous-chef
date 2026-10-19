@@ -9,7 +9,10 @@ struct HouseholdTests {
         #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: false, others: 0) == "Just you")
         // A remembered count doesn't matter once sharing stops.
         #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: false, others: 3) == "Just you")
-        #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 0) == "Invite sent")
+        #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 0) == "Just you")
+        #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 0, pending: 1) == "Invite waiting")
+        #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 0, pending: 2) == "2 invites waiting")
+        #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 1, pending: 1) == "Shared with 1 person")
         #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 1) == "Shared with 1 person")
         #expect(HouseholdText.summary(isMember: false, ownerName: nil, isSharing: true, others: 2) == "Shared with 2 people")
         #expect(HouseholdText.summary(isMember: true, ownerName: "Sam", isSharing: true, others: 2) == "Sam\u{2019}s kitchen")
@@ -77,6 +80,38 @@ struct HouseholdTests {
         #expect(SyncSettingsView.iCloudFooter(usesICloud: true, isMember: true, ownerName: nil, isSharing: false).hasPrefix("You're in a shared kitchen."))
         #expect(SyncSettingsView.iCloudFooter(usesICloud: true, isMember: false, ownerName: nil, isSharing: true).contains("shared with the people you invited"))
         #expect(!SyncSettingsView.iCloudFooter(usesICloud: true, isMember: false, ownerName: nil, isSharing: false).contains("shared"))
+    }
+
+    @Test func pendingPeopleAreNamed() {
+        // CloudKit has no name for someone who hasn't accepted yet.
+        #expect(HouseholdText.personName(nil, remembered: "Ana Vina", email: "ana@example.com", phone: nil) == "Ana Vina")
+        #expect(HouseholdText.personName(PersonNameComponents(), remembered: nil, email: "ana@example.com", phone: nil) == "ana@example.com")
+        #expect(HouseholdText.personName(nil, remembered: nil, email: nil, phone: nil) == "Invited person")
+        var components = PersonNameComponents()
+        components.givenName = "Ana"
+        #expect(HouseholdText.personName(components, remembered: "Wife", email: nil, phone: nil) == "Ana")
+    }
+
+    @Test func inviteAddresses() {
+        #expect(InviteAddress(typed: " Ana@Example.com ") == .email("ana@example.com"))
+        #expect(InviteAddress(typed: "+1 (555) 555-0100") == .phone("+15555550100"))
+        #expect(InviteAddress(typed: "555-0100") == .phone("5550100"))
+        #expect(InviteAddress(typed: "ana") == nil)
+        #expect(InviteAddress(typed: "ana@example") == nil)
+        #expect(InviteAddress(typed: "12345") == nil)
+        // The same number with or without the country code is the same person.
+        #expect(InviteAddress.phone("+15555550100").key == InviteAddress.phone("5555550100").key)
+        #expect(InviteAddress.email("ana@example.com").key == InviteAddress.from(email: "ANA@example.com", phone: nil)?.key)
+        #expect(InviteAddress.from(email: nil, phone: "(555) 555-0100") == .phone("5555550100"))
+        #expect(InviteAddress.from(email: "", phone: nil) == nil)
+    }
+
+    @Test func inviteMessage() {
+        let url = URL(string: "https://www.icloud.com/share/abc")!
+        let text = HouseholdText.inviteMessage(url: url, kitchenTitle: "George\u{2019}s Kitchen")
+        #expect(text.contains("\u{201C}George\u{2019}s Kitchen\u{201D}"))
+        #expect(text.hasSuffix(url.absoluteString))
+        #expect(HouseholdText.inviteMessage(url: url, kitchenTitle: nil).hasPrefix("Join my kitchen"))
     }
 
     @Test func containerMatchesKitchen() {

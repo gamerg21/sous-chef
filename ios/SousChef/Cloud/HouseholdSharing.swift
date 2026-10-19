@@ -1,5 +1,4 @@
 import CloudKit
-import CoreTransferable
 import Foundation
 import Observation
 import UIKit
@@ -16,6 +15,8 @@ struct HouseholdPerson: Identifiable, Equatable {
     let role: Role
     let status: Status
     let isMe: Bool
+    /// Where their invitation went, for resending it.
+    var address: InviteAddress? = nil
 }
 
 /// An invitation the person tapped, waiting for them to choose how to join.
@@ -48,9 +49,13 @@ final class HouseholdSharing {
     private(set) var isSharing: Bool {
         didSet { defaults.set(isSharing, forKey: Keys.sharing) }
     }
-    /// How many other people the owner's kitchen has, remembered for Settings.
+    /// How many other people joined the owner's kitchen, remembered for Settings.
     private(set) var otherCount: Int {
         didSet { defaults.set(otherCount, forKey: Keys.otherCount) }
+    }
+    /// How many invitations are waiting to be accepted, remembered for Settings.
+    private(set) var pendingCount: Int {
+        didSet { defaults.set(pendingCount, forKey: Keys.pendingCount) }
     }
     /// For a member: the owner's first name, remembered for Settings.
     private(set) var ownerName: String? {
@@ -70,17 +75,18 @@ final class HouseholdSharing {
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private var kitchen: Kitchen { .shared }
     @ObservationIgnored private var container: CKContainer { CKContainer(identifier: Self.containerIdentifier) }
-    @ObservationIgnored private var sharingDelegate: SharingControllerDelegate?
 
     private enum Keys {
         static let sharing = "household.sharing"
         static let otherCount = "household.otherCount"
+        static let pendingCount = "household.pendingCount"
         static let ownerName = "household.ownerName"
     }
 
     private init() {
         isSharing = defaults.bool(forKey: Keys.sharing)
         otherCount = defaults.integer(forKey: Keys.otherCount)
+        pendingCount = defaults.integer(forKey: Keys.pendingCount)
         ownerName = defaults.string(forKey: Keys.ownerName)
     }
 
@@ -93,7 +99,7 @@ final class HouseholdSharing {
     /// The Settings row's summary.
     var summary: String {
         HouseholdText.summary(isMember: kitchen.cloud.isHouseholdMember, ownerName: ownerName,
-                              isSharing: isSharing && kitchen.usesICloud, others: otherCount)
+                              isSharing: isSharing && kitchen.usesICloud, others: otherCount, pending: pendingCount)
     }
 
     // MARK: Loading
@@ -144,7 +150,8 @@ final class HouseholdSharing {
         people = share.map(Self.people(in:)) ?? []
         if owner {
             isSharing = share != nil
-            otherCount = people.filter { $0.role == .member }.count
+            otherCount = people.filter { $0.role == .member && $0.status == .accepted }.count
+            pendingCount = people.filter { $0.role == .member && $0.status == .invited }.count
         } else if let owner = people.first(where: { $0.role == .owner }) {
             ownerName = HouseholdText.firstName(owner.name)
         }
@@ -158,14 +165,19 @@ final class HouseholdSharing {
                 let identity = participant.userIdentity
                 let email = identity.lookupInfo?.emailAddress
                 let phone = identity.lookupInfo?.phoneNumber
-                let name = HouseholdText.displayName(identity.nameComponents, email: email, phone: phone)
+                let address = InviteAddress.from(email: email, phone: phone)
+                // CloudKit names people only once they accept; until then use
+                // the name the owner picked from Contacts.
+                let name = HouseholdText.personName(identity.nameComponents, remembered: InviteNames.name(for: address),
+                                                    email: email, phone: phone)
                 return HouseholdPerson(
                     id: participant.participantID,
                     name: name,
                     detail: [email, phone].compactMap { $0 }.first { $0 != name },
                     role: participant.role == .owner ? .owner : .member,
                     status: participant.acceptanceStatus == .accepted || participant.role == .owner ? .accepted : .invited,
-                    isMe: participant == me
+                    isMe: participant == me,
+                    address: address
                 )
             }
             .sorted { lhs, rhs in
@@ -231,22 +243,84 @@ final class HouseholdSharing {
         }
     }
 
-    /// Opens the system "Manage people" sheet to add or remove people.
-    func managePeople() {
-        guard let share, let presenter = UIApplication.shared.topViewController else { return }
-        let controller = UICloudSharingController(share: share, container: container)
-        controller.availablePermissions = [.allowPrivate, .allowReadWrite]
-        let delegate = SharingControllerDelegate(title: share[CKShare.SystemFieldKey.title] as? String) { [weak self] in
-            Task { await self?.refresh() }
+    /// Invites one person: adds them to the share by their phone number or
+    /// email (so the link opens only for their Apple Account), remembers
+    /// their name, and opens Messages with the link.
+    func invite(_ address: InviteAddress, name: String?) async {
+        guard !working else { return }
+        working = true
+        defer { working = false }
+        do {
+            let share = try await makeShare()
+            let saved: CKShare
+            if Self.participant(for: address, in: share) != nil {
+                // Already invited: just send the link again.
+                saved = share
+            } else {
+                let participant = switch address {
+                case .email(let email): try await container.shareParticipant(forEmailAddress: email)
+                case .phone(let phone): try await container.shareParticipant(forPhoneNumber: phone)
+                }
+                if participant.userIdentity.userRecordID != nil,
+                   participant.userIdentity.userRecordID == share.owner.userIdentity.userRecordID {
+                    throw HouseholdError.invitedSelf
+                }
+                participant.permission = .readWrite
+                share.addParticipant(participant)
+                saved = try await save(share)
+            }
+            InviteNames.remember(name, for: address)
+            apply(saved, owner: true)
+            error = nil
+            send(to: address, share: saved)
+        } catch {
+            self.error = HouseholdText.message(for: error)
         }
-        sharingDelegate = delegate
-        controller.delegate = delegate
-        if let popover = controller.popoverPresentationController {
-            popover.sourceView = presenter.view
-            popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = []
+    }
+
+    /// Sends a waiting invitation again.
+    func resend(to person: HouseholdPerson) {
+        guard let share, let address = person.address else { return }
+        send(to: address, share: share)
+    }
+
+    private func send(to address: InviteAddress, share: CKShare) {
+        guard let url = share.url else {
+            error = "iCloud didn't make an invitation link. Try again."
+            return
         }
-        presenter.present(controller, animated: true)
+        let body = HouseholdText.inviteMessage(url: url, kitchenTitle: share[CKShare.SystemFieldKey.title] as? String)
+        InviteMessageComposer.present(to: address, body: body)
+    }
+
+    /// Removes someone from the kitchen, or cancels their invitation.
+    func remove(_ person: HouseholdPerson) async {
+        guard let share, person.role != .owner,
+              let participant = share.participants.first(where: { $0.participantID == person.id }) else { return }
+        working = true
+        defer { working = false }
+        do {
+            share.removeParticipant(participant)
+            apply(try await save(share), owner: true)
+            error = nil
+        } catch {
+            self.error = HouseholdText.message(for: error)
+            await refresh()
+        }
+    }
+
+    private func save(_ share: CKShare) async throws -> CKShare {
+        let result = try await container.privateCloudDatabase.modifyRecords(saving: [share], deleting: [], savePolicy: .changedKeys)
+        guard let saved = try result.saveResults[share.recordID]?.get() as? CKShare else { throw CKError(.internalError) }
+        return saved
+    }
+
+    private static func participant(for address: InviteAddress, in share: CKShare) -> CKShare.Participant? {
+        share.participants.first { participant in
+            participant.acceptanceStatus != .removed && participant.role != .owner
+                && InviteAddress.from(email: participant.userIdentity.lookupInfo?.emailAddress,
+                                      phone: participant.userIdentity.lookupInfo?.phoneNumber)?.key == address.key
+        }
     }
 
     // MARK: Member
@@ -361,27 +435,33 @@ final class HouseholdSharing {
 }
 
 enum HouseholdError: LocalizedError {
-    case unavailable, serverConnected
+    case unavailable, serverConnected, invitedSelf
 
     var errorDescription: String? {
         switch self {
         case .unavailable: "Households aren't available in this build."
         case .serverConnected: "Households use iCloud, so they're off while your Sous Chef server is connected. Disconnect it in Sync and Storage first."
+        case .invitedSelf: "That's your own Apple Account. Invite someone else to cook with you."
         }
     }
 }
 
 /// The words households show, kept apart so they can be tested.
 enum HouseholdText {
-    /// "Just you", "Shared with 2 people", "Sam's kitchen".
-    static func summary(isMember: Bool, ownerName: String?, isSharing: Bool, others: Int) -> String {
+    /// "Just you", "Invite waiting", "Shared with 2 people", "Sam's kitchen".
+    static func summary(isMember: Bool, ownerName: String?, isSharing: Bool, others: Int, pending: Int = 0) -> String {
         if isMember {
             guard let ownerName = ownerName?.nilIfEmpty else { return "Shared kitchen" }
             return "\(possessive(ownerName)) kitchen"
         }
         guard isSharing else { return "Just you" }
         switch others {
-        case 0: return "Invite sent"
+        case 0:
+            switch pending {
+            case 0: return "Just you"
+            case 1: return "Invite waiting"
+            default: return "\(pending) invites waiting"
+            }
         case 1: return "Shared with 1 person"
         default: return "Shared with \(others) people"
         }
@@ -411,6 +491,17 @@ enum HouseholdText {
             if !name.isEmpty { return name }
         }
         return email?.nilIfEmpty ?? phone?.nilIfEmpty ?? "Someone"
+    }
+
+    /// The name CloudKit gives a person, else the one remembered from
+    /// Contacts when they were invited, else their email or phone.
+    static func personName(_ components: PersonNameComponents?, remembered: String?, email: String?, phone: String?) -> String {
+        if let components, !components.formatted(.name(style: .medium)).trimmingCharacters(in: .whitespaces).isEmpty {
+            return displayName(components, email: email, phone: phone)
+        }
+        if let remembered = remembered?.nilIfEmpty { return remembered }
+        let fallback = displayName(nil, email: email, phone: phone)
+        return fallback == "Someone" ? "Invited person" : fallback
     }
 
     /// "Sam" from "Sam Rivera"; emails and phone numbers stay whole.
@@ -448,45 +539,6 @@ enum HouseholdText {
         default: return "Something went wrong with iCloud. Try again."
         }
     }
-}
-
-/// The share sheet's item for inviting someone to the kitchen.
-nonisolated struct KitchenInvitation: Transferable {
-    /// The existing share, or nil to create one when the person picks how to send it.
-    let share: CKShare?
-
-    static var transferRepresentation: some TransferRepresentation {
-        CKShareTransferRepresentation { invitation in
-            let container = CKContainer(identifier: HouseholdSharing.containerIdentifier)
-            // Only people the owner invites, and they can all edit.
-            let options = CKAllowedSharingOptions(allowedParticipantPermissionOptions: .readWrite,
-                                                  allowedParticipantAccessOptions: .specifiedRecipientsOnly)
-            if let share = invitation.share {
-                return .existing(share, container: container, allowedSharingOptions: options)
-            }
-            return .prepareShare(container: container, allowedSharingOptions: options) {
-                try await HouseholdSharing.shared.makeShare()
-            }
-        }
-    }
-}
-
-/// Refreshes the people list after the system "Manage people" sheet changes the share.
-private final class SharingControllerDelegate: NSObject, UICloudSharingControllerDelegate {
-    let title: String?
-    let changed: () -> Void
-
-    init(title: String?, changed: @escaping () -> Void) {
-        self.title = title
-        self.changed = changed
-    }
-
-    func itemTitle(for csc: UICloudSharingController) -> String? { title }
-    func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: any Error) {
-        HouseholdSharing.shared.error = HouseholdText.message(for: error)
-    }
-    func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) { changed() }
-    func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) { changed() }
 }
 
 extension UIApplication {
