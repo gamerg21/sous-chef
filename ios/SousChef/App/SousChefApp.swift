@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct SousChefApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var kitchen = Kitchen.shared
     @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -162,6 +163,7 @@ struct RootView: View {
             OnboardingView { onboardingDone = true }
                 .kitchenEnvironment(kitchen)
         }
+        .householdPresentations(showSettings: $showSettings, ready: onboardingDone)
     }
 
     private var tabs: some View {

@@ -32,6 +32,12 @@ struct SettingsView: View {
                         }
                     }
                     .accessibilityIdentifier("syncSettings")
+                    NavigationLink { HouseholdView() } label: {
+                        LabeledContent { Text(HouseholdSharing.shared.summary) } label: {
+                            SettingsIcon("Household", systemImage: "house.fill", color: .orange)
+                        }
+                    }
+                    .accessibilityIdentifier("householdSettings")
                     NavigationLink { NotificationSettingsView() } label: {
                         LabeledContent {
                             if let alerts, alerts.needsSettings || !alerts.timersCanAlert {
@@ -166,6 +172,9 @@ struct ServerConnectView: View {
                 } header: {
                     Eyebrow("Your account on that server")
                 }
+                if householdActive {
+                    Section { Text(Self.householdNote).foregroundStyle(.orange) }
+                }
                 if let error {
                     Section { Text(error).foregroundStyle(.orange) }
                 }
@@ -184,7 +193,7 @@ struct ServerConnectView: View {
                         Button("Connect", role: .confirm) {
                             if let url = try? ServerClient.normalize(address), ServerClient.isInsecureRemote(url) { confirmInsecure = true } else { Task { await connect() } }
                         }
-                        .disabled(address.nilIfEmpty == nil || email.nilIfEmpty == nil || password.count < 8)
+                        .disabled(householdActive || address.nilIfEmpty == nil || email.nilIfEmpty == nil || password.count < 8)
                     }
                 }
             }
@@ -198,7 +207,13 @@ struct ServerConnectView: View {
         }
     }
 
+    /// A companion server and an iCloud household can't run side by side.
+    private var householdActive: Bool { HouseholdSharing.shared.householdActive }
+
+    static let householdNote = "Your kitchen is shared through an iCloud household. To connect a server, stop sharing or leave the household first."
+
     private func connect(allowInsecure: Bool = false) async {
+        guard !householdActive else { return }
         working = true
         error = nil
         defer { working = false }
