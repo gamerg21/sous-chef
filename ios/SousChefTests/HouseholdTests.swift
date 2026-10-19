@@ -51,6 +51,8 @@ struct HouseholdTests {
         #expect(HouseholdText.badge(for: person(.member, .invited, me: false)) == "Invited")
         #expect(HouseholdText.badge(for: person(.member, .accepted, me: true)) == "You")
         #expect(HouseholdText.badge(for: person(.member, .accepted, me: false)) == "")
+        let unnamed = HouseholdPerson(id: "1", name: "You", detail: nil, role: .owner, status: .accepted, isMe: true)
+        #expect(HouseholdText.badge(for: unnamed) == "Owner")
     }
 
     @Test func errorMessages() {
@@ -88,6 +90,9 @@ struct HouseholdTests {
         #expect(HouseholdText.personName(nil, remembered: "Ana Vina", email: "ana@example.com", phone: nil) == "Ana Vina")
         #expect(HouseholdText.personName(PersonNameComponents(), remembered: nil, email: "ana@example.com", phone: nil) == "ana@example.com")
         #expect(HouseholdText.personName(nil, remembered: nil, email: nil, phone: nil) == "Invited person")
+        // CloudKit may not share the owner's own name with them.
+        #expect(HouseholdText.personName(nil, remembered: nil, email: nil, phone: nil, isMe: true, isOwner: true) == "You")
+        #expect(HouseholdText.personName(nil, remembered: nil, email: nil, phone: nil, isOwner: true) == "Kitchen owner")
         var components = PersonNameComponents()
         components.givenName = "Ana"
         #expect(HouseholdText.personName(components, remembered: "Wife", email: nil, phone: nil) == "Ana")

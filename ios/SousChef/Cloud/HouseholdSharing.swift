@@ -122,8 +122,21 @@ final class HouseholdSharing {
     }
 
     /// Owner: fetches the existing zone-wide share, if the kitchen is shared.
+    /// A share left with no one else in it (say, from an earlier version) is
+    /// deleted, so the kitchen is plainly private again.
     func loadShare() async throws {
-        apply(try await fetchShare(in: container.privateCloudDatabase, zoneID: CloudSync.personalZoneID), owner: true)
+        let share = try await fetchShare(in: container.privateCloudDatabase, zoneID: CloudSync.personalZoneID)
+        if let share, Self.isEmpty(share) {
+            try await deleteShare(share.recordID)
+            apply(nil, owner: true)
+        } else {
+            apply(share, owner: true)
+        }
+    }
+
+    /// No one but the owner is in it, invited or joined.
+    private static func isEmpty(_ share: CKShare) -> Bool {
+        !share.participants.contains { $0.role != .owner && $0.acceptanceStatus != .removed }
     }
 
     /// Member: fetches the share of the kitchen this device joined.
@@ -169,7 +182,8 @@ final class HouseholdSharing {
                 // CloudKit names people only once they accept; until then use
                 // the name the owner picked from Contacts.
                 let name = HouseholdText.personName(identity.nameComponents, remembered: InviteNames.name(for: address),
-                                                    email: email, phone: phone)
+                                                    email: email, phone: phone,
+                                                    isMe: participant == me, isOwner: participant.role == .owner)
                 return HouseholdPerson(
                     id: participant.participantID,
                     name: name,
@@ -189,31 +203,18 @@ final class HouseholdSharing {
 
     // MARK: Owner
 
-    /// Creates the kitchen's zone-wide share (or returns the existing one) for
-    /// the share sheet. Saves the "Kitchen" zone first if it isn't in iCloud yet.
-    func makeShare() async throws -> CKShare {
+    /// The kitchen's zone-wide share, or a new unsaved one when it isn't
+    /// shared yet, so the share is only ever saved with someone invited.
+    /// Saves the "Kitchen" zone first if it isn't in iCloud yet.
+    private func shareToInvite() async throws -> CKShare {
         let database = container.privateCloudDatabase
         let zoneID = CloudSync.personalZoneID
-        if let existing = try await fetchShare(in: database, zoneID: zoneID) {
-            apply(existing, owner: true)
-            return existing
-        }
+        if let existing = try await fetchShare(in: database, zoneID: zoneID) { return existing }
         _ = try await database.save(CKRecordZone(zoneID: zoneID))
         let share = CKShare(recordZoneID: zoneID)
         share[CKShare.SystemFieldKey.title] = await kitchenTitle()
         share.publicPermission = .none
-        do {
-            guard let saved = try await database.save(share) as? CKShare else { throw CKError(.internalError) }
-            apply(saved, owner: true)
-            return saved
-        } catch let error as CKError where error.code == .serverRecordChanged {
-            // Another device shared it a moment ago.
-            if let existing = try await fetchShare(in: database, zoneID: zoneID) {
-                apply(existing, owner: true)
-                return existing
-            }
-            throw error
-        }
+        return share
     }
 
     /// "George's Kitchen", from the person's iCloud name when CloudKit shares it.
@@ -230,16 +231,19 @@ final class HouseholdSharing {
         working = true
         defer { working = false }
         do {
-            let id = share?.recordID ?? Self.shareID(in: CloudSync.personalZoneID)
-            do {
-                _ = try await container.privateCloudDatabase.deleteRecord(withID: id)
-            } catch let error as CKError where HouseholdText.isGone(error) {
-                // Already gone.
-            }
+            try await deleteShare(share?.recordID ?? Self.shareID(in: CloudSync.personalZoneID))
             apply(nil, owner: true)
             error = nil
         } catch {
             self.error = HouseholdText.message(for: error)
+        }
+    }
+
+    private func deleteShare(_ id: CKRecord.ID) async throws {
+        do {
+            _ = try await container.privateCloudDatabase.deleteRecord(withID: id)
+        } catch let error as CKError where HouseholdText.isGone(error) {
+            // Already gone.
         }
     }
 
@@ -252,8 +256,8 @@ final class HouseholdSharing {
         working = true
         defer { working = false }
         do {
-            let share = try await makeShare()
-            var changed = false
+            let share = try await shareToInvite()
+            var changed = share.creationDate == nil
             if share[CKShare.SystemFieldKey.thumbnailImageData] == nil, let art = Self.thumbnail() {
                 // Messages shows it with the link.
                 share[CKShare.SystemFieldKey.thumbnailImageData] = art
@@ -339,7 +343,13 @@ final class HouseholdSharing {
         defer { working = false }
         do {
             share.removeParticipant(participant)
-            apply(try await save(share), owner: true)
+            if Self.isEmpty(share) {
+                // No one else left: stop sharing rather than keep an empty share.
+                try await deleteShare(share.recordID)
+                apply(nil, owner: true)
+            } else {
+                apply(try await save(share), owner: true)
+            }
             error = nil
         } catch {
             self.error = HouseholdText.message(for: error)
@@ -510,7 +520,7 @@ enum HouseholdText {
         var parts: [String] = []
         if person.role == .owner { parts.append("Owner") }
         if person.status == .invited { parts.append("Invited") }
-        if person.isMe { parts.append("You") }
+        if person.isMe, person.name != "You" { parts.append("You") }
         return parts.joined(separator: " · ")
     }
 
@@ -533,13 +543,15 @@ enum HouseholdText {
 
     /// The name CloudKit gives a person, else the one remembered from
     /// Contacts when they were invited, else their email or phone.
-    static func personName(_ components: PersonNameComponents?, remembered: String?, email: String?, phone: String?) -> String {
+    static func personName(_ components: PersonNameComponents?, remembered: String?, email: String?, phone: String?,
+                           isMe: Bool = false, isOwner: Bool = false) -> String {
         if let components, !components.formatted(.name(style: .medium)).trimmingCharacters(in: .whitespaces).isEmpty {
             return displayName(components, email: email, phone: phone)
         }
         if let remembered = remembered?.nilIfEmpty { return remembered }
         let fallback = displayName(nil, email: email, phone: phone)
-        return fallback == "Someone" ? "Invited person" : fallback
+        guard fallback == "Someone" else { return fallback }
+        return isMe ? "You" : isOwner ? "Kitchen owner" : "Invited person"
     }
 
     /// "Sam" from "Sam Rivera"; emails and phone numbers stay whole.

@@ -123,6 +123,9 @@ A household is the owner's "Kitchen" zone shared with other Apple IDs through
 a zone-wide `CKShare`; no server is involved, and members need an iPhone, iPad
 or Mac. `Cloud/HouseholdSharing.swift` creates the share (read-write,
 invited people only), invites, resends, removes, stops sharing and leaves.
+The share is saved only together with its first invitee, and removing the last
+person (or finding a share with no one else in it) deletes it, so a kitchen
+with no one invited is never shared.
 Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
 tap (`CNContactPickerViewController`, no Contacts permission) or takes a typed
 phone number or email. A contact's addresses are tried best first (iPhone and

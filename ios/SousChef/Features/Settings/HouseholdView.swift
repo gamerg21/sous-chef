@@ -70,9 +70,11 @@ struct HouseholdView: View {
             .accessibilityIdentifier("householdConfirmRemove")
             Button("Keep", role: .cancel) {}
         } message: { person in
-            Text(person.status == .invited
-                 ? "The link you sent \(HouseholdText.firstName(person.name)) stops working."
-                 : "\(HouseholdText.firstName(person.name)) loses access to your kitchen right away and goes back to their own.")
+            let last = sharing.people.filter { $0.role == .member }.count == 1
+            Text((person.status == .invited
+                  ? "The link you sent \(HouseholdText.firstName(person.name)) stops working."
+                  : "\(HouseholdText.firstName(person.name)) loses access to your kitchen right away and goes back to their own.")
+                 + (last ? " No one else is in your kitchen, so it stops being shared." : ""))
         }
         .alert("Invite by phone or email", isPresented: $typingAddress) {
             TextField("Name (optional)", text: $typedName)
