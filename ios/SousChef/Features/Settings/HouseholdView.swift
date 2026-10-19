@@ -213,6 +213,7 @@ struct HouseholdView: View {
                 .swipeActions {
                     if manageable {
                         Button(person.status == .invited ? "Cancel" : "Remove", role: .destructive) { removing = person }
+                            .tint(.red)
                     }
                 }
                 .contextMenu {
