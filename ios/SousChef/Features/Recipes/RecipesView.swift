@@ -11,7 +11,6 @@ struct RecipesView: View {
     @State private var creating: RecipeDraftSession?
     @State private var importMode: RecipeImportView.Mode?
     @State private var sharedImport: SharedImport?
-    @State private var sharedDraft: RecipeDraft?
     @State private var path = NavigationPath()
     private let navigator = AppNavigator.shared
 
@@ -118,34 +117,14 @@ struct RecipesView: View {
                 }
                 .kitchenEnvironment(kitchen)
             }
-            .sheet(item: $sharedImport, onDismiss: reviewSharedDraft) { shared in
-                RecipeImportView(mode: shared.mode, shared: shared.content) { draft in
-                    sharedDraft = draft
-                    sharedImport = nil
-                }
-                .kitchenEnvironment(kitchen)
+            .sheet(item: $sharedImport, onDismiss: importNextShared) { shared in
+                RecipeImportFlow(mode: shared.mode, shared: shared.content) { saved in path.append(saved) }
+                    .kitchenEnvironment(kitchen)
             }
-            .sheet(item: $importMode) { mode in
-                RecipeImportView(mode: mode) { draft in
-                    importMode = nil
-                    Task {
-                        try? await Task.sleep(for: .milliseconds(350))
-                        creating = RecipeDraftSession(draft: draft)
-                    }
-                }
-                .kitchenEnvironment(kitchen)
+            .sheet(item: $importMode, onDismiss: importNextShared) { mode in
+                RecipeImportFlow(mode: mode) { saved in path.append(saved) }
+                    .kitchenEnvironment(kitchen)
             }
-        }
-    }
-
-    /// Opens the editor once the import sheet is gone, or moves on if the
-    /// import was cancelled.
-    private func reviewSharedDraft() {
-        if let draft = sharedDraft {
-            sharedDraft = nil
-            creating = RecipeDraftSession(draft: draft)
-        } else {
-            importNextShared()
         }
     }
 
