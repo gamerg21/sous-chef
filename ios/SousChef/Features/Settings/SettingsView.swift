@@ -64,7 +64,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Link(destination: URL(string: "https://sous-chef-website.vercel.app")!) { Label("Website", systemImage: "globe") }
+                    Link(destination: URL(string: "https://souschefkitchen.app")!) { Label("Website", systemImage: "globe") }
                     Link(destination: URL(string: "https://github.com/gamerg21/sous-chef")!) { Label("Source code (AGPL-3.0)", systemImage: "chevron.left.forwardslash.chevron.right") }
                     // Tapping reveals the build number, like the Settings app's About page.
                     LabeledContent("Version", value: showsBuild ? "\(version) (\(build))" : version)
