@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readNewPassword } from './password-prompt.mjs';
 import { DatabaseSync, backup } from 'node:sqlite';
 import { resolve, join } from 'node:path';
 import { mkdirSync, existsSync, readFileSync, writeFileSync, copyFileSync, chmodSync } from 'node:fs';
@@ -17,8 +18,8 @@ try {
   writeFileSync(join(destination,'manifest.json'),JSON.stringify({format:1,createdAt:new Date().toISOString(),includes:['database','photos','credentials','sessions','community connections','encryption key when configured']},null,2),{mode:0o600});
   console.log(`Backup saved to ${destination}. Keep it private; it contains credentials and personal data.`);
  }else if(command==='reset-password') {
-  const email=(process.argv[3]||'').trim().toLowerCase();if(!email)throw new Error('Usage: reset-password email (new password on stdin)');
-  let password='';for await(const chunk of process.stdin){password+=chunk;if(password.length>256)throw new Error('Password too long');}password=password.replace(/[\r\n]+$/,'');if(password.length<8 || password.length>128)throw new Error('Password must be 8–128 characters');
+  const email=(process.argv[3]||'').trim().toLowerCase();if(!email)throw new Error('Usage: reset-password email (hidden prompt, or new password on stdin)');
+  const password=await readNewPassword();if(password.length<8 || password.length>128)throw new Error('Password must be 8–128 characters');
   const user=sql.prepare("SELECT id FROM users WHERE json_extract(data,'$.email')=?").get(email);if(!user)throw new Error('Account not found');
   const salt=randomBytes(16).toString('hex');const hash=`scrypt:${salt}:${scryptSync(password,salt,64).toString('hex')}`;
   sql.exec('BEGIN IMMEDIATE');try{sql.prepare('INSERT INTO credentials VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET hash=excluded.hash').run(user.id,hash);sql.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);sql.prepare('DELETE FROM reset_tokens WHERE user_id=?').run(user.id);sql.exec('COMMIT');}catch(e){sql.exec('ROLLBACK');throw e;}console.log('Password updated; existing local sessions revoked.');

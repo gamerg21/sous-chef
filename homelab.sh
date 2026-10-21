@@ -19,10 +19,9 @@ case "${1:-up}" in
     ;;
   reset-password)
     [ -n "${2:-}" ] || { echo 'Usage: ./homelab.sh reset-password email' >&2; exit 1; }
-    read -r -s -p 'New password: ' kitchen_password
-    echo
-    printf '%s' "$kitchen_password" | compose exec -T app node scripts/local-admin.mjs reset-password "$2"
-    unset kitchen_password
+    # In a terminal the script prompts (hidden, with confirmation); otherwise it reads stdin.
+    if [ -t 0 ]; then compose exec app node scripts/local-admin.mjs reset-password "$2"
+    else compose exec -T app node scripts/local-admin.mjs reset-password "$2"; fi
     ;;
   *) echo 'Commands: up, update, down, status, logs, backup, reset-password email' >&2; exit 1 ;;
 esac

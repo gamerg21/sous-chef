@@ -12,7 +12,13 @@ import { isValidEmail, normalizeEmail } from "@/lib/auth-utils";
 
 export default function ForgotPassword() {
   const [delivery, setDelivery] = useState<{mode:string}>();
-  useEffect(() => { void fetch('/api/auth').then(r=>r.json()).then(data=>setDelivery({mode:data.resetMode})); }, []);
+  const [configError, setConfigError] = useState(false);
+  useEffect(() => {
+    void fetch('/api/auth').then(r => {
+      if (!r.ok) throw new Error('Unable to load recovery settings');
+      return r.json();
+    }).then(data => setDelivery({mode: data.resetMode})).catch(() => setConfigError(true));
+  }, []);
   const { signIn } = useAuthActions();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -49,33 +55,9 @@ export default function ForgotPassword() {
       );
 
       await signIn("password", formData);
-      setMessage(
-        delivery?.mode === 'operator'
-          ? "Recovery requested. This instance does not send email. Ask the instance owner to reset your password using the local recovery command."
-          : "If an account with that email exists, a password reset link has been sent.",
-      );
-    } catch (error) {
-      console.error("Forgot password error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to request password reset";
-
-      if (
-        /not configured|SITE_URL|APP_BASE_URL|Internal Server Error|Provider/i.test(
-          errorMessage,
-        )
-      ) {
-        setMessage(
-          "Error: Password reset is not configured correctly. Check the auth environment and server logs.",
-        );
-      } else if (/InvalidAccountId|Invalid credentials/i.test(errorMessage)) {
-        setMessage(
-          delivery?.mode === 'operator'
-            ? "Recovery requested. This instance does not send email. Ask the instance owner to reset your password using the local recovery command."
-            : "If an account with that email exists, a password reset link has been sent.",
-        );
-      } else {
-        setMessage("Error: We couldn’t complete the reset request. Please try again in a few minutes, or contact the instance owner.");
-      }
+      setMessage("If an account with that email exists, check your inbox for a reset link. Check spam too. The link expires after one hour. If it does not arrive, use the recovery instructions below.");
+    } catch {
+      setMessage("Error: We couldn’t send the reset request. Try again later, or use the recovery instructions below.");
     } finally {
       setIsLoading(false);
     }
@@ -84,19 +66,15 @@ export default function ForgotPassword() {
   return (
     <AuthCard
       title="Reset your password"
-      description={delivery?.mode === 'operator' ? 'Email delivery isn’t enabled on this instance. You can request a recovery link from the instance owner.' : 'Enter your email address to request a password reset link.'}
+      description={delivery?.mode === 'operator' ? 'Password reset emails aren’t set up for this kitchen. You can still reset your password on the computer running Sous Chef.' : delivery ? 'Enter the email address you use to sign in.' : configError ? 'We couldn’t check whether email recovery is available. Reload this page or use the instructions below.' : 'Checking password recovery options…'}
       footer={
-        <>
-          <Link href="/auth/signin" className={authQuietLinkClassName}>
-            Back to sign in
-          </Link>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Without email delivery, the server operator can reset your password locally.
-          </p>
-        </>
+        <Link href="/auth/signin" className={authQuietLinkClassName}>
+          Back to sign in
+        </Link>
       }
     >
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <>
+      {delivery?.mode === 'email' && <form className="space-y-5" onSubmit={handleSubmit}>
         <div>
           <label htmlFor="email" className={eyebrowClassName}>
             Email address
@@ -122,9 +100,18 @@ export default function ForgotPassword() {
           className={authSubmitClassName}
         >
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-          {isLoading ? "Requesting…" : delivery?.mode === 'operator' ? "Request recovery link" : "Send reset link"}
+          {isLoading ? "Requesting…" : "Send reset link"}
         </button>
-      </form>
+      </form>}
+
+      <div className={`space-y-3 text-sm text-stone-600 dark:text-stone-400${delivery?.mode === 'email' ? ' mt-8' : ''}`}>
+        <h2 className="font-semibold text-stone-900 dark:text-stone-100">Reset without email</h2>
+        <p><strong>Did you install Sous Chef?</strong> You can reset your own password from the computer running it. You do not need to sign in or edit the database.</p>
+        <p><strong>Did someone else set it up?</strong> Ask that person to reset the password for your sign-in email address. This page does not send them a notification.</p>
+        <Link href="/auth/recovery" className="block font-medium text-emerald-600 dark:text-emerald-400 underline">Show step-by-step recovery instructions</Link>
+        <a href="https://github.com/gamerg21/sous-chef/blob/main/docs/PASSWORD_RECOVERY.md#optional-set-up-password-reset-emails" className="block underline">Set up password reset emails (optional)</a>
+      </div>
+      </>
     </AuthCard>
   );
 }

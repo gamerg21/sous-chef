@@ -24,7 +24,7 @@ or AI key is required. One app container stores its SQLite database, photos, and
 generated encryption key in a persistent volume.
 
 See [deployment](DEPLOYMENT.md), [Docker settings](DOCKER.md), and
-[backup/recovery](docs/BACKUP.md). Existing Convex users should read
+[backups](docs/BACKUP.md), and [password recovery/email setup](docs/PASSWORD_RECOVERY.md). Existing Convex users should read
 [the migration guide](docs/SQLITE_MIGRATION.md) before updating.
 
 ## What works
@@ -34,7 +34,7 @@ See [deployment](DEPLOYMENT.md), [Docker settings](DOCKER.md), and
 - Recipe editing, structured import/export, favorites, and ingredient mapping.
 - Unit-aware cooking deductions, shortage previews, shopping lists, and stocking purchases.
 - Barcode lookup through Open Food Facts; camera scanning needs trusted HTTPS.
-- Local email/password accounts, optional reset emails, and operator password recovery.
+- Local email/password accounts, optional reset emails, and password recovery without email.
 - Optional pantry recipe drafts using your own OpenAI, Anthropic, or Google key.
 - Optional community account connection, publication/unpublication, browsing,
   search, and importing independent recipe copies with photos and attribution.

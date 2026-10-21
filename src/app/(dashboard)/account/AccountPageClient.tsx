@@ -279,12 +279,10 @@ export default function AccountPageClient() {
                     required
                     className={cx(bareInputClassName, "mt-1")}
                   />
-                  {!profile.emailVerified && (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300">
-                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                      Email not verified. Check your inbox for a verification link.
-                    </p>
-                  )}
+                  <p className="mt-1.5 text-xs text-stone-500 dark:text-stone-400">
+                    Used to sign in and, when email is set up, reset your password.
+                    No email verification is required.
+                  </p>
                 </div>
               </div>
 
