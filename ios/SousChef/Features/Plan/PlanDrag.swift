@@ -75,9 +75,24 @@ struct PlanDragPreview: View {
     let title: String
     let photo: Data?
 
+    /// The preview is drawn once, as the drag starts, so a photo loaded in the
+    /// background would never show: use the card's cached thumbnail, or
+    /// decode a small one now.
+    private var thumbnail: UIImage? {
+        guard let photo else { return nil }
+        return PhotoThumbnails.cached(photo, maxPixel: 600) ?? PhotoThumbnails.cached(photo, maxPixel: 400)
+            ?? UIImage(data: photo)?.preparingThumbnail(of: CGSize(width: 132, height: 132))
+    }
+
     var body: some View {
         HStack(spacing: 10) {
-            RecipeImage(data: photo, maxPixel: 200)
+            Group {
+                if let thumbnail {
+                    Image(uiImage: thumbnail).resizable().scaledToFill()
+                } else {
+                    RecipeImage(data: nil)
+                }
+            }
                 .frame(width: 44, height: 44)
                 .clipShape(.rect(cornerRadius: 11, style: .continuous))
             Text(title)
