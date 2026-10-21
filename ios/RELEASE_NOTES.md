@@ -17,7 +17,7 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 ## 1.2.0
 
 ### App Store
-Made for iPhone Duo. Unfold it and Sous Chef spreads out: your week sits beside your recipes, so you can drag a recipe straight onto Tuesday's dinner, and your pantry opens with everything at a glance.
+iPhone Duo is here! Sous Chef now supports iPhone Duo. Unfold it and Sous Chef spreads out: your week sits beside what you can cook, so you can drag a recipe straight onto Tuesday's dinner, and your pantry opens with everything at a glance.
 
 Also new in 1.2:
 • Drag to plan: in Cook, drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.

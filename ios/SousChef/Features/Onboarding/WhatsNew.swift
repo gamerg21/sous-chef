@@ -18,6 +18,8 @@ enum WhatsNew {
     /// without an entry shows nothing.
     static let releases: [String: [Feature]] = [
         "1.2": [
+            Feature(systemImage: "sparkles", color: .purple, title: "iPhone Duo is here",
+                    detail: "Sous Chef now supports iPhone Duo. Unfold it and your kitchen spreads across both screens."),
             Feature(systemImage: "hand.draw.fill", color: .brand, title: "Drag to plan",
                     detail: "Unfold your iPhone Duo and drag recipes onto your week, right in Cook."),
             Feature(systemImage: "chart.bar.fill", color: .orange, title: "Everything at a glance",
