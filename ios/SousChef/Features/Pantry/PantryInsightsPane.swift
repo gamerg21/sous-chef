@@ -363,49 +363,6 @@ private extension Color {
     }
 }
 
-private struct InsightCard<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) { content }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 22, style: .continuous))
-    }
-}
-
-/// A headline number with what it counts.
-private struct StatTile: View {
-    let value: Int
-    let title: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(tint)
-                .frame(width: 44, height: 44)
-                .background(tint.opacity(0.14), in: .rect(cornerRadius: 13, style: .continuous))
-            VStack(alignment: .leading, spacing: 0) {
-                Text("\(value)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
-                    .contentTransition(.numericText(value: Double(value)))
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 22, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// How much of the "use soon" window is left, as a little ring.
 private struct DaysLeftDial: View {
     let daysLeft: Int

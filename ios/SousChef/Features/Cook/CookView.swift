@@ -14,6 +14,9 @@ struct CookView: View {
     @State private var ideas = false
     @State private var path = NavigationPath()
     @Bindable private var navigator = AppNavigator.shared
+    /// Unfolded or on a wide screen, the week plan sits beside the list, and
+    /// recipes drag onto it.
+    @State private var twoPane = false
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
 
     /// Ranking reruns only when recipes, the pantry, the window or the day change.
@@ -28,6 +31,21 @@ struct CookView: View {
     }
 
     var body: some View {
+        Group {
+            if twoPane {
+                TwoPane {
+                    WeekPlannerPane { recipe in path = NavigationPath([recipe]) }
+                } secondary: {
+                    list
+                }
+            } else {
+                list
+            }
+        }
+        .tracksTwoPaneWidth($twoPane)
+    }
+
+    private var list: some View {
         NavigationStack(path: $path) {
             let ranked = ranked
             let usingUp = Kitchen.rankForUsingUp(ranked)
@@ -72,10 +90,11 @@ struct CookView: View {
             .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
             .navigationDestination(for: PlanRoute.self) { _ in PlanView() }
             .onChange(of: navigator.showPlan, initial: true) { _, show in
-                // A widget or `souschef://plan` link asked for the week plan.
+                // A widget or `souschef://plan` link asked for the week plan,
+                // which is already showing beside the list when there's room.
                 guard show else { return }
                 navigator.showPlan = false
-                path = NavigationPath([PlanRoute()])
+                if !twoPane { path = NavigationPath([PlanRoute()]) }
             }
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
@@ -127,8 +146,10 @@ struct CookView: View {
                         .fixedSize()
                 }
             }
-            NavigationLink(value: PlanRoute()) {
-                Label("This week's plan", systemImage: "calendar")
+            if !twoPane {
+                NavigationLink(value: PlanRoute()) {
+                    Label("This week's plan", systemImage: "calendar")
+                }
             }
         }
     }
@@ -193,6 +214,10 @@ struct CookView: View {
                                 }
                             }
                         }
+                    }
+                    // Beside the week plan, recipes drag onto a day.
+                    .plannable(.recipe(item.recipe.uuid), isEnabled: twoPane) {
+                        PlanDragPreview(title: item.recipe.title, photo: item.recipe.photo)
                     }
                     .swipeActions(edge: .leading) {
                         Button { cooking = item.recipe } label: { Label("Cook", systemImage: "flame") }.tint(Color.brand)

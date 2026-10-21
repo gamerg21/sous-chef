@@ -20,12 +20,15 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 Made for iPhone Duo. Unfold it and Sous Chef spreads out: your week sits beside your recipes, so you can drag a recipe straight onto Tuesday's dinner, and your pantry opens with everything at a glance.
 
 Also new in 1.2:
-• Drag to plan: drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.
+• Drag to plan: in Cook, drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.
+• Recipes and Shopping at a glance: tap a number beside your recipes or list to show just those.
 • Pantry at a glance: what's in stock and where, how fresh it is, what to use soon, and what you can cook right now.
 • Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
 
 ### New
-- **Drag to plan**: On an unfolded iPhone Duo, iPad or iPhone on its side, Recipes shows your week beside the library. Drag a recipe onto a day's breakfast, lunch or dinner, drag a planned meal to another day, or tap an empty meal to pick a recipe.
+- **Drag to plan**: On an unfolded iPhone Duo, iPad or iPhone on its side, Cook shows your week beside what you can cook. Drag a recipe onto a day's breakfast, lunch or dinner, drag a planned meal to another day, or tap an empty meal to pick a recipe.
+- **Recipes at a glance**: Beside your recipes: how many you can cook now, which are almost there, quick, favorites, popular this week or month, newly added and your tags. Tap any of them to show just those recipes.
+- **Shopping at a glance**: Beside your list: how much is in the cart, what each aisle holds (tap one to show just that aisle), what the week's meals still need and which recipes the list makes cookable.
 - **Pantry at a glance**: Beside your pantry list: how much is in the pantry, fridge and freezer, how fresh it is, what to use soon, what's in stock by category, recipes you can cook now and this month's used and thrown away.
 - **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.

@@ -125,4 +125,36 @@ struct MealPlannerTests {
         #expect(kitchen.drop(.recipe(UUID()), on: "2026-10-21", slot: .dinner) == nil)
         #expect(kitchen.drop(.meal(UUID()), on: "2026-10-21", slot: .dinner) == nil)
     }
+
+    @Test func ranksPopularAndNewRecipesForTheGlancePane() {
+        let now = MealPlanner.date("2026-10-21") // noon
+        let day: (Int) -> Date = { Calendar.current.date(byAdding: .day, value: $0, to: now)! }
+        let curry = UUID(), roast = UUID(), salad = UUID(), old = UUID()
+        let entries = [
+            RecipeStats.Entry(id: curry, createdAt: day(-90), lastCookedAt: day(-2), minutes: 30, tags: ["dinner"], missing: 0, usesExpiring: true),
+            RecipeStats.Entry(id: roast, createdAt: day(-10), lastCookedAt: day(-1), minutes: 90, tags: ["dinner"], missing: 1, usesExpiring: false),
+            RecipeStats.Entry(id: salad, createdAt: day(-3), lastCookedAt: nil, minutes: 10, tags: ["lunch", "dinner"], missing: 3, usesExpiring: false),
+            RecipeStats.Entry(id: old, createdAt: day(-200), lastCookedAt: day(-100), minutes: nil, tags: [], missing: nil, usesExpiring: false),
+        ]
+        let meals: [(recipe: UUID, day: String)] = [
+            (roast, "2026-10-20"), (roast, "2026-10-23"), (salad, "2026-10-22"),
+            (curry, "2026-09-01"), // before the month
+            (salad, "2026-11-05"), // beyond the week ahead
+        ]
+        let month = RecipeStats.compute(entries, meals: meals, period: .month, now: now)
+        // Roast: two meals (one the day it was cooked, so not counted again);
+        // curry: cooked unplanned; salad: one meal this week.
+        #expect(month.popular.map(\.id) == [roast, salad, curry])
+        #expect(month.popular.map(\.count) == [2, 1, 1])
+        #expect(month.recent == [salad, roast])
+        #expect(month.ready == [curry])
+        #expect(month.almost == [roast])
+        #expect(month.quick == [salad])
+        #expect(month.expiring == [curry])
+        #expect(month.tags.map(\.tag) == ["dinner", "lunch"])
+
+        let week = RecipeStats.compute(entries, meals: meals, period: .week, now: now)
+        #expect(Set(week.popular.map(\.id)) == [roast, salad, curry])
+        #expect(!week.popular.contains { $0.id == old })
+    }
 }

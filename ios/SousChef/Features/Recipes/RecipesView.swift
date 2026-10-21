@@ -6,18 +6,35 @@ struct RecipesView: View {
     @Environment(Kitchen.self) private var kitchen
     @Query(sort: \Recipe.createdAt, order: .reverse) private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
+    @Query private var meals: [PlannedMeal]
+    @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
+    @State private var period = RecipeStats.Period.month
     @State private var search = ""
     @State private var filter: Filter = .all
     @State private var creating: RecipeDraftSession?
     @State private var importMode: RecipeImportView.Mode?
     @State private var sharedImport: SharedImport?
     @State private var path = NavigationPath()
-    /// Unfolded or on a wide screen, the week plan sits beside the library.
+    /// Unfolded or on a wide screen, the library's numbers sit beside it.
     @State private var twoPane = false
     private let navigator = AppNavigator.shared
 
     enum Filter: Hashable {
         case all, favorites, ready, tag(String)
+        /// From the at-a-glance pane beside the library.
+        case almost, popular, recent, quick, expiring
+
+        /// The pane's filters, which get a chip of their own while on.
+        var paneTitle: (title: String, symbol: String)? {
+            switch self {
+            case .almost: ("Almost there", "cart")
+            case .popular: ("Popular", "flame")
+            case .recent: ("Newly added", "sparkles")
+            case .quick: ("Quick", "timer")
+            case .expiring: ("Uses food expiring soon", "hourglass")
+            default: nil
+            }
+        }
     }
 
     /// Something shared from another app, on its way through import and review.
@@ -53,24 +70,58 @@ struct RecipesView: View {
         }
     }
 
+    @State private var statsCache = Memo<Int, RecipeStats>()
+
+    /// The at-a-glance numbers, rebuilt when recipes, the pantry, the plan,
+    /// the expiry window or the period change.
+    private var stats: RecipeStats {
+        var key = Hasher()
+        key.combine(Kitchen.readinessKey(recipes: recipes, pantry: pantry))
+        key.combine(meals.map { "\($0.recipeUUID?.uuidString ?? "")\($0.day)" })
+        key.combine(recipes.map(\.lastCookedAt))
+        key.combine(windowDays)
+        key.combine(period)
+        key.combine(Calendar.current.startOfDay(for: .now))
+        return statsCache(key.finalize()) {
+            let suggestions = Dictionary(Kitchen.rankRecipes(recipes, pantry: pantry, within: windowDays).map { ($0.recipe.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+            let entries = recipes.map { recipe in
+                RecipeStats.Entry(id: recipe.uuid, createdAt: recipe.createdAt, lastCookedAt: recipe.lastCookedAt, minutes: recipe.totalTimeMinutes,
+                                  tags: recipe.tags, missing: suggestions[recipe.uuid]?.missing, usesExpiring: !(suggestions[recipe.uuid]?.expiringItems.isEmpty ?? true))
+            }
+            return RecipeStats.compute(entries, meals: meals.compactMap { meal in meal.recipeUUID.map { ($0, meal.day) } }, period: period)
+        }
+    }
+
     private func visible(_ readiness: Readiness) -> [Recipe] {
-        recipes.filter { recipe in
+        let stats = filter.paneTitle == nil ? RecipeStats() : stats
+        let matching = recipes.filter { recipe in
             let matchesSearch = search.isEmpty || readiness.searchText[recipe.uuid, default: recipe.title].localizedStandardContains(search)
             let matchesFilter = switch filter {
             case .all: true
             case .favorites: recipe.favorited
             case .ready: readiness.plans[recipe.uuid]?.missingIngredients.isEmpty == true
             case .tag(let tag): recipe.tags.contains(tag)
+            case .almost: stats.almost.contains(recipe.uuid)
+            case .popular: stats.popular.contains { $0.id == recipe.uuid }
+            case .recent: stats.recent.contains(recipe.uuid)
+            case .quick: stats.quick.contains(recipe.uuid)
+            case .expiring: stats.expiring.contains(recipe.uuid)
             }
             return matchesSearch && matchesFilter
         }
+        // Popular shows the most popular first; the rest keep newest first.
+        guard filter == .popular else { return matching }
+        let rank = Dictionary(stats.popular.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return matching.sorted { rank[$0.uuid, default: .max] < rank[$1.uuid, default: .max] }
     }
 
     var body: some View {
         Group {
             if twoPane {
                 TwoPane {
-                    WeekPlannerPane { recipe in path = NavigationPath([recipe]) }
+                    RecipeInsightsPane(stats: stats, recipes: recipes, filter: $filter, period: $period) { recipe in
+                        path = NavigationPath([recipe])
+                    }
                 } secondary: {
                     library
                 }
@@ -99,10 +150,6 @@ struct RecipesView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu { contextMenu(for: recipe) }
-                                // Beside the week plan, cards drag onto a day.
-                                .plannable(.recipe(recipe.uuid), isEnabled: twoPane) {
-                                    PlanDragPreview(title: recipe.title, photo: recipe.photo)
-                                }
                             }
                         }
                         if shown.isEmpty {
@@ -182,6 +229,21 @@ struct RecipesView: View {
     private var filterBar: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
+                // A filter set from the pane beside the library.
+                if let pane = filter.paneTitle {
+                    Button {
+                        withAnimation(.snappy) { filter = .all }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Chip(text: pane.title, systemImage: pane.symbol, selected: true)
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(pane.title), clear filter")
+                    .transition(.scale.combined(with: .opacity))
+                }
                 filterChip("All", .all, symbol: nil)
                 filterChip("Favorites", .favorites, symbol: "heart.fill")
                 filterChip("Ready to cook", .ready, symbol: "checkmark.circle.fill")

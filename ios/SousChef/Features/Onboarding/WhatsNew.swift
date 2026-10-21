@@ -19,9 +19,9 @@ enum WhatsNew {
     static let releases: [String: [Feature]] = [
         "1.2": [
             Feature(systemImage: "hand.draw.fill", color: .brand, title: "Drag to plan",
-                    detail: "Unfold your iPhone Duo and drag recipes onto your week, right beside your library."),
-            Feature(systemImage: "chart.bar.fill", color: .orange, title: "Pantry at a glance",
-                    detail: "See what's in stock, how fresh it is and what you can cook, beside your pantry."),
+                    detail: "Unfold your iPhone Duo and drag recipes onto your week, right in Cook."),
+            Feature(systemImage: "chart.bar.fill", color: .orange, title: "Everything at a glance",
+                    detail: "Numbers beside your pantry, recipes and list. Tap one to show just those."),
             Feature(systemImage: "laptopcomputer", color: .blue, title: "Cook on the counter",
                     detail: "Prop your iPhone Duo half open: steps stand up, timers sit on the flat half."),
         ],

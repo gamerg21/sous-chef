@@ -249,8 +249,17 @@ enum SampleKitchen {
             item.category = category
             kitchen.context.insert(item)
         }
-        // A week that's partly planned, around today.
+        // Recipes saved over the past two months, some cooked lately.
         let recipes = Dictionary(kitchen.fetch(Recipe.self).map { ($0.title, $0) }, uniquingKeysWith: { first, _ in first })
+        let history: [(String, Int, Int?)] = [
+            ("Penne all'arrabbiata", -58, -3), ("Thai green curry", -45, -9), ("Fluffy pancakes", -40, -11),
+            ("Spinach & parmesan omelette", -21, nil), ("Lemon herb roast", -12, -1), ("Garden salad", -4, nil),
+        ]
+        for (title, added, cooked) in history {
+            recipes[title]?.createdAt = day(added)
+            recipes[title]?.lastCookedAt = cooked.map(day)
+        }
+        // A week that's partly planned, around today.
         let plan: [(Int, MealSlot, String, Bool)] = [
             (-1, .dinner, "Lemon herb roast", true), (0, .breakfast, "Spinach & parmesan omelette", true),
             (0, .dinner, "Thai green curry", false), (1, .lunch, "Garden salad", false),
