@@ -45,40 +45,41 @@ struct HouseholdView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: kitchen.cloud.isHouseholdMember) { await sharing.refresh() }
         .refreshable { await sharing.refresh() }
-        .confirmationDialog("Stop sharing your kitchen?", isPresented: $confirmStop, titleVisibility: .visible) {
-            Button("Stop sharing", role: .destructive) { Task { await sharing.stopSharing() } }
-                .accessibilityIdentifier("householdConfirmStop")
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Everyone you invited loses access right away and keeps nothing from it. Your kitchen stays on your devices and in your iCloud.")
+        .sheet(isPresented: $confirmStop) {
+            ConfirmSheet(systemImage: "person.2.slash", title: "Stop sharing your kitchen?",
+                         message: "Everyone you invited loses access right away and keeps nothing from it. Your kitchen stays on your devices and in your iCloud.",
+                         action: "Stop sharing", actionIdentifier: "householdConfirmStop") {
+                Task { await sharing.stopSharing() }
+            }
         }
-        .confirmationDialog("Leave \(ownerKitchen)?", isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button("Leave household", role: .destructive) { Task { await sharing.leaveFromSettings() } }
-                .accessibilityIdentifier("householdConfirmLeave")
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You'll go back to your own kitchen, as it was before you joined. What you added here stays with \(ownerKitchen).")
+        .sheet(isPresented: $confirmLeave) {
+            ConfirmSheet(systemImage: "rectangle.portrait.and.arrow.right", title: "Leave \(ownerKitchen)?",
+                         message: "You'll go back to your own kitchen, as it was before you joined. What you added here stays with \(ownerKitchen).",
+                         action: "Leave household", actionIdentifier: "householdConfirmLeave") {
+                Task { await sharing.leaveFromSettings() }
+            }
         }
-        .confirmationDialog(removeTitle, isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
-                            titleVisibility: .visible, presenting: removing) { person in
-            Button(person.status == .invited ? "Cancel invitation" : "Remove", role: .destructive) {
+        .sheet(item: $removing) { person in
+            ConfirmSheet(systemImage: "person.badge.minus", title: removeTitle(for: person), message: removeMessage(for: person),
+                         action: person.status == .invited ? "Cancel invitation" : "Remove", cancel: "Keep",
+                         actionIdentifier: "householdConfirmRemove") {
                 Task { await sharing.remove(person) }
             }
-            .accessibilityIdentifier("householdConfirmRemove")
-            Button("Keep", role: .cancel) {}
-        } message: { person in
-            let last = sharing.people.filter { $0.role == .member }.count == 1
-            Text((person.status == .invited
-                  ? "The link you sent \(HouseholdText.firstName(person.name)) stops working."
-                  : "\(HouseholdText.firstName(person.name)) loses access to your kitchen right away and goes back to their own.")
-                 + (last ? " No one else is in your kitchen, so it stops being shared." : ""))
         }
     }
 
-    private var removeTitle: String {
-        guard let removing else { return "" }
-        let name = HouseholdText.firstName(removing.name)
-        return removing.status == .invited ? "Cancel \(HouseholdText.possessive(name)) invitation?" : "Remove \(name) from your kitchen?"
+    private func removeTitle(for person: HouseholdPerson) -> String {
+        let name = HouseholdText.firstName(person.name)
+        return person.status == .invited ? "Cancel \(HouseholdText.possessive(name)) invitation?" : "Remove \(name)?"
+    }
+
+    private func removeMessage(for person: HouseholdPerson) -> String {
+        let name = HouseholdText.firstName(person.name)
+        let what = person.status == .invited
+            ? "The link you sent \(name) stops working."
+            : "\(name) loses access to your kitchen right away. Their phone goes back to their own kitchen and keeps nothing from yours."
+        let last = sharing.people.filter { $0.role == .member }.count == 1
+        return last ? what + " No one else is in your kitchen, so it stops being shared." : what
     }
 
     private func pickContact() {

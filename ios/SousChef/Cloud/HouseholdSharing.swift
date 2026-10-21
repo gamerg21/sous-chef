@@ -400,7 +400,7 @@ final class HouseholdSharing {
         }
         try await kitchen.cloud.leaveHousehold()
         // Leaving on purpose isn't the owner ending the household.
-        kitchen.cloud.householdEndedNotice = nil
+        kitchen.cloud.householdEndedNotice = false
         share = nil
         people = []
         ownerName = nil
@@ -525,6 +525,14 @@ enum HouseholdText {
         if person.status == .invited { parts.append("Invited") }
         if person.isMe, person.name != "You" { parts.append("You") }
         return parts.joined(separator: " · ")
+    }
+
+    /// What a member sees when they're no longer in the kitchen. CloudKit
+    /// doesn't say whether the owner stopped sharing or removed them.
+    static func endedNotice(ownerName: String?) -> (title: String, message: String) {
+        let kitchen = ownerName?.nilIfEmpty.map { "\(possessive($0)) kitchen" } ?? "the shared kitchen"
+        return ("You're back in your own kitchen",
+                "You're no longer in \(kitchen). This device went back to your own kitchen, as it was before you joined.")
     }
 
     /// The share's title: "Sam's Kitchen", or "Sous Chef Kitchen" without a name.

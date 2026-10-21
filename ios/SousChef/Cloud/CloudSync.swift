@@ -51,7 +51,7 @@ final class CloudSync: CKSyncEngineDelegate {
     private(set) var scope: Scope = .personal
     /// Set when the owner stopped sharing or removed this person, and the
     /// device went back to its personal kitchen. The UI shows it once and clears it.
-    var householdEndedNotice: String?
+    var householdEndedNotice = false
     /// Whether this device is syncing with iCloud (an engine is running).
     private(set) var isRunning = false
 
@@ -150,13 +150,15 @@ final class CloudSync: CKSyncEngineDelegate {
 
     /// Goes back to this person's personal kitchen: clears the local store
     /// (without deleting anything in the shared zone) and refetches the personal zone.
-    func leaveHousehold() async throws {
+    /// `sendPending` sends what this device hasn't sent yet first; skipped
+    /// when the household is already gone.
+    func leaveHousehold(sendPending: Bool = true) async throws {
         guard case .household = scope else { return }
         guard !switching else { throw CloudSyncError.busy }
         switching = true
         defer { switching = false }
         let household = activeZoneID
-        await flush()
+        if sendPending { await flush() }
         stopEngine()
         Self.removeState(for: scope)
         deleteMetas(in: household)
@@ -269,8 +271,9 @@ final class CloudSync: CKSyncEngineDelegate {
     /// The shared kitchen is gone (the owner stopped sharing or removed this person).
     func householdEnded() {
         guard case .household = scope, !switching else { return }
-        householdEndedNotice = "The owner stopped sharing their kitchen, so this device is back on your own kitchen."
-        Task { try? await leaveHousehold() }
+        householdEndedNotice = true
+        // The shared zone is gone, so there's nothing left to send to it.
+        Task { try? await leaveHousehold(sendPending: false) }
     }
 
     /// Signed in to a different Apple ID: the old account's kitchen leaves the

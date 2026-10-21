@@ -123,6 +123,12 @@ struct HouseholdTests {
         #expect(text.contains("\u{201C}George\u{2019}s Kitchen\u{201D}"))
         #expect(text.hasSuffix(url.absoluteString))
         #expect(HouseholdText.inviteMessage(url: url, kitchenTitle: nil).hasPrefix("Join my kitchen"))
+        #expect(HouseholdText.inviteMessage(url: url, kitchenTitle: HouseholdText.kitchenTitle(ownerName: nil)).hasPrefix("Join my kitchen"))
+    }
+
+    @Test func endedNotice() {
+        #expect(HouseholdText.endedNotice(ownerName: "George").message.contains("George\u{2019}s kitchen"))
+        #expect(HouseholdText.endedNotice(ownerName: nil).message.contains("the shared kitchen"))
     }
 
     @Test func containerMatchesKitchen() {

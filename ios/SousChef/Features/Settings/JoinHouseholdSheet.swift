@@ -111,13 +111,13 @@ private struct HouseholdPresentations: ViewModifier {
             }
             .onChange(of: sharing.pendingInvitation?.id, initial: true) { present() }
             .onChange(of: ready) { present() }
-            .alert("Back to your own kitchen", isPresented: Binding(
-                get: { kitchen.cloud.householdEndedNotice != nil },
-                set: { if !$0 { kitchen.cloud.householdEndedNotice = nil } }
+            .sheet(isPresented: Binding(
+                get: { kitchen.cloud.householdEndedNotice },
+                set: { kitchen.cloud.householdEndedNotice = $0 }
             )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(kitchen.cloud.householdEndedNotice ?? "")
+                let notice = HouseholdText.endedNotice(ownerName: sharing.ownerName)
+                ConfirmSheet(systemImage: "house", title: notice.title, message: notice.message,
+                             action: "OK", tint: .brand, cancel: nil)
             }
             .alert("Household", isPresented: Binding(
                 get: { sharing.notice != nil },

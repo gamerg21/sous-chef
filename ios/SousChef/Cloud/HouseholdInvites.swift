@@ -90,7 +90,9 @@ enum InviteNames {
 extension HouseholdText {
     /// The text sent with an invitation link.
     static func inviteMessage(url: URL, kitchenTitle: String?) -> String {
-        let kitchen = kitchenTitle?.nilIfEmpty.map { "\u{201C}\($0)\u{201D}" } ?? "my kitchen"
+        // The generic title says nothing, so it reads "my kitchen" instead.
+        let named = kitchenTitle?.nilIfEmpty.flatMap { $0 == HouseholdText.kitchenTitle(ownerName: nil) ? nil : $0 }
+        let kitchen = named.map { "\u{201C}\($0)\u{201D}" } ?? "my kitchen"
         return "Join \(kitchen) in Sous Chef so we can share the pantry, recipes, shopping list and meal plan. Open this on your iPhone, iPad or Mac: \(url.absoluteString)"
     }
 }
