@@ -55,11 +55,6 @@ Retain the old volume until the restored kitchen is verified.
 
 ## Recover a password
 
-```sh
-./homelab.sh reset-password person@example.com
-```
-
-For a checkout, pipe the new password from a hidden prompt into:
-`pnpm reset-password person@example.com`. Do not put passwords in arguments or
-shell history. This replaces the local password and revokes local sessions and
-reset links. It does not change the separate community account.
+See [step-by-step password recovery](PASSWORD_RECOVERY.md) for Docker, Compose,
+homelab, and direct source installations, plus optional reset email setup.
+You do not need your old password or database knowledge. Your kitchen data stays intact.

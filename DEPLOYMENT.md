@@ -51,9 +51,10 @@ access without a proxy it can remain unset. Use HTTPS when exposing the app
 outside your LAN; camera scanning also requires a trusted secure context.
 See [HTTPS setup](HTTPS_SETUP.md).
 
-Optional `RESEND_API_KEY` and `SMTP_FROM` enable reset emails; email also needs
-`APP_URL`. Without email, use `./homelab.sh reset-password EMAIL` on the server.
-The command prompts for the new password without displaying it.
+Password reset emails are optional and use Resend. Follow the
+[email setup and password recovery guide](docs/PASSWORD_RECOVERY.md) for exact
+settings, restart commands, and a delivery test. If you forgot your password,
+you can reset it without email or an existing app login.
 
 ## Operate
 

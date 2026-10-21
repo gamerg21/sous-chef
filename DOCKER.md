@@ -64,7 +64,7 @@ runs or configures a Convex kitchen. That include requires Compose 2.20+.
 | `SOUS_CHEF_DEMO` | Opt-in isolated demo kitchens, default false |
 | `COMMUNITY_API_URL` | Optional community HTTP origin (`…convex.site`) |
 | `COMMUNITY_CONVEX_URL` | Optional community account origin (`…convex.cloud`) |
-| `RESEND_API_KEY`, `SMTP_FROM` | Optional local reset email |
+| `RESEND_API_KEY`, `SMTP_FROM` | Optional Resend reset emails; also requires `APP_URL` |
 | `SECRETS_ENCRYPTION_KEY` | Optional existing key override; otherwise generated |
 | `SOUS_CHEF_IMAGE` | Prebuilt image tag; default builds locally |
 
@@ -83,3 +83,8 @@ The image reads settings at startup, so community URLs need no image rebuild.
 
 The Docker workflow builds amd64/arm64 images. A build validates packaging;
 a successful deployment and end-to-end acceptance are separate checks.
+
+## Forgot your password or want email recovery?
+
+Follow [password recovery and email setup](docs/PASSWORD_RECOVERY.md). It includes
+commands for the published image and Compose, with no database editing required.
