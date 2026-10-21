@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (19)
+
+### What to Test
+
+What to test (please focus here)
+- What's new: updating from 1.1, the screen now opens with "iPhone Duo is here" and lists pantry sorting. It shows once per version, so if you opened build 18 you won't see it again.
+
 ## 1.2.0 (18)
 
 ### What to Test
