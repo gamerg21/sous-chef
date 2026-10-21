@@ -14,6 +14,14 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.1.1
+
+### App Store
+Fixed: recipes pasted as structured recipe data, like the kind AI chat apps write, now come in with their steps, servings, time and nutrition instead of one step per line.
+
+### Fixed
+- **Pasted recipe data**: Recipes pasted as structured recipe data, like the kind AI chat apps write, now come in with their steps, servings, time, nutrition and tips instead of one step per line.
+
 ## 1.1.0
 
 ### App Store
