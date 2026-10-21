@@ -6,7 +6,8 @@
 //   pnpm ios:release-notes 1.1.0,1.1.1    several versions one build covers
 //   pnpm ios:release-notes 1.1.0 --full   every detail line, by section
 //
-// The compact form is what the App Store's "What's New" should be.
+// The compact form is what the App Store's "What's New" should be. A version
+// with an "### App Store" section prints that written copy instead.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -32,6 +33,7 @@ function sections(version) {
   const body = source.slice(start + version.length + 5).split(/\n## /)[0];
   return body.split(/\n### /).slice(1).map((block) => {
     const [type, ...lines] = block.split('\n');
+    if (type.trim() === 'App Store') return { type: 'App Store', copy: lines.join('\n').trim(), entries: [] };
     const entries = lines
       .map((line) => line.match(/^- \*\*(.+?)\*\*:\s*(.+)$/))
       .filter(Boolean)
@@ -43,7 +45,7 @@ function sections(version) {
 const all = versions.flatMap(sections);
 const output = ["What's New", ''];
 if (full) {
-  const types = [...new Set(all.map((section) => section.type))];
+  const types = [...new Set(all.filter((section) => !section.copy).map((section) => section.type))];
   for (const type of types) {
     output.push(type.toUpperCase());
     for (const section of all.filter((s) => s.type === type)) {
@@ -51,6 +53,8 @@ if (full) {
     }
     output.push('');
   }
+} else if (all.some((section) => section.copy)) {
+  for (const section of all.filter((s) => s.copy)) output.push(section.copy, '');
 } else {
   const titles = [...new Set(all.flatMap((section) => section.entries.map((entry) => entry.title)))];
   for (const title of titles) output.push(`• ${title}`);
