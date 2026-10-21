@@ -115,7 +115,12 @@ is no Sous Chef-operated backend.
 - New models and fields need no setup step: CKSyncEngine creates record types
   and fields in the CloudKit development environment as it saves. Deploy the
   schema to production from the CloudKit Console before a TestFlight or App
-  Store build.
+  Store build. A field is only created once a value is saved in it, so first
+  compare the development schema with `CloudRecordType.schema`
+  (`xcrun cktool export-schema --team-id X423ZKYPDN --container-id
+  iCloud.com.georgevina.souschef --environment development`, with a management
+  token saved by `xcrun cktool save-token --type management`) and import any
+  missing fields; a field missing in production fails every save that uses it.
 
 ### Households
 
