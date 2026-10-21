@@ -10,7 +10,7 @@ struct HouseholdPerson: Identifiable, Equatable {
 
     let id: String
     let name: String
-    /// Email or phone, when CloudKit shares it and it isn't already the name.
+    /// Email or phone of a pending invitation, when it isn't already the name.
     let detail: String?
     let role: Role
     let status: Status
@@ -184,12 +184,15 @@ final class HouseholdSharing {
                 let name = HouseholdText.personName(identity.nameComponents, remembered: InviteNames.name(for: address),
                                                     email: email, phone: phone,
                                                     isMe: participant == me, isOwner: participant.role == .owner)
+                let status: HouseholdPerson.Status =
+                    participant.acceptanceStatus == .accepted || participant.role == .owner ? .accepted : .invited
                 return HouseholdPerson(
                     id: participant.participantID,
                     name: name,
-                    detail: [email, phone].compactMap { $0 }.first { $0 != name },
+                    // Only while waiting, to tell invitations apart; members show just their name.
+                    detail: status == .invited ? [email, phone].compactMap { $0 }.first { $0 != name } : nil,
                     role: participant.role == .owner ? .owner : .member,
-                    status: participant.acceptanceStatus == .accepted || participant.role == .owner ? .accepted : .invited,
+                    status: status,
                     isMe: participant == me,
                     address: address
                 )
