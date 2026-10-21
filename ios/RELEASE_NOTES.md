@@ -23,6 +23,7 @@ Also new in 1.2:
 • Drag to plan: in Cook, drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.
 • Recipes and Shopping at a glance: tap a number beside your recipes or list to show just those.
 • Pantry at a glance: what's in stock and where, how fresh it is, what to use soon, and what you can cook right now.
+• Sort your pantry by name, what expires first or what you added last.
 • Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
 
 ### New
@@ -31,6 +32,7 @@ Also new in 1.2:
 - **Shopping at a glance**: Beside your list: how much is in the cart, what each aisle holds (tap one to show just that aisle), what the week's meals still need and which recipes the list makes cookable.
 - **Pantry at a glance**: Beside your pantry list: how much is in the pantry, fridge and freezer, how fresh it is, what to use soon, what's in stock by category, recipes you can cook now and this month's used and thrown away.
 - **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
+- **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
 
 ## 1.1.0

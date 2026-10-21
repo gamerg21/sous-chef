@@ -20,6 +20,16 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (18)
+
+### What to Test
+
+What to test (please focus here)
+- iPhone Duo, unfolded: Cook shows your week beside what you can cook. Drag a recipe onto a breakfast, lunch or dinner slot, then drag the planned meal to another day.
+- At a glance: unfold on Recipes, Shopping and Pantry. Tap a number (ready to cook, popular, an aisle) and the list beside it shows just those; tap again to show everything.
+- Pantry sort: sort the pantry by name, expiry or recently added.
+- Cook on the counter: prop the Duo half open in cook mode; steps stand up, ingredients and timers sit on the flat half.
+
 ## 1.1.0 (17)
 
 ### What to Test
