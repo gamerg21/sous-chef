@@ -26,6 +26,8 @@ enum WhatsNew {
                     detail: "Numbers beside your pantry, recipes and list. Tap one to show just those."),
             Feature(systemImage: "laptopcomputer", color: .blue, title: "Cook on the counter",
                     detail: "Prop your iPhone Duo half open: steps stand up, timers sit on the flat half."),
+            Feature(systemImage: "arrow.up.arrow.down", color: .teal, title: "Sort your pantry",
+                    detail: "Sort by name, what expires first or what you added last."),
         ],
         "1.1": [
             Feature(systemImage: "house.fill", color: .orange, title: "Share your kitchen",
