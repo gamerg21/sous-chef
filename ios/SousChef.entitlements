@@ -12,6 +12,10 @@
 	<array>
 		<string>group.com.georgevina.souschef</string>
 	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:souschefkitchen.app</string>
+	</array>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.com.georgevina.souschef</string>

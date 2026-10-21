@@ -69,6 +69,7 @@ final class HouseholdSharing {
 
     /// Shown app-wide by the join sheet.
     var pendingInvitation: HouseholdInvitation?
+    @ObservationIgnored private var lastOpenedInvite: URL?
     private(set) var joining = false
     var joinError: String?
     /// A short app-wide message, such as tapping an invitation to your own kitchen.
@@ -342,7 +343,8 @@ final class HouseholdSharing {
             error = "iCloud didn't make an invitation link. Try again."
             return
         }
-        let body = HouseholdText.inviteMessage(url: url, kitchenTitle: share[CKShare.SystemFieldKey.title] as? String)
+        let body = HouseholdText.inviteMessage(url: InviteLink.branded(from: url) ?? url,
+                                               kitchenTitle: share[CKShare.SystemFieldKey.title] as? String)
         InviteMessageComposer.present(to: address, body: body)
     }
 
@@ -428,6 +430,28 @@ final class HouseholdSharing {
     }
 
     // MARK: Accepting
+
+    /// A souschefkitchen.app/join link was opened: looks up the iCloud
+    /// invitation it stands for and shows the join sheet. Anything that isn't
+    /// a Sous Chef kitchen invitation is refused.
+    @discardableResult
+    func open(inviteLink link: URL) -> Bool {
+        guard let iCloud = InviteLink.iCloudURL(from: link) else { return false }
+        // iOS can deliver the same link to the scene and to SwiftUI.
+        guard iCloud != lastOpenedInvite else { return true }
+        lastOpenedInvite = iCloud
+        Task {
+            defer { lastOpenedInvite = nil }
+            do {
+                let metadata = try await container.shareMetadata(for: iCloud)
+                guard metadata.containerIdentifier == Self.containerIdentifier else { throw CKError(.unknownItem) }
+                handleAccepted(metadata)
+            } catch {
+                notice = "This invitation couldn't be opened. It may have been cancelled, or it's for a different Apple Account. Ask the person who invited you to send it again."
+            }
+        }
+        return true
+    }
 
     /// Called when the person taps an invitation. Shows the join sheet unless
     /// there's nothing to join.

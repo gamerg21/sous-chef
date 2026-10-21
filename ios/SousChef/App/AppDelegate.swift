@@ -28,6 +28,17 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
         if let metadata = connectionOptions.cloudKitShareMetadata {
             HouseholdSharing.shared.handleAccepted(metadata)
         }
+        for activity in connectionOptions.userActivities { openInviteLink(in: activity) }
+    }
+
+    /// A souschefkitchen.app/join invitation tapped while the app was running.
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        openInviteLink(in: userActivity)
+    }
+
+    private func openInviteLink(in activity: NSUserActivity) {
+        guard activity.activityType == NSUserActivityTypeBrowsingWeb, let url = activity.webpageURL else { return }
+        HouseholdSharing.shared.open(inviteLink: url)
     }
 
     func windowScene(_ windowScene: UIWindowScene, userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {

@@ -117,6 +117,22 @@ struct HouseholdTests {
         #expect(InviteAddress.candidates(phones: [], emails: []).isEmpty)
     }
 
+    @Test func brandedInviteLinks() throws {
+        let iCloud = try #require(URL(string: "https://www.icloud.com/share/0aBcD-eF_gH12345#Sous_Chef_Kitchen"))
+        let branded = try #require(InviteLink.branded(from: iCloud))
+        #expect(branded.absoluteString == "https://souschefkitchen.app/join#0aBcD-eF_gH12345")
+        #expect(InviteLink.iCloudURL(from: branded)?.absoluteString == "https://www.icloud.com/share/0aBcD-eF_gH12345")
+        #expect(InviteLink.iCloudURL(from: URL(string: "https://souschefkitchen.app/join/#0aBcD-eF_gH12345")!) != nil)
+        // Only real share tokens on our own domain; nothing else is rebuilt.
+        for link in ["https://evil.example/join#0aBcD-eF_gH12345", "http://souschefkitchen.app/join#0aBcD-eF_gH12345",
+                     "https://souschefkitchen.app/join#../../steal", "https://souschefkitchen.app/join#short",
+                     "https://souschefkitchen.app/join", "https://souschefkitchen.app/other#0aBcD-eF_gH12345",
+                     "https://souschefkitchen.app/join#0aBcD%2F..%2Fx12345"] {
+            #expect(InviteLink.iCloudURL(from: URL(string: link)!) == nil, "\(link)")
+        }
+        #expect(InviteLink.branded(from: URL(string: "https://example.com/share/0aBcD-eF_gH12345")!) == nil)
+    }
+
     @Test func inviteMessage() {
         let url = URL(string: "https://www.icloud.com/share/abc")!
         let text = HouseholdText.inviteMessage(url: url, kitchenTitle: "George\u{2019}s Kitchen")

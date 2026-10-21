@@ -28,6 +28,7 @@ struct SousChefApp: App {
                 .task { AppNavigator.shared.receiveSharedRecipes() }
                 .task { CookTimerAlerts.shared.endLeftoverActivities() }
                 .onOpenURL { url in
+                    if HouseholdSharing.shared.open(inviteLink: url) { return }
                     AppNavigator.shared.open(url)
                     AppNavigator.shared.receiveSharedRecipes()
                 }

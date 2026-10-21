@@ -156,7 +156,13 @@ way to invite from iOS. A contact's addresses are tried best first (iPhone and
 mobile numbers, other numbers, emails) with `shareParticipant(forPhoneNumber:)`
 / `forEmailAddress:`, and the first whose identity `hasiCloudAccount` becomes the
 participant (else the first CloudKit accepted). The share carries the kitchen's
-title and the app logo as its thumbnail. Messages opens addressed to them with the link;
+title and the app logo as its thumbnail. The link sent is
+`souschefkitchen.app/join#<token>` (`InviteLink`), not the icloud.com one, so
+Messages shows Sous Chef's own preview; the token stays in the fragment, the
+website (`sous-chef-website`, `/join` and `/.well-known/apple-app-site-association`)
+never receives it, and the app (`applinks:souschefkitchen.app`) rebuilds only an
+icloud.com share link from it, fetches its metadata and checks the container
+before showing the join sheet. Messages opens addressed to them with the link;
 without Messages it falls back to the share sheet. CloudKit doesn't name a
 participant until they accept, so the name picked from Contacts is remembered
 by address (UserDefaults and iCloud key-value storage) and shown for pending

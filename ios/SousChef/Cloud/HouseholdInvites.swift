@@ -87,6 +87,35 @@ enum InviteNames {
     private static var hasKeyValueStore: Bool { Entitlements.contains("com.apple.developer.ubiquity-kvstore-identifier") }
 }
 
+/// Invitation links on Sous Chef's own domain: souschefkitchen.app/join#<token>,
+/// where <token> is the last part of the iCloud share link. Messages shows
+/// the site's preview instead of "Shared Item · icloud.com", and iOS opens
+/// the link in Sous Chef (applinks entitlement). The token stays after "#",
+/// so the website never receives it, and the app only ever rebuilds an
+/// icloud.com share link from it: iCloud still lets only the invited Apple
+/// Account join.
+enum InviteLink {
+    static let host = "souschefkitchen.app"
+
+    /// The branded link for an iCloud share link, or nil if it isn't one.
+    static func branded(from iCloud: URL) -> URL? {
+        guard iCloud.host() == "www.icloud.com", iCloud.pathComponents.count == 3,
+              iCloud.pathComponents[1] == "share", isToken(iCloud.lastPathComponent) else { return nil }
+        return URL(string: "https://\(host)/join#\(iCloud.lastPathComponent)")
+    }
+
+    /// The iCloud share link a branded link stands for, or nil for any other link.
+    static func iCloudURL(from link: URL) -> URL? {
+        guard link.scheme == "https", link.host() == host,
+              ["/join", "/join/"].contains(link.path()), let token = link.fragment(), isToken(token) else { return nil }
+        return URL(string: "https://www.icloud.com/share/\(token)")
+    }
+
+    private static func isToken(_ text: String) -> Bool {
+        (8...128).contains(text.count) && text.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }
+    }
+}
+
 extension HouseholdText {
     /// The text sent with an invitation link.
     static func inviteMessage(url: URL, kitchenTitle: String?) -> String {
