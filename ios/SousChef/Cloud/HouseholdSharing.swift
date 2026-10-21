@@ -91,10 +91,30 @@ final class HouseholdSharing {
         otherCount = defaults.integer(forKey: Keys.otherCount)
         pendingCount = defaults.integer(forKey: Keys.pendingCount)
         ownerName = defaults.string(forKey: Keys.ownerName)
+        if Self.isDemo { showDemoHousehold() }
+    }
+
+    /// `-uiTesting -demoHousehold`: a made-up shared kitchen for App Store
+    /// screenshots, since the simulator has no iCloud account to share with.
+    nonisolated static let isDemo: Bool = {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-uiTesting") && arguments.contains("-demoHousehold")
+    }()
+
+    private func showDemoHousehold() {
+        people = [
+            HouseholdPerson(id: "demo-owner", name: "Sam Rivera", detail: nil, role: .owner, status: .accepted, isMe: true),
+            HouseholdPerson(id: "demo-member", name: "Jordan Rivera", detail: nil, role: .member, status: .accepted, isMe: false),
+            HouseholdPerson(id: "demo-invited", name: "Maya Rivera", detail: "maya@example.com", role: .member, status: .invited, isMe: false,
+                            address: .email("maya@example.com")),
+        ]
+        isSharing = true
+        otherCount = 1
+        pendingCount = 1
     }
 
     /// Households need iCloud on, a signed build, and no companion server.
-    var canUseHouseholds: Bool { kitchen.iCloudAvailable && kitchen.usesICloud && !kitchen.server.isConnected }
+    var canUseHouseholds: Bool { !Self.isDemo && kitchen.iCloudAvailable && kitchen.usesICloud && !kitchen.server.isConnected }
 
     /// Whether a household is in use, which rules out connecting a companion server.
     var householdActive: Bool { kitchen.cloud.isHouseholdMember || (isSharing && kitchen.usesICloud) }
@@ -102,7 +122,7 @@ final class HouseholdSharing {
     /// The Settings row's summary.
     var summary: String {
         HouseholdText.summary(isMember: kitchen.cloud.isHouseholdMember, ownerName: ownerName,
-                              isSharing: isSharing && kitchen.usesICloud, others: otherCount, pending: pendingCount)
+                              isSharing: isSharing && (kitchen.usesICloud || Self.isDemo), others: otherCount, pending: pendingCount)
     }
 
     // MARK: Loading

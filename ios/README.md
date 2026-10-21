@@ -131,6 +131,10 @@ it's recorded as seen (`whatsNew.seenRelease`). Add an entry to
 `WhatsNew.releases` for each feature release; a release without one shows
 nothing. `-uiTesting -showWhatsNew` shows it in tests.
 
+For App Store screenshots of Settings > Household, launch with
+`-uiTesting -seedSample -demoHousehold -openHousehold`: a made-up shared
+kitchen (`HouseholdSharing.isDemo`), since the simulator has no iCloud account.
+
 ### Households
 
 A household is the owner's "Kitchen" zone shared with other Apple IDs through
