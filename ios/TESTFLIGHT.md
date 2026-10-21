@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.1 (21)
+
+### What to Test
+
+Fixes to verify
+- Pasting recipe JSON: in Recipes, tap + > Paste recipe text and paste schema.org Recipe JSON (the kind ChatGPT writes). Steps, servings, time, nutrition and tips should come in properly instead of one step per JSON line.
+
 ## 1.1.0 (17)
 
 ### What to Test
