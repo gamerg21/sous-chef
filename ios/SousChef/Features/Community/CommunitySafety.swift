@@ -95,15 +95,14 @@ private struct BlockAuthorConfirmation: ViewModifier {
 
     func body(content: Content) -> some View {
         let name = recipe?.author?.name ?? "this cook"
-        content.confirmationDialog("Block \(name)?", isPresented: Binding(get: { recipe != nil }, set: { if !$0 { recipe = nil } }),
-                                   titleVisibility: .visible, presenting: recipe) { recipe in
-            Button("Block \(name)", role: .destructive) {
-                if let author = recipe.author { moderation.block(author) }
+        content.sheet(isPresented: Binding(get: { recipe != nil }, set: { if !$0 { recipe = nil } })) {
+            let blocking = recipe
+            ConfirmSheet(systemImage: "hand.raised", title: "Block \(name)?",
+                         message: "You won't see their recipes on this device. You can unblock them in Settings.",
+                         action: "Block \(name)", actionIdentifier: "confirmBlock") {
+                if let author = blocking?.author { moderation.block(author) }
                 onBlocked()
             }
-            Button("Cancel", role: .cancel) {}
-        } message: { _ in
-            Text("You won't see their recipes on this device. You can unblock them in Settings.")
         }
     }
 }

@@ -94,11 +94,12 @@ struct CommunityAccountSection: View {
                  ? "Recipes you publish show this name. Deleting your account removes it and everything you've published from the community, and disconnects Sous Chef from your Apple Account."
                  : "Sign in to publish recipes. Browsing doesn't need an account.")
         }
-        .confirmationDialog("Delete your community account?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete account and recipes", role: .destructive) { Task { await delete() } }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Your community account and every recipe you've published will be removed from the community. Recipes in your kitchen stay on this device. This can't be undone.")
+        .sheet(isPresented: $confirmDelete) {
+            ConfirmSheet(systemImage: "person.crop.circle.badge.xmark", title: "Delete your community account?",
+                         message: "Your community account and every recipe you've published will be removed from the community. Recipes in your kitchen stay on this device. This can't be undone.",
+                         action: "Delete account and recipes", actionIdentifier: "confirmDeleteAccount") {
+                Task { await delete() }
+            }
         }
     }
 

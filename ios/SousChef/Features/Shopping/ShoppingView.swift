@@ -88,8 +88,12 @@ struct ShoppingView: View {
             .refreshable { await kitchen.server.syncNow() }
             .sheet(item: $editing) { ShoppingItemEditor(item: $0).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $stocking) { StockPurchasesView(items: inCart).kitchenEnvironment(kitchen) }
-            .confirmationDialog("Remove \(inCart.count) checked item\(inCart.count == 1 ? "" : "s")?", isPresented: $confirmClear, titleVisibility: .visible) {
-                Button("Clear checked", role: .destructive) { kitchen.clearChecked() }
+            .sheet(isPresented: $confirmClear) {
+                ConfirmSheet(systemImage: "checklist.checked", title: "Remove \(inCart.count) checked item\(inCart.count == 1 ? "" : "s")?",
+                             message: "They come off your list. Shake your phone right after to bring them back.",
+                             action: "Clear checked", actionIdentifier: "confirmClearChecked") {
+                    kitchen.clearChecked()
+                }
             }
         }
     }

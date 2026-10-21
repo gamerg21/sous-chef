@@ -77,12 +77,13 @@ struct SyncSettingsView: View {
                 Text(Self.iCloudFooter(usesICloud: kitchen.usesICloud, isMember: isMember,
                                        ownerName: HouseholdSharing.shared.ownerName, isSharing: isSharing))
             }
-            .confirmationDialog("Remove your kitchen from iCloud?", isPresented: $confirmICloudDelete, titleVisibility: .visible) {
-                Button("Remove from iCloud", role: .destructive) { Task { await deleteICloudData() } }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This turns off iCloud sync and deletes your pantry, recipes and shopping list from iCloud. This device keeps its copy. Other devices using your iCloud will clear theirs the next time they sync."
-                     + (isSharing ? " The people you share your kitchen with lose access too." : ""))
+            .sheet(isPresented: $confirmICloudDelete) {
+                ConfirmSheet(systemImage: "icloud.slash", title: "Remove your kitchen from iCloud?",
+                             message: "This turns off iCloud sync and deletes your pantry, recipes and shopping list from iCloud. This device keeps its copy. Other devices using your iCloud will clear theirs the next time they sync."
+                                 + (isSharing ? " The people you share your kitchen with lose access too." : ""),
+                             action: "Remove from iCloud", actionIdentifier: "confirmICloudDelete") {
+                    Task { await deleteICloudData() }
+                }
             }
 
             Section {
