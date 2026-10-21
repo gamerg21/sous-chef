@@ -71,6 +71,15 @@ enum RecipeImporter {
     // MARK: JSON-LD
 
     static func findJsonLdRecipes(_ html: String) -> [[String: Any]] {
+        let pattern = #"<script\b[^>]*type\s*=\s*["']?application/ld\+json["']?[^>]*>([\s\S]*?)</script>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return [] }
+        return regex.matches(in: html, range: NSRange(html.startIndex..., in: html)).flatMap { match -> [[String: Any]] in
+            guard let range = Range(match.range(at: 1), in: html) else { return [] }
+            return recipeNodes(in: parseJSON(String(html[range])))
+        }
+    }
+
+    private static func recipeNodes(in json: Any?) -> [[String: Any]] {
         var found: [[String: Any]] = []
         func visit(_ node: Any?, depth: Int) {
             guard let node, depth <= 8 else { return }
@@ -79,13 +88,20 @@ enum RecipeImporter {
             if types(record).contains("recipe") { found.append(record) }
             for key in ["@graph", "mainEntity", "mainEntityOfPage", "itemListElement", "item", "hasPart"] { visit(record[key], depth: depth + 1) }
         }
-        let pattern = #"<script\b[^>]*type\s*=\s*["']?application/ld\+json["']?[^>]*>([\s\S]*?)</script>"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return [] }
-        for match in regex.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
-            guard let range = Range(match.range(at: 1), in: html) else { continue }
-            visit(parseJSON(String(html[range])), depth: 0)
-        }
+        visit(json, depth: 0)
         return found
+    }
+
+    /// Schema.org Recipe JSON pasted as text, bare, in a code fence, or still
+    /// inside its `<script>` tag (AI chats often hand recipes over this way).
+    static func fromPastedJSON(_ text: String) -> Structured? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: #"^```[a-z]*\s*|\s*```$"#, with: "", options: [.regularExpression, .caseInsensitive])
+        let nodes = trimmed.hasPrefix("{") || trimmed.hasPrefix("[") ? recipeNodes(in: parseJSON(trimmed)) : findJsonLdRecipes(trimmed)
+        guard let best = nodes.map({ recipe(from: $0, pageURL: nil) })
+            .max(by: { ($0.recipe.ingredients.count + $0.recipe.steps.count) < ($1.recipe.ingredients.count + $1.recipe.steps.count) }),
+            !best.recipe.ingredients.isEmpty else { return nil }
+        return best
     }
 
     private static func parseJSON(_ raw: String) -> Any? {
@@ -193,7 +209,7 @@ enum RecipeImporter {
         return []
     }
 
-    static func recipe(from node: [String: Any], pageURL: URL) -> Structured {
+    static func recipe(from node: [String: Any], pageURL: URL?) -> Structured {
         var draft = RecipeDraft()
         draft.title = [plain(node["name"]), plain(node["headline"])].first { !$0.isEmpty } ?? ""
         let lines = list(node["recipeIngredient"] ?? node["ingredients"]).map(plain).flatMap { $0.components(separatedBy: "\n") }.filter { !$0.isEmpty }.prefix(100)
@@ -208,8 +224,9 @@ enum RecipeImporter {
         var seen = Set<String>()
         draft.tags = tagSources.map { plain($0).lowercased() }.filter { !$0.isEmpty && $0.count <= 40 && seen.insert($0).inserted }.prefix(10).map { $0 }
         let author = list(node["author"]).map { plain(($0 as? [String: Any])?["name"] ?? $0) }.filter { !$0.isEmpty }.joined(separator: ", ")
-        if let canonical = node["url"] as? String, canonical.lowercased().hasPrefix("http") { draft.sourceURL = canonical } else { draft.sourceURL = pageURL.absoluteString }
-        let host = (pageURL.host ?? "").replacingOccurrences(of: "www.", with: "")
+        if let canonical = node["url"] as? String, canonical.lowercased().hasPrefix("http") { draft.sourceURL = canonical } else { draft.sourceURL = pageURL?.absoluteString }
+        let host = (pageURL?.host ?? "").replacingOccurrences(of: "www.", with: "")
+        let origin = pageURL == nil ? "recipe" : "site"
         draft.summary = String(plain(node["description"]).prefix(2000)).nilIfEmpty
         draft.servings = firstNumber(node["recipeYield"] ?? node["yield"]).map { Int($0) }
         if let total = parseDuration(node["totalTime"]) { draft.totalTimeMinutes = total }
@@ -217,10 +234,12 @@ enum RecipeImporter {
             let sum = (parseDuration(node["prepTime"]) ?? 0) + (parseDuration(node["cookTime"]) ?? 0)
             draft.totalTimeMinutes = sum > 0 ? sum : nil
         }
-        draft.notes = "Imported from \(host)\(author.isEmpty ? "" : " (recipe by \(author))"). Check ingredient names, quantities, and units before cooking."
-        if draft.title.isEmpty { draft.warnings.append("Add a title — the site did not include one.") }
-        if draft.ingredients.isEmpty { draft.warnings.append("The site did not list ingredients. Add them in the editor.") }
-        if draft.steps.isEmpty { draft.warnings.append("The site did not list steps. Add them in the editor.") }
+        let tips = list(node["recipeTips"]).map(plain).filter { !$0.isEmpty }
+        let imported = host.isEmpty ? "" : "Imported from \(host)\(author.isEmpty ? "" : " (recipe by \(author))"). Check ingredient names, quantities, and units before cooking."
+        draft.notes = ([imported] + tips).filter { !$0.isEmpty }.joined(separator: "\n").nilIfEmpty
+        if draft.title.isEmpty { draft.warnings.append("Add a title — the \(origin) did not include one.") }
+        if draft.ingredients.isEmpty { draft.warnings.append("The \(origin) did not list ingredients. Add them in the editor.") }
+        if draft.steps.isEmpty { draft.warnings.append("The \(origin) did not list steps. Add them in the editor.") }
         let uncertain = draft.ingredients.filter { $0.quantity == nil && $0.name.rangeOfCharacter(from: .decimalDigits) != nil }.count
         if uncertain > 0 { draft.warnings.append("\(uncertain) ingredient amount\(uncertain == 1 ? "" : "s") could not be read — check \(uncertain == 1 ? "it" : "them") in the editor.") }
 

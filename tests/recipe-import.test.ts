@@ -1,10 +1,33 @@
 import { describe, expect, test } from 'vitest'
-import { recipeFromHtml } from '../src/lib/recipe-import'
+import { recipeFromHtml, recipeFromPastedJson } from '../src/lib/recipe-import'
 import { checkPublicUrl, isPublicAddress } from '../src/server/kitchen/lib/publicFetch'
 
 const ld = (data: unknown) => `<html><head><title>Site</title><script type="application/ld+json">${JSON.stringify(data)}</script></head><body></body></html>`
 
 describe('recipe link import', () => {
+  test('reads schema.org recipe JSON pasted as text', () => {
+    const json = '```json\n' + JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'Recipe', name: 'Beef Skillet', recipeYield: '3 servings', totalTime: 'PT40M',
+      recipeIngredient: ['1 lb ground beef', '3 medium potatoes, diced'],
+      recipeInstructions: [
+        { '@type': 'HowToStep', name: 'Preheat', text: 'Preheat the oven to 425°F.' },
+        { '@type': 'HowToStep', name: 'Roast', text: 'Roast the potatoes.' },
+      ],
+      nutrition: { '@type': 'NutritionInformation', calories: '630 calories' },
+      recipeTips: ['Cut potatoes evenly.'],
+    }, null, 2) + '\n```'
+    const result = recipeFromPastedJson(json)!
+    expect(result.recipe.title).toBe('Beef Skillet')
+    expect(result.recipe.servings).toBe(3)
+    expect(result.recipe.totalTimeMinutes).toBe(40)
+    expect(result.recipe.ingredients).toHaveLength(2)
+    expect(result.recipe.steps.map(step => step.text)).toEqual(['Preheat the oven to 425°F.', 'Roast the potatoes.'])
+    expect(result.recipe.caloriesKcal).toBe(630)
+    expect(result.recipe.notes).toBe('Cut potatoes evenly.')
+    expect(result.recipe.sourceUrl).toBeUndefined()
+    expect(recipeFromPastedJson('Ingredients\n1 cup flour\nSteps\nMix.')).toBeUndefined()
+  })
+
   test('reads schema.org Recipe JSON-LD inside a @graph', () => {
     const html = ld({ '@context': 'https://schema.org', '@graph': [{ '@type': 'WebPage' }, {
       '@type': ['Recipe'], name: 'Homemade Doughnuts &amp; Glaze', description: '<p>Soft &amp; fluffy.</p>', recipeYield: ['12', '12 doughnuts'],
