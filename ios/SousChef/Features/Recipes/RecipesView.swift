@@ -12,6 +12,8 @@ struct RecipesView: View {
     @State private var importMode: RecipeImportView.Mode?
     @State private var sharedImport: SharedImport?
     @State private var path = NavigationPath()
+    /// Unfolded or on a wide screen, the week plan sits beside the library.
+    @State private var twoPane = false
     private let navigator = AppNavigator.shared
 
     enum Filter: Hashable {
@@ -65,6 +67,21 @@ struct RecipesView: View {
     }
 
     var body: some View {
+        Group {
+            if twoPane {
+                TwoPane {
+                    WeekPlannerPane { recipe in path = NavigationPath([recipe]) }
+                } secondary: {
+                    library
+                }
+            } else {
+                library
+            }
+        }
+        .tracksTwoPaneWidth($twoPane)
+    }
+
+    private var library: some View {
         NavigationStack(path: $path) {
             let readiness = readiness
             let plans = readiness.plans
@@ -82,6 +99,10 @@ struct RecipesView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu { contextMenu(for: recipe) }
+                                // Beside the week plan, cards drag onto a day.
+                                .plannable(.recipe(recipe.uuid), isEnabled: twoPane) {
+                                    PlanDragPreview(title: recipe.title, photo: recipe.photo)
+                                }
                             }
                         }
                         if shown.isEmpty {

@@ -8,7 +8,8 @@ struct PlanRecipePicker: View {
     @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Recipe.title) private var recipes: [Recipe]
-    @State private var slot = MealSlot.dinner
+    /// The meal to plan; the planner's wells open the picker on theirs.
+    @State var slot: MealSlot = .dinner
     @State private var search = ""
 
     private var matches: [Recipe] {

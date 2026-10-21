@@ -249,6 +249,25 @@ enum SampleKitchen {
             item.category = category
             kitchen.context.insert(item)
         }
+        // A week that's partly planned, around today.
+        let recipes = Dictionary(kitchen.fetch(Recipe.self).map { ($0.title, $0) }, uniquingKeysWith: { first, _ in first })
+        let plan: [(Int, MealSlot, String, Bool)] = [
+            (-1, .dinner, "Lemon herb roast", true), (0, .breakfast, "Spinach & parmesan omelette", true),
+            (0, .dinner, "Thai green curry", false), (1, .lunch, "Garden salad", false),
+            (1, .dinner, "Penne all'arrabbiata", false), (2, .breakfast, "Fluffy pancakes", false),
+            (3, .dinner, "Lemon herb roast", false), (4, .lunch, "Garden salad", false),
+        ]
+        for (offset, slot, title, cooked) in plan {
+            guard let recipe = recipes[title] else { continue }
+            let meal = kitchen.plan(recipe, on: MealPlanner.day(day(offset)), slot: slot)
+            if cooked { meal.cookedAt = day(offset) }
+        }
+        // This month's tally of what was used up and what went to waste.
+        for (name, outcome, daysAgo) in [("Yogurt", PantryOutcome.Kind.used, 1), ("Bananas", .used, 3), ("Bread", .used, 4),
+                                         ("Cilantro", .wasted, 5), ("Apples", .used, 6)] {
+            let on = MealPlanner.day(day(-min(daysAgo, Calendar.current.component(.day, from: .now) - 1)))
+            kitchen.context.insert(PantryOutcome(name: name, outcome: outcome, on: on))
+        }
         try? kitchen.context.save()
     }
 }

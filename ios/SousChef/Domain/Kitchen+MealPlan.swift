@@ -15,6 +15,25 @@ extension Kitchen {
         return meal
     }
 
+    /// Plans a recipe dropped on the planner, or moves a planned meal there.
+    /// Returns the meal, or nil when the item is gone or a meal didn't move.
+    @discardableResult
+    func drop(_ drag: PlanDrag, on day: String, slot: MealSlot) -> PlannedMeal? {
+        switch drag {
+        case .recipe(let id):
+            guard let recipe = try? context.fetch(FetchDescriptor<Recipe>(predicate: #Predicate { $0.uuid == id })).first else { return nil }
+            return plan(recipe, on: day, slot: slot)
+        case .meal(let id):
+            guard let meal = try? context.fetch(FetchDescriptor<PlannedMeal>(predicate: #Predicate { $0.uuid == id })).first,
+                  meal.day != day || meal.slot != slot else { return nil }
+            meal.day = day
+            meal.slot = slot
+            meal.touch()
+            changed()
+            return meal
+        }
+    }
+
     func delete(_ meal: PlannedMeal, undoable: Bool = false) {
         if undoable { registerUndoDelete([meal], name: "the planned meal") }
         if let id = meal.serverID { context.insert(Tombstone(kind: .mealPlan, serverID: id)) }

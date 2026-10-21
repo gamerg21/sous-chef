@@ -97,4 +97,32 @@ struct MealPlannerTests {
         #expect(abs(milk.quantity - 0.5) < 0.000001)
         #expect(meal.isCooked)
     }
+
+    @Test func readsOnlyItsOwnDragPayloads() {
+        let id = UUID()
+        #expect(PlanDrag(payload: PlanDrag.recipe(id).payload) == .recipe(id))
+        #expect(PlanDrag(payload: PlanDrag.meal(id).payload + "\n") == .meal(id))
+        #expect(PlanDrag(payload: id.uuidString) == nil)
+        #expect(PlanDrag(payload: "souschef-recipe:not-a-uuid") == nil)
+        #expect(PlanDrag(payload: "Two eggs and some toast") == nil)
+    }
+
+    @Test func plansDroppedRecipesAndMovesDroppedMeals() {
+        let kitchen = Kitchen(inMemory: true)
+        let curry = recipe(kitchen, "Curry", servings: 4, [("Rice", 200, "g")])
+        let planned = kitchen.drop(.recipe(curry.uuid), on: "2026-10-21", slot: .lunch)
+        #expect(planned?.recipeUUID == curry.uuid)
+        #expect(planned?.slot == .lunch)
+        #expect(planned?.servings == 4)
+
+        let meal = try! #require(planned)
+        #expect(kitchen.drop(.meal(meal.uuid), on: "2026-10-21", slot: .lunch) == nil)
+        #expect(kitchen.drop(.meal(meal.uuid), on: "2026-10-23", slot: .dinner) === meal)
+        #expect(meal.day == "2026-10-23")
+        #expect(meal.slot == .dinner)
+        #expect(kitchen.plannedMeals(from: "2026-10-18").count == 1)
+
+        #expect(kitchen.drop(.recipe(UUID()), on: "2026-10-21", slot: .dinner) == nil)
+        #expect(kitchen.drop(.meal(UUID()), on: "2026-10-21", slot: .dinner) == nil)
+    }
 }

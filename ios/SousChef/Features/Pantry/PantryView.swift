@@ -16,6 +16,8 @@ struct PantryView: View {
     @State private var askingOutcome: PantryItem?
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
     private var navigator = AppNavigator.shared
+    /// Unfolded or on a wide screen, the kitchen's numbers sit beside the list.
+    @State private var twoPane = false
 
     enum LocationScope: Hashable {
         case all, location(StorageLocation)
@@ -35,13 +37,29 @@ struct PantryView: View {
     }
 
     var body: some View {
+        Group {
+            if twoPane {
+                TwoPane {
+                    PantryInsightsPane(items: items, outcomes: outcomes, windowDays: windowDays, scope: $scope) { editing = $0 }
+                } secondary: {
+                    list
+                }
+            } else {
+                list
+            }
+        }
+        .tracksTwoPaneWidth($twoPane)
+    }
+
+    private var list: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
                     if items.isEmpty {
                         emptyState
                     } else {
-                        summary
+                        // Beside the at-a-glance pane, its location bar does this.
+                        if !twoPane { summary }
                         if !expiringSoon.isEmpty && search.isEmpty {
                             Section {
                                 ForEach(expiringSoon) { row($0) }
@@ -49,7 +67,7 @@ struct PantryView: View {
                                 Eyebrow("Use soon", systemImage: "clock.badge.exclamationmark")
                             }
                         }
-                        if search.isEmpty { outcomeTally }
+                        if search.isEmpty && !twoPane { outcomeTally }
                         ForEach(StorageLocation.allCases) { location in
                             let group = filtered.filter { $0.location == location }
                             if !group.isEmpty {

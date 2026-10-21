@@ -17,6 +17,14 @@ enum WhatsNew {
     /// The features each release introduces, keyed by "major.minor". A release
     /// without an entry shows nothing.
     static let releases: [String: [Feature]] = [
+        "1.2": [
+            Feature(systemImage: "hand.draw.fill", color: .brand, title: "Drag to plan",
+                    detail: "Unfold your iPhone Duo and drag recipes onto your week, right beside your library."),
+            Feature(systemImage: "chart.bar.fill", color: .orange, title: "Pantry at a glance",
+                    detail: "See what's in stock, how fresh it is and what you can cook, beside your pantry."),
+            Feature(systemImage: "laptopcomputer", color: .blue, title: "Cook on the counter",
+                    detail: "Prop your iPhone Duo half open: steps stand up, timers sit on the flat half."),
+        ],
         "1.1": [
             Feature(systemImage: "house.fill", color: .orange, title: "Share your kitchen",
                     detail: "Invite the people you cook with. Everyone sees and edits the same pantry, recipes, shopping list and meal plan."),

@@ -14,6 +14,22 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.2.0
+
+### App Store
+Made for iPhone Duo. Unfold it and Sous Chef spreads out: your week sits beside your recipes, so you can drag a recipe straight onto Tuesday's dinner, and your pantry opens with everything at a glance.
+
+Also new in 1.2:
+• Drag to plan: drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.
+• Pantry at a glance: what's in stock and where, how fresh it is, what to use soon, and what you can cook right now.
+• Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
+
+### New
+- **Drag to plan**: On an unfolded iPhone Duo, iPad or iPhone on its side, Recipes shows your week beside the library. Drag a recipe onto a day's breakfast, lunch or dinner, drag a planned meal to another day, or tap an empty meal to pick a recipe.
+- **Pantry at a glance**: Beside your pantry list: how much is in the pantry, fridge and freezer, how fresh it is, what to use soon, what's in stock by category, recipes you can cook now and this month's used and thrown away.
+- **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
+- **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
+
 ## 1.1.0
 
 ### App Store
