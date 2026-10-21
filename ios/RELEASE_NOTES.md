@@ -17,10 +17,10 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 ## 1.1.1
 
 ### App Store
-Fixed: recipes pasted as structured recipe data, like the kind AI chat apps write, now come in with their steps, servings, time and nutrition instead of one step per line.
+Fixed importing structured recipe data. Paste recipe data copied from a website or an AI chat, and Sous Chef now brings in the steps, servings, time, nutrition and tips correctly instead of turning every line into a step.
 
 ### Fixed
-- **Pasted recipe data**: Recipes pasted as structured recipe data, like the kind AI chat apps write, now come in with their steps, servings, time, nutrition and tips instead of one step per line.
+- **Structured recipe data**: Recipe data pasted from a website or an AI chat now comes in with its steps, servings, time, nutrition and tips instead of one step per line.
 
 ## 1.1.0
 
