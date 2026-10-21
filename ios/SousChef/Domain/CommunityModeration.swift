@@ -8,8 +8,8 @@ import Observation
 final class CommunityModeration {
     static let shared = CommunityModeration()
     static let guidelinesVersion = 1
-    static let guidelinesURL = URL(string: "https://sous-chef-website.vercel.app/community-guidelines/")!
-    static let contactEmail = "community-souschef@georgevina.com"
+    static let guidelinesURL = URL(string: "https://souschefkitchen.app/community-guidelines/")!
+    static let contactEmail = "community@souschefkitchen.app"
 
     private let defaults: UserDefaults
     private(set) var acceptedGuidelinesVersion: Int

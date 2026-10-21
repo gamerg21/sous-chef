@@ -54,9 +54,9 @@ and a moderation dashboard are future work; do not advertise them as implemented
 
 ## Moderation
 
-The iOS app emails reports to community-souschef@georgevina.com, hides the
+The iOS app emails reports to community@souschefkitchen.app, hides the
 recipe for the reporter, and lets people block cooks. The rules are published
-at https://sous-chef-website.vercel.app/community-guidelines/, which promises
+at https://souschefkitchen.app/community-guidelines/, which promises
 review within 24 hours. Each report includes the recipe ID, the author's user
 ID and a recipe link.
 
