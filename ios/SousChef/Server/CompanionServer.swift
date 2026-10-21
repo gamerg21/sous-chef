@@ -493,6 +493,11 @@ private struct SyncPass {
                 context.insert(created)
                 return created
             }()
+            // The server knows when the item was really added; a pull alone would date it today.
+            if let millis = remote.createdAt {
+                let added = Date(timeIntervalSince1970: millis / 1000)
+                if added < item.createdAt { item.createdAt = added }
+            }
             guard let kept = item.unpushed else { continue }
             let take = { !kept.contains($0) }
             if take("name") { item.name = remote.name }
