@@ -509,6 +509,8 @@ private struct SyncPass {
             item.pulled(keeping: kept)
         }
         for item in all(PantryItem.self) where item.serverID != nil && !serverPantry.contains(item.serverID!) && !item.needsPush {
+            // Deleted on the server: screens showing it close first.
+            kitchen.markDeletedElsewhere([item])
             context.delete(item)
         }
 
@@ -555,6 +557,8 @@ private struct SyncPass {
             recipe.pulled(keeping: kept)
         }
         for recipe in all(Recipe.self) where recipe.serverID != nil && !serverRecipes.contains(recipe.serverID!) && !recipe.needsPush {
+            // Deleted on the server: screens showing it close first.
+            kitchen.markDeletedElsewhere([recipe])
             context.delete(recipe)
         }
 

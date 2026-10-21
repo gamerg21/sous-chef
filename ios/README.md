@@ -131,6 +131,11 @@ app (CloudKit doesn't always report a removal promptly); when it's gone, the
 device clears the shared kitchen behind a "Switching kitchens" placeholder,
 since deleting items a screen still shows crashes SwiftData, and refetches its
 own kitchen.
+Items deleted on another device (a household member, or the companion server)
+are marked in `Kitchen.deletedElsewhere` before they're deleted here, and
+CloudSync waits a moment before deleting. Every screen about one item wraps its
+body in `DeletedElsewhereGuard`, which shows "Deleted on another device"
+instead of reading the item. Wrap new single-item screens the same way.
 Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
 tap (`CNContactPickerViewController`, no Contacts permission); it's the only
 way to invite from iOS. A contact's addresses are tried best first (iPhone and

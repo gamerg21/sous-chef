@@ -185,6 +185,7 @@ extension CloudSync {
         let deletions = changes.deletions.filter { $0.recordID.zoneID == zone }
         guard !modifications.isEmpty || !deletions.isEmpty else { return }
         var touchedShopping = false
+        var doomed: [any CloudSynced] = []
         writeAsCloudSync { context in
             // Read after `writeAsCloudSync` saved and queued pending local edits.
             let pending = Set(engine.state.pendingRecordZoneChanges)
@@ -230,12 +231,26 @@ extension CloudSync {
                 if let kind = type.tombstoneKind, let serverID = model.serverID, kitchen?.server.isConnected == true {
                     context.insert(Tombstone(kind: kind, serverID: serverID))
                 }
-                context.delete(model)
+                doomed.append(model)
             }
             if !dropped.isEmpty { engine.state.remove(pendingRecordZoneChanges: dropped) }
         }
         if touchedShopping { collapseShoppingDuplicates() }
+        if !doomed.isEmpty { deleteRemovedElsewhere(doomed) }
         afterRemoteChanges()
+    }
+
+    /// Deletes items another device deleted. Screens showing one switch to a
+    /// note first, and the delete waits a moment so none still reads it.
+    private func deleteRemovedElsewhere(_ models: [any CloudSynced]) {
+        kitchen?.markDeletedElsewhere(models)
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            writeAsCloudSync { context in
+                for model in models where model.modelContext != nil { context.delete(model) }
+            }
+            afterRemoteChanges()
+        }
     }
 
     /// Merges unchecked shopping items that are the same food (two people
@@ -257,6 +272,8 @@ extension CloudSync {
             keeper.touch()
             for id in collapse.delete {
                 guard let duplicate = byID[id] else { continue }
+                // Someone may have it open; their screen closes first.
+                kitchen?.markDeletedElsewhere([duplicate])
                 kitchen?.delete(duplicate)
             }
         }

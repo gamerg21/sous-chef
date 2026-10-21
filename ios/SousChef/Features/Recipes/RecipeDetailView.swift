@@ -26,6 +26,11 @@ struct RecipeDetailView: View {
     }
 
     var body: some View {
+        // Another device may delete the recipe while this is open.
+        DeletedElsewhereGuard(recipe) { screen }
+    }
+
+    @ViewBuilder private var screen: some View {
         let plan = plan
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {

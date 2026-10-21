@@ -41,6 +41,11 @@ struct RecipeEditorView: View {
     }
 
     var body: some View {
+        // Another device may delete the recipe while this is open.
+        DeletedElsewhereGuard(recipe) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             Form {
                 if !draft.warnings.isEmpty {

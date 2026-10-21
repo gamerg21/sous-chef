@@ -26,6 +26,19 @@ final class Kitchen {
 
     var context: ModelContext { container.mainContext }
 
+    /// Items another device deleted, so screens showing one stop reading it
+    /// (`DeletedElsewhereGuard`) before it's deleted here.
+    private(set) var deletedElsewhere: Set<PersistentIdentifier> = []
+
+    func markDeletedElsewhere(_ models: [any PersistentModel]) {
+        deletedElsewhere.formUnion(models.map(\.persistentModelID))
+    }
+
+    /// Checks `modelContext` first: it's safe to read on a deleted item.
+    func wasDeletedElsewhere(_ model: any PersistentModel) -> Bool {
+        model.modelContext == nil || deletedElsewhere.contains(model.persistentModelID)
+    }
+
     // The CloudKit schema needs no setup step: CKSyncEngine creates record
     // types and fields in the development environment as it saves them.
     // Deploy the schema to production from the CloudKit Console before a

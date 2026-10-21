@@ -201,6 +201,11 @@ struct ShoppingItemEditor: View {
     @State private var note = ""
 
     var body: some View {
+        // Another device may delete the item while this is open.
+        DeletedElsewhereGuard(item) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             Form {
                 Section {
