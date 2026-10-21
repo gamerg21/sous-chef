@@ -15,6 +15,7 @@ struct PantryView: View {
     /// An item past its date that "Use" would run out: ask what happened.
     @State private var askingOutcome: PantryItem?
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
+    @AppStorage(PantrySort.storageKey) private var sort: PantrySort = .name
     private var navigator = AppNavigator.shared
 
     enum LocationScope: Hashable {
@@ -51,7 +52,7 @@ struct PantryView: View {
                         }
                         if search.isEmpty { outcomeTally }
                         ForEach(StorageLocation.allCases) { location in
-                            let group = filtered.filter { $0.location == location }
+                            let group = sort.sorted(filtered.filter { $0.location == location })
                             if !group.isEmpty {
                                 Section {
                                     ForEach(group) { row($0) }
@@ -84,6 +85,12 @@ struct PantryView: View {
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort by", selection: $sort.animation()) {
+                            ForEach(PantrySort.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
+                        }
+                    } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                        .accessibilityIdentifier("sortPantry")
                     Button { scanning = true } label: { Label("Scan barcode", systemImage: "barcode.viewfinder") }
                     Button { adding = true } label: { Label("Add item", systemImage: "plus") }
                         .accessibilityIdentifier("addPantryItem")
