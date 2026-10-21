@@ -114,11 +114,13 @@ struct RecipeDetailView: View {
             AddToPlanSheet(recipe: recipe, onAdded: show)
                 .kitchenEnvironment(kitchen)
         }
-        .confirmationDialog("Delete \(recipe.title)?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete recipe", role: .destructive) {
-                kitchen.delete(recipe)
-                kitchen.changed()
-                dismiss()
+        .sheet(isPresented: $confirmDelete) {
+            ConfirmSheet(systemImage: "trash", title: "Delete \(recipe.title)?",
+                         message: HouseholdSharing.shared.householdActive
+                             ? "It's removed for everyone in your household. This can't be undone."
+                             : "It's removed from your kitchen. This can't be undone.",
+                         action: "Delete recipe", actionIdentifier: "recipeConfirmDelete") {
+                deleteAfterClosing()
             }
         }
         .onAppear { servings = servings ?? recipe.servings }
@@ -294,6 +296,19 @@ struct RecipeDetailView: View {
         Task {
             try? await Task.sleep(for: .seconds(2.2))
             withAnimation(.snappy) { toast = nil }
+        }
+    }
+
+    /// Closes the confirmation and this page first, then deletes: deleting a
+    /// recipe this page still shows would crash it.
+    private func deleteAfterClosing() {
+        let recipe = recipe
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            dismiss()
+            try? await Task.sleep(for: .milliseconds(450))
+            kitchen.delete(recipe)
+            kitchen.changed()
         }
     }
 }
