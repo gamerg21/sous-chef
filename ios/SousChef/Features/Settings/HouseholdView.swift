@@ -132,7 +132,7 @@ struct HouseholdView: View {
     @ViewBuilder private var memberSections: some View {
         Section {
             Label {
-                Text("You're in \(ownerKitchen)").font(.body.weight(.semibold))
+                Text(sharing.ownerName == nil ? "You're in a shared kitchen" : "You're in \(ownerKitchen)").font(.body.weight(.semibold))
             } icon: {
                 Image(systemName: "house.fill").foregroundStyle(Color.brand)
             }

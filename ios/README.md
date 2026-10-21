@@ -126,6 +126,11 @@ invited people only), invites, resends, removes, stops sharing and leaves.
 The share is saved only together with its first invitee, and removing the last
 person (or finding a share with no one else in it) deletes it, so a kitchen
 with no one invited is never shared.
+A member's device checks the shared zone at launch and on returning to the
+app (CloudKit doesn't always report a removal promptly); when it's gone, the
+device clears the shared kitchen behind a "Switching kitchens" placeholder,
+since deleting items a screen still shows crashes SwiftData, and refetches its
+own kitchen.
 Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
 tap (`CNContactPickerViewController`, no Contacts permission); it's the only
 way to invite from iOS. A contact's addresses are tried best first (iPhone and

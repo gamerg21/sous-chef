@@ -17,6 +17,8 @@ struct HouseholdPerson: Identifiable, Equatable {
     let isMe: Bool
     /// Where their invitation went, for resending it.
     var address: InviteAddress? = nil
+    /// False when `name` is a stand-in ("You", "Kitchen owner", an email).
+    var isNamed = true
 }
 
 /// An invitation the person tapped, waiting for them to choose how to join.
@@ -166,7 +168,11 @@ final class HouseholdSharing {
             otherCount = people.filter { $0.role == .member && $0.status == .accepted }.count
             pendingCount = people.filter { $0.role == .member && $0.status == .invited }.count
         } else if let owner = people.first(where: { $0.role == .owner }) {
-            ownerName = HouseholdText.firstName(owner.name)
+            // Never "Kitchen's kitchen" from the stand-in name.
+            ownerName = owner.isNamed ? HouseholdText.firstName(owner.name) : nil
+        } else if share == nil, kitchen.cloud.isHouseholdMember {
+            // The owner stopped sharing or removed this person.
+            kitchen.cloud.householdEnded()
         }
     }
 
@@ -194,7 +200,9 @@ final class HouseholdSharing {
                     role: participant.role == .owner ? .owner : .member,
                     status: status,
                     isMe: participant == me,
-                    address: address
+                    address: address,
+                    isNamed: identity.nameComponents.map { !$0.formatted(.name(style: .medium)).trimmingCharacters(in: .whitespaces).isEmpty } ?? false
+                        || InviteNames.name(for: address) != nil
                 )
             }
             .sorted { lhs, rhs in

@@ -77,6 +77,9 @@ final class CloudSync: CKSyncEngineDelegate {
     @ObservationIgnored var deferred: Set<CKRecord.ID> = []
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private var switching = false
+    /// True while this device's kitchen is cleared to switch kitchens. The app
+    /// shows a placeholder meanwhile, so no screen still holds the deleted items.
+    private(set) var isClearingKitchen = false
     @ObservationIgnored private lazy var container = CKContainer(identifier: Kitchen.cloudContainerID)
 
     init() {
@@ -95,6 +98,7 @@ final class CloudSync: CKSyncEngineDelegate {
         Self.removeLeftoverAssets()
         startEngine()
         followOtherDevices()
+        Task { await checkStillMember() }
     }
 
     /// Stops syncing; local data stays.
@@ -126,7 +130,10 @@ final class CloudSync: CKSyncEngineDelegate {
         if scope == target, engine != nil { return }
         guard !switching else { throw CloudSyncError.busy }
         switching = true
-        defer { switching = false }
+        defer {
+            switching = false
+            isClearingKitchen = false
+        }
         // Make sure the shared kitchen is reachable before touching local data.
         _ = try await container.sharedCloudDatabase.recordZone(for: zoneID)
         // Whatever this device hasn't sent yet belongs to the kitchen it's leaving.
@@ -137,7 +144,7 @@ final class CloudSync: CKSyncEngineDelegate {
         stopEngine()
         Self.removeState(for: target)
         deleteMetas(in: zoneID)
-        if !mergeLocal { removeLocalKitchen() }
+        if !mergeLocal { await clearLocalKitchen() }
         scope = target
         publishScope()
         Kitchen.iCloudPreferred = true
@@ -156,13 +163,16 @@ final class CloudSync: CKSyncEngineDelegate {
         guard case .household = scope else { return }
         guard !switching else { throw CloudSyncError.busy }
         switching = true
-        defer { switching = false }
+        defer {
+            switching = false
+            isClearingKitchen = false
+        }
         let household = activeZoneID
         if sendPending { await flush() }
         stopEngine()
         Self.removeState(for: scope)
         deleteMetas(in: household)
-        removeLocalKitchen()
+        await clearLocalKitchen()
         scope = .personal
         publishScope()
         // Fetch the personal kitchen from the start, since the local copy is gone.
@@ -276,11 +286,35 @@ final class CloudSync: CKSyncEngineDelegate {
         Task { try? await leaveHousehold(sendPending: false) }
     }
 
+    /// CloudKit doesn't always tell a removed member's device right away, so
+    /// this asks for the shared kitchen directly; if it's gone, the household ended.
+    func checkStillMember() async {
+        guard case .household = scope, !switching, let kitchen, kitchen.iCloudAvailable else { return }
+        do {
+            _ = try await container.sharedCloudDatabase.recordZone(for: activeZoneID)
+        } catch let error as CKError where HouseholdText.isGone(error) || error.code == .permissionFailure {
+            householdEnded()
+        } catch {
+            // Offline or busy: the next check or sync catches it.
+        }
+    }
+
     /// Signed in to a different Apple ID: the old account's kitchen leaves the
     /// device and syncing starts over with the new account's personal kitchen.
     func accountSwitched() {
         stopEngine()
-        removeLocalKitchen()
+        switching = true
+        Task {
+            defer {
+                switching = false
+                isClearingKitchen = false
+            }
+            await clearLocalKitchen()
+            restartForNewAccount()
+        }
+    }
+
+    private func restartForNewAccount() {
         Self.removeState(for: .personal)
         Self.removeState(for: .household(zoneName: "", ownerName: ""))
         deleteAllMetas()
@@ -324,6 +358,14 @@ final class CloudSync: CKSyncEngineDelegate {
     }
 
     /// Deletes the local kitchen without queueing anything for iCloud.
+    /// Hides the kitchen's screens, then deletes its items: deleting items a
+    /// screen is still showing crashes SwiftData.
+    private func clearLocalKitchen() async {
+        isClearingKitchen = true
+        try? await Task.sleep(for: .milliseconds(400))
+        removeLocalKitchen()
+    }
+
     func removeLocalKitchen() {
         writeAsCloudSync { context in
             for type in CloudRecordType.allCases {
@@ -396,6 +438,7 @@ final class CloudSync: CKSyncEngineDelegate {
         localChangesSaved()
         // A join or leave on another device that couldn't be followed yet.
         followOtherDevices()
+        Task { await checkStillMember() }
         if !deferred.isEmpty {
             engine.state.add(pendingRecordZoneChanges: deferred.map { .saveRecord($0) })
             deferred = []

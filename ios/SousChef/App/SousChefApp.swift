@@ -151,7 +151,14 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if ProcessInfo.processInfo.isiOSAppOnMac { macLayout } else { tabs }
+            if kitchen.cloud.isClearingKitchen {
+                ProgressView("Switching kitchens\u{2026}")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if ProcessInfo.processInfo.isiOSAppOnMac {
+                macLayout
+            } else {
+                tabs
+            }
         }
         // Rebuild on the new store when iCloud sync is switched on or off.
         .id(kitchen.storeGeneration)
