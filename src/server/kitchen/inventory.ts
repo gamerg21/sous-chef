@@ -109,6 +109,7 @@ export const list = query({
         barcode: item.barcode ?? undefined,
         foodFacts: item.barcode ? barcodeMap.get(item.barcode) : undefined,
         nutritionPer100g: item.nutritionPer100g ?? undefined,
+        createdAt: item._creationTime,
       });
     }
 

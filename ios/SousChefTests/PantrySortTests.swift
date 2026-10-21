@@ -33,4 +33,12 @@ struct PantrySortTests {
         let items = [item("Old", addedDaysAgo: 10), item("New", addedDaysAgo: 0), item("Middle", addedDaysAgo: 3)]
         #expect(PantrySort.recent.sorted(items).map(\.name) == ["New", "Middle", "Old"])
     }
+
+    @Test func serverItemsDecodeWhenTheyWereAdded() throws {
+        let json = #"{"id":"a","name":"Milk","locationId":"fridge","quantity":1,"unit":"l","createdAt":1760000000000}"#
+        let item = try JSONDecoder().decode(DTO.InventoryItem.self, from: Data(json.utf8))
+        #expect(item.createdAt == 1_760_000_000_000)
+        let older = #"{"id":"a","name":"Milk","locationId":"fridge","quantity":1,"unit":"l"}"#
+        #expect(try JSONDecoder().decode(DTO.InventoryItem.self, from: Data(older.utf8)).createdAt == nil)
+    }
 }

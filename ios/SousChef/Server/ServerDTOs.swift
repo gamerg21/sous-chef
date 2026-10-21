@@ -24,6 +24,8 @@ enum DTO {
         let barcode: String?
         let foodFacts: JSONValue?
         let nutritionPer100g: JSONValue?
+        /// Milliseconds since 1970. Older servers leave it out.
+        let createdAt: Double?
     }
 
     struct RecipeList: Decodable { let recipes: [Recipe] }
