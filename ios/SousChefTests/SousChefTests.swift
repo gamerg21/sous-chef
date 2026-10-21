@@ -495,7 +495,7 @@ struct CommunityModerationTests {
         let viaServer = CommunityReport(recipe: recipe("r1"), reason: .spam, note: "", origin: "http://kitchen.local:3000 (via companion server)")
         #expect(viaServer.recipeLink == "http://kitchen.local:3000/api/community/recipes/r1")
         let url = try #require(report.mailtoURL)
-        #expect(url.absoluteString.hasPrefix("mailto:community-souschef@georgevina.com?subject="))
+        #expect(url.absoluteString.hasPrefix("mailto:community@souschefkitchen.app?subject="))
     }
 }
 
