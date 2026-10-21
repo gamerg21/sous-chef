@@ -383,7 +383,7 @@ struct PublishRecipeSheet: View {
             Label("Shares the title, photo, ingredients and steps. Private notes and pantry links stay in your kitchen.", systemImage: "lock")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            Text("Everything you publish must follow the [community guidelines](https://sous-chef-website.vercel.app/community-guidelines/).")
+            Text("Everything you publish must follow the [community guidelines](https://souschefkitchen.app/community-guidelines/).")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

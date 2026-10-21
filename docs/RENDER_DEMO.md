@@ -23,11 +23,17 @@ service dashboard rather than assuming a name is available. If configuring
 manually, copy the Docker command and environment values from `render.yaml`,
 and set `APP_URL` to your assigned origin (without `/demo`).
 
-The hosted demo is https://souschef-demo.onrender.com/demo, deployed from
+The hosted demo is https://demo.souschefkitchen.app/demo, deployed from
 `main` in the public `gamerg21/sous-chef` app repository. The old
 `codex/render-demo` branch is historical and should no longer receive updates.
 The marketing site links to this address through its
 production `DEMO_URL` setting.
+
+`demo.souschefkitchen.app` is a Render custom domain: a DNS-only Cloudflare
+CNAME to `souschef-demo.onrender.com`, with `APP_URL` set to
+`https://demo.souschefkitchen.app`. The `onrender.com` address still serves
+the service, and the deploy workflow polls it so health checks do not depend
+on custom DNS, but browser sign-in only works on the `APP_URL` origin.
 
 ## Automatic updates
 

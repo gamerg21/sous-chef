@@ -77,7 +77,7 @@ jobs:
                     return;
                   }
                   await core.summary.addHeading('Demo deployed')
-                    .addLink('Open Sous Chef', 'https://souschef-demo.onrender.com/demo')
+                    .addLink('Open Sous Chef', 'https://demo.souschefkitchen.app/demo')
                     .addRaw(`\n\nVersion: ${state.version}\n\nCommit: ${sha}\n`).write();
                   return;
                 }

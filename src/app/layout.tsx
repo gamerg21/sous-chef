@@ -25,7 +25,7 @@ const jetbrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL || "https://sous-chef-website.vercel.app"),
+  metadataBase: new URL(process.env.APP_URL || "https://souschefkitchen.app"),
   icons: { icon: [{ url: "/brand/icon.svg", type: "image/svg+xml" }] },
   openGraph: { images: [{ url: "/brand/social.png", width: 1200, height: 630, alt: "Sous Chef" }] },
   twitter: { card: "summary_large_image", images: ["/brand/social.png"] },
