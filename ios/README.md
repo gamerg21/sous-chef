@@ -122,6 +122,15 @@ is no Sous Chef-operated backend.
   token saved by `xcrun cktool save-token --type management`) and import any
   missing fields; a field missing in production fails every save that uses it.
 
+### What's new
+
+`Features/Onboarding/WhatsNew.swift` shows "What's new" once after an update
+to a new major or minor version (1.1, 2.0), never for a patch (1.1.x), whose
+App Store update notes are enough. Fresh installs finish onboarding instead and
+it's recorded as seen (`whatsNew.seenRelease`). Add an entry to
+`WhatsNew.releases` for each feature release; a release without one shows
+nothing. `-uiTesting -showWhatsNew` shows it in tests.
+
 ### Households
 
 A household is the owner's "Kitchen" zone shared with other Apple IDs through

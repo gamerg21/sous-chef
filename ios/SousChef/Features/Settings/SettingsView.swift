@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var alerts: AlertPermissions.Status?
     @State private var showsBuild = false
     @AppStorage(Kitchen.undoBarKey) private var showsUndoBar = false
+    @Bindable private var navigator = AppNavigator.shared
     private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     private let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 
@@ -88,6 +89,11 @@ struct SettingsView: View {
                         .onTapGesture { showsBuild.toggle() }
                 } header: {
                     Eyebrow("About")
+                }
+            }
+            .navigationDestination(item: $navigator.settingsPage) { page in
+                switch page {
+                case .household: HouseholdView()
                 }
             }
             .navigationTitle("Settings")
