@@ -51,7 +51,20 @@ export function findJsonLdRecipes(html: string): Record<string, unknown>[] {
     for (const key of ['@graph', 'mainEntity', 'mainEntityOfPage', 'itemListElement', 'item', 'hasPart']) visit(record[key], depth + 1)
   }
   for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi)) visit(parseJson(match[1]), 0)
+  if (!found.length && /^[[{]/.test(html.trim())) visit(parseJson(html), 0)
   return found
+}
+
+/**
+ * Schema.org Recipe JSON pasted as text, bare, in a code fence, or still
+ * inside its `<script>` tag (AI chats often hand recipes over this way).
+ */
+export function recipeFromPastedJson(text: string, sourceUrl?: string): { recipe: Recipe; warnings: string[] } | undefined {
+  const json = text.trim().replace(/^```[a-z]*\s*|\s*```$/gi, '')
+  if (!/^[[{]|<script\b/i.test(json)) return undefined
+  const best = findJsonLdRecipes(json).map(node => recipeFromJsonLd(node, sourceUrl))
+    .sort((a, b) => (b.recipe.ingredients.length + b.recipe.steps.length) - (a.recipe.ingredients.length + a.recipe.steps.length))[0]
+  return best?.recipe.ingredients.length ? best : undefined
 }
 
 function parseDuration(value: unknown): number | undefined {
@@ -93,7 +106,7 @@ function instructionLines(value: unknown, depth = 0): string[] {
   return []
 }
 
-export function recipeFromJsonLd(node: Record<string, unknown>, pageUrl: string): { recipe: Recipe; warnings: string[] } {
+export function recipeFromJsonLd(node: Record<string, unknown>, pageUrl?: string): { recipe: Recipe; warnings: string[] } {
   const title = plain(node.name) || plain(node.headline)
   const ingredientText = list(node.recipeIngredient ?? node.ingredients).map(plain).flatMap(item => item.split(/\n+/)).filter(Boolean).slice(0, 100)
   const ingredients = ingredientText.map((line, index) => captureIngredient(line, index))
@@ -103,11 +116,14 @@ export function recipeFromJsonLd(node: Record<string, unknown>, pageUrl: string)
     .map(item => plain(item).toLowerCase()).filter(item => item && item.length <= 40))].slice(0, 10)
   const author = list(node.author).map(item => plain(item && typeof item === 'object' ? (item as Record<string, unknown>).name : item)).filter(Boolean).join(', ')
   const canonical = typeof node.url === 'string' && /^https?:\/\//i.test(node.url) ? node.url : pageUrl
-  const host = new URL(pageUrl).hostname.replace(/^www\./, '')
+  const host = pageUrl ? new URL(pageUrl).hostname.replace(/^www\./, '') : ''
+  const origin = pageUrl ? 'site' : 'recipe'
+  const tips = list(node.recipeTips).map(plain).filter(Boolean)
+  const imported = host ? `Imported from ${host}${author ? ` (recipe by ${author})` : ''}. Check ingredient names, quantities, and units before cooking.` : ''
   const warnings: string[] = []
-  if (!title) warnings.push('Add a title — the site did not include one.')
-  if (!ingredients.length) warnings.push('The site did not list ingredients. Add them in the editor.')
-  if (!steps.length) warnings.push('The site did not list steps. Add them in the editor.')
+  if (!title) warnings.push(`Add a title — the ${origin} did not include one.`)
+  if (!ingredients.length) warnings.push(`The ${origin} did not list ingredients. Add them in the editor.`)
+  if (!steps.length) warnings.push(`The ${origin} did not list steps. Add them in the editor.`)
   const uncertain = ingredients.filter(item => item.quantity == null && /\d/.test(item.name)).length
   if (uncertain) warnings.push(`${uncertain} ingredient amount${uncertain === 1 ? '' : 's'} could not be read — check ${uncertain === 1 ? 'it' : 'them'} in the editor.`)
   return {
@@ -121,7 +137,7 @@ export function recipeFromJsonLd(node: Record<string, unknown>, pageUrl: string)
       carbsGrams: round(firstNumber(nutrition.carbohydrateContent), 1), fatGrams: round(firstNumber(nutrition.fatContent), 1),
       tags: tags.length ? tags : undefined,
       ingredients, steps,
-      notes: `Imported from ${host}${author ? ` (recipe by ${author})` : ''}. Check ingredient names, quantities, and units before cooking.`,
+      notes: [imported, ...tips].filter(Boolean).join('\n') || undefined,
     },
   }
 }

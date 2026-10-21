@@ -173,6 +173,37 @@ struct RecipeImporterTests {
         #expect(result.photoURL?.absoluteString == "https://example.com/p.jpg")
     }
 
+    @Test func readsPastedRecipeJSON() throws {
+        let json = """
+        ```json
+        {
+          "@context": "https://schema.org",
+          "@type": "Recipe",
+          "name": "Beef Skillet",
+          "recipeYield": "3 servings",
+          "totalTime": "PT40M",
+          "recipeIngredient": ["1 lb ground beef", "3 medium potatoes, diced"],
+          "recipeInstructions": [
+            {"@type": "HowToStep", "name": "Preheat", "text": "Preheat the oven to 425°F."},
+            {"@type": "HowToStep", "name": "Roast", "text": "Roast the potatoes."}
+          ],
+          "nutrition": {"@type": "NutritionInformation", "calories": "630 calories"},
+          "recipeTips": ["Cut potatoes evenly."]
+        }
+        ```
+        """
+        let result = try #require(RecipeImporter.fromPastedJSON(json))
+        #expect(result.recipe.title == "Beef Skillet")
+        #expect(result.recipe.servings == 3)
+        #expect(result.recipe.totalTimeMinutes == 40)
+        #expect(result.recipe.ingredients.count == 2)
+        #expect(result.recipe.steps.map(\.text) == ["Preheat the oven to 425°F.", "Roast the potatoes."])
+        #expect(result.recipe.caloriesKcal == 630)
+        #expect(result.recipe.notes == "Cut potatoes evenly.")
+        #expect(result.recipe.sourceURL == nil)
+        #expect(RecipeImporter.fromPastedJSON("Ingredients\n1 cup flour\nSteps\nMix.") == nil)
+    }
+
     @Test func keepsStepsTheModelDropped() {
         var smart = RecipeDraft(title: "Biscuits")
         smart.ingredients = [Ingredient(name: "flour", quantity: 2, unit: "cups")]
