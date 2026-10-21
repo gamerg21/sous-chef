@@ -362,6 +362,8 @@ final class CloudSync: CKSyncEngineDelegate {
     /// screen is still showing crashes SwiftData.
     private func clearLocalKitchen() async {
         isClearingKitchen = true
+        // Undoing a delete must never put an item into a different kitchen.
+        kitchen?.deletionUndo.removeAllActions()
         try? await Task.sleep(for: .milliseconds(400))
         removeLocalKitchen()
     }

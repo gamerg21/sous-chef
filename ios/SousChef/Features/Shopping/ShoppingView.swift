@@ -145,7 +145,7 @@ struct ShoppingView: View {
         }
         .swipeActions {
             Button(role: .destructive) {
-                kitchen.delete(item)
+                kitchen.delete(item, undoable: true)
                 kitchen.changed()
             } label: { Label("Delete", systemImage: "trash") }
             .tint(.red)
@@ -220,7 +220,7 @@ struct ShoppingItemEditor: View {
                 }
                 Section {
                     Button(role: .destructive) {
-                        kitchen.delete(item)
+                        kitchen.delete(item, undoable: true)
                         kitchen.changed()
                         dismiss()
                     } label: { Label("Delete", systemImage: "trash") }

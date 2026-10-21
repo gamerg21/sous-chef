@@ -136,6 +136,13 @@ are marked in `Kitchen.deletedElsewhere` before they're deleted here, and
 CloudSync waits a moment before deleting. Every screen about one item wraps its
 body in `DeletedElsewhereGuard`, which shows "Deleted on another device"
 instead of reading the item. Wrap new single-item screens the same way.
+
+Shake to undo: deletes the person makes (`delete(_:undoable: true)`, and
+Clear checked) register on `Kitchen.deletionUndo`, which restores the items
+from their synced fields under the same ids, so the household gets them back
+too. A `UIWindow` shake override shows `UndoDeleteOnShake`'s sheet ("Bring
+back Lemons?"). It's separate from the window's undo, which text fields use,
+and it's cleared when the device switches kitchens.
 Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
 tap (`CNContactPickerViewController`, no Contacts permission); it's the only
 way to invite from iOS. A contact's addresses are tried best first (iPhone and

@@ -211,7 +211,7 @@ struct RecipesView: View {
         }
         Button { kitchen.addShortages(for: recipe) } label: { Label("Add missing to list", systemImage: "cart.badge.plus") }
         Button(role: .destructive) {
-            kitchen.delete(recipe)
+            kitchen.delete(recipe, undoable: true)
             kitchen.changed()
         } label: { Label("Delete", systemImage: "trash") }
     }

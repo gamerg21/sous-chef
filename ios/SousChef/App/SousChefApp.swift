@@ -162,6 +162,7 @@ struct RootView: View {
         }
         // Rebuild on the new store when iCloud sync is switched on or off.
         .id(kitchen.storeGeneration)
+        .undoDeleteOnShake()
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .kitchenEnvironment(kitchen)

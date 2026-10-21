@@ -121,19 +121,28 @@ final class Kitchen {
 
     // MARK: Deleting
 
-    func delete(_ item: PantryItem) {
+    /// Deletes the person made, so shaking the device brings them back
+    /// (`Kitchen+Undo.swift`). Separate from the window's undo, which typing uses.
+    @ObservationIgnored let deletionUndo = UndoManager()
+
+    /// `undoable` is for deletes the person made, so shaking brings them back.
+    func delete(_ item: PantryItem, undoable: Bool = false) {
+        if undoable { registerUndoDelete([item], name: item.name) }
         if let id = item.serverID { context.insert(Tombstone(kind: .pantry, serverID: id)) }
         context.delete(item)
     }
 
-    func delete(_ recipe: Recipe) {
-        if let id = recipe.serverID { context.insert(Tombstone(kind: .recipe, serverID: id)) }
+    func delete(_ recipe: Recipe, undoable: Bool = false) {
         // The server removes a recipe's planned meals with it; so does the device.
-        for meal in fetch(PlannedMeal.self) where meal.recipeUUID == recipe.uuid { context.delete(meal) }
+        let meals = fetch(PlannedMeal.self).filter { $0.recipeUUID == recipe.uuid }
+        if undoable { registerUndoDelete([recipe] + meals, name: recipe.title) }
+        if let id = recipe.serverID { context.insert(Tombstone(kind: .recipe, serverID: id)) }
+        for meal in meals { context.delete(meal) }
         context.delete(recipe)
     }
 
-    func delete(_ item: ShoppingItem) {
+    func delete(_ item: ShoppingItem, undoable: Bool = false) {
+        if undoable { registerUndoDelete([item], name: item.name) }
         if let id = item.serverID { context.insert(Tombstone(kind: .shopping, serverID: id)) }
         context.delete(item)
     }
@@ -265,7 +274,9 @@ final class Kitchen {
     }
 
     func clearChecked() {
-        for item in fetch(ShoppingItem.self) where item.checked { delete(item) }
+        let checked = fetch(ShoppingItem.self).filter(\.checked)
+        registerUndoDelete(checked, name: checked.count == 1 ? checked[0].name : "\(checked.count) checked items")
+        for item in checked { delete(item) }
         changed()
     }
 

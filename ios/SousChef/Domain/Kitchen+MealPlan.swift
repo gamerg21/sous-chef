@@ -15,7 +15,8 @@ extension Kitchen {
         return meal
     }
 
-    func delete(_ meal: PlannedMeal) {
+    func delete(_ meal: PlannedMeal, undoable: Bool = false) {
+        if undoable { registerUndoDelete([meal], name: "the planned meal") }
         if let id = meal.serverID { context.insert(Tombstone(kind: .mealPlan, serverID: id)) }
         context.delete(meal)
     }

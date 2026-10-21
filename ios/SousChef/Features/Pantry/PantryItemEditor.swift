@@ -170,7 +170,7 @@ struct PantryItemEditor: View {
                             if kitchen.asksBeforeRemoving(item) {
                                 askingRemoval = item
                             } else {
-                                kitchen.delete(item)
+                                kitchen.delete(item, undoable: true)
                                 kitchen.changed()
                                 dismiss()
                             }

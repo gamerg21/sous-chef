@@ -307,7 +307,7 @@ struct RecipeDetailView: View {
             try? await Task.sleep(for: .milliseconds(350))
             dismiss()
             try? await Task.sleep(for: .milliseconds(450))
-            kitchen.delete(recipe)
+            kitchen.delete(recipe, undoable: true)
             kitchen.changed()
         }
     }
