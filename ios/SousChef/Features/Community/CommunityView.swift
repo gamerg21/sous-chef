@@ -261,6 +261,11 @@ struct PublishRecipeSheet: View {
     private var isPublished: Bool { viaServer || account.publicationID(for: recipe) != nil }
 
     var body: some View {
+        // Another device may delete the recipe while this is open.
+        DeletedElsewhereGuard(recipe) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             Group {
                 if let outcome { success(outcome) } else { form }

@@ -29,6 +29,11 @@ struct CookModeView: View {
     private var pageCount: Int { steps.count + 2 }
 
     var body: some View {
+        // Another device may delete the recipe while this is open.
+        DeletedElsewhereGuard(recipe) { DeletedElsewhereGuard(meal) { screen } }
+    }
+
+    private var screen: some View {
         NavigationStack {
             TabView(selection: $page) {
                 ingredientsPage.tag(0)

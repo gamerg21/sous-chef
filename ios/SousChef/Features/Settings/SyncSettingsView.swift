@@ -15,9 +15,34 @@ struct SyncSettingsView: View {
 
     /// The summary on the Settings page: where the kitchen syncs to.
     static func summary(_ kitchen: Kitchen) -> String {
-        if kitchen.server.isConnected { return URL(string: kitchen.server.address)?.host() ?? "Server" }
-        return kitchen.usesICloud ? "iCloud" : "This device"
+        summary(serverHost: kitchen.server.isConnected ? URL(string: kitchen.server.address)?.host() ?? "Server" : nil,
+                usesICloud: kitchen.usesICloud,
+                shared: HouseholdSharing.shared.householdActive)
     }
+
+    static func summary(serverHost: String?, usesICloud: Bool, shared: Bool) -> String {
+        if let serverHost { return serverHost }
+        guard usesICloud else { return "This device" }
+        return shared ? "iCloud, shared" : "iCloud"
+    }
+
+    /// The iCloud section's footer, which also says when the kitchen is shared.
+    static func iCloudFooter(usesICloud: Bool, isMember: Bool, ownerName: String?, isSharing: Bool) -> String {
+        guard usesICloud else {
+            return "Your kitchen is stored only on this device. Turn on iCloud to keep it on your other Apple devices too."
+        }
+        if isMember {
+            let kitchen = ownerName.map { "\(HouseholdText.possessive($0)) kitchen" } ?? "a shared kitchen"
+            return "You're in \(kitchen). It's stored in their iCloud and on this device. Your own kitchen stays in your iCloud for when you leave. To turn off iCloud, leave the household first."
+        }
+        if isSharing {
+            return "Your kitchen is stored on this device and in your private iCloud, and shared with the people you invited. Sous Chef has no servers of its own."
+        }
+        return "Your kitchen is stored on this device and in your private iCloud, so it follows you to your other Apple devices. Sous Chef has no servers of its own."
+    }
+
+    private var isMember: Bool { kitchen.cloud.isHouseholdMember }
+    private var isSharing: Bool { HouseholdSharing.shared.isSharing }
 
     var body: some View {
         @Bindable var server = kitchen.server
@@ -26,14 +51,17 @@ struct SyncSettingsView: View {
                 Toggle(isOn: Binding(get: { kitchen.usesICloud }, set: { kitchen.setICloud($0) })) {
                     Label("Sync with iCloud", systemImage: "icloud")
                 }
-                .disabled(!kitchen.iCloudAvailable || deletingICloud)
+                // A member's device has nothing of its own to sync until it leaves.
+                .disabled(!kitchen.iCloudAvailable || deletingICloud || (isMember && kitchen.usesICloud))
                 LabeledContent("Status") {
                     HStack(spacing: 6) {
                         StatusDot(color: kitchen.usesICloud ? .green : .secondary)
                         Text(iCloudStatus)
                     }
                 }
-                if kitchen.iCloudAvailable {
+                // For a member this would delete only their own saved kitchen, which
+                // they come back to when they leave, so it waits until then.
+                if kitchen.iCloudAvailable && !isMember {
                     Button(role: .destructive) { confirmICloudDelete = true } label: {
                         HStack {
                             Label("Remove kitchen from iCloud", systemImage: "icloud.slash")
@@ -46,15 +74,16 @@ struct SyncSettingsView: View {
             } header: {
                 Eyebrow("iCloud")
             } footer: {
-                Text(kitchen.usesICloud
-                     ? "Your kitchen is stored on this device and in your private iCloud, so it follows you to your other Apple devices. Sous Chef has no servers of its own."
-                     : "Your kitchen is stored only on this device. Turn on iCloud to keep it on your other Apple devices too.")
+                Text(Self.iCloudFooter(usesICloud: kitchen.usesICloud, isMember: isMember,
+                                       ownerName: HouseholdSharing.shared.ownerName, isSharing: isSharing))
             }
-            .confirmationDialog("Remove your kitchen from iCloud?", isPresented: $confirmICloudDelete, titleVisibility: .visible) {
-                Button("Remove from iCloud", role: .destructive) { Task { await deleteICloudData() } }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This turns off iCloud sync and deletes your pantry, recipes and shopping list from iCloud. This device keeps its copy. Other devices using your iCloud will clear theirs the next time they sync.")
+            .sheet(isPresented: $confirmICloudDelete) {
+                ConfirmSheet(systemImage: "icloud.slash", title: "Remove your kitchen from iCloud?",
+                             message: "This turns off iCloud sync and deletes your pantry, recipes and shopping list from iCloud. This device keeps its copy. Other devices using your iCloud will clear theirs the next time they sync."
+                                 + (isSharing ? " The people you share your kitchen with lose access too." : ""),
+                             action: "Remove from iCloud", actionIdentifier: "confirmICloudDelete") {
+                    Task { await deleteICloudData() }
+                }
             }
 
             Section {
@@ -88,7 +117,15 @@ struct SyncSettingsView: View {
                     Button(role: .destructive) { Task { await server.disconnect() } } label: { Label("Disconnect", systemImage: "link.badge.minus") }
                 } else {
                     Button { connecting = true } label: { Label("Connect your Sous Chef server", systemImage: "server.rack") }
+                        .disabled(HouseholdSharing.shared.householdActive)
                         .accessibilityIdentifier("connectServer")
+                    if HouseholdSharing.shared.householdActive {
+                        Text(isMember
+                             ? "You're in an iCloud household. Leave it to connect a server."
+                             : "Your kitchen is shared through iCloud. Stop sharing to connect a server.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                     if case .failed(let reason) = server.status { Text(reason).font(.footnote).foregroundStyle(.orange) }
                 }
             } header: {
@@ -130,6 +167,8 @@ struct SyncSettingsView: View {
         defer { deletingICloud = false }
         do {
             try await kitchen.deleteICloudData()
+            // The share went with the kitchen's zone.
+            HouseholdSharing.shared.forgetShare()
             iCloudMessage = "Your kitchen was removed from iCloud. It's still on this device."
         } catch {
             iCloudMessage = "Couldn't reach iCloud: \(error.localizedDescription)"

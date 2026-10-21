@@ -1,14 +1,17 @@
 import Foundation
 import SwiftData
 
-// Every model follows CloudKit's rules: no unique constraints, and every
-// stored property is optional or has a default. That lets the same store
-// sync through the person's private iCloud database.
+// Every model keeps CloudKit-friendly rules: no unique constraints, and every
+// stored property is optional or has a default. `CloudSync` mirrors the
+// synced models to a CloudKit zone, one record per model named by `uuid`
+// (`Cloud/CloudRecordMapping.swift` lists the synced fields). `uuid` keeps
+// its value in deletion history, so a delete can be sent to iCloud.
 //
-// `serverID` and `needsPush` belong to the optional companion-server sync.
-// They live in the synced store so any of the person's devices can push.
-// `syncBase` holds the server's fields as of the last sync, so concurrent
-// edits by household members merge field by field.
+// `serverID` belongs to the optional companion-server sync and is synced
+// through iCloud too. `needsPush`, `syncBase`, `photoNeedsUpload` and
+// `syncedFavorited` are device-local: they describe this device's server
+// sync. `syncBase` holds the server's fields as of the last sync, so
+// concurrent edits by household members merge field by field.
 
 nonisolated enum StorageLocation: String, CaseIterable, Identifiable, Codable {
     case pantry, fridge, freezer
@@ -40,7 +43,7 @@ nonisolated enum StorageLocation: String, CaseIterable, Identifiable, Codable {
 
 @Model
 final class PantryItem {
-    var uuid: UUID = UUID()
+    @Attribute(.preserveValueOnDeletion) var uuid: UUID = UUID()
     var name: String = ""
     /// Local to the app: the server keeps brands only on barcode records.
     var brand: String?
@@ -134,7 +137,7 @@ nonisolated struct RecipeStep: Codable, Hashable, Identifiable {
 
 @Model
 final class Recipe {
-    var uuid: UUID = UUID()
+    @Attribute(.preserveValueOnDeletion) var uuid: UUID = UUID()
     var title: String = ""
     var summary: String?
     var tags: [String] = []
@@ -190,7 +193,7 @@ enum ShoppingSource: String, Codable {
 
 @Model
 final class ShoppingItem {
-    var uuid: UUID = UUID()
+    @Attribute(.preserveValueOnDeletion) var uuid: UUID = UUID()
     var name: String = ""
     var quantity: Double?
     var unit: String?
@@ -223,6 +226,7 @@ final class ShoppingItem {
 }
 
 /// A server record deleted on this device, waiting to be removed remotely.
+/// Device-local; not synced through iCloud.
 @Model
 final class Tombstone {
     var kind: String = ""
@@ -240,5 +244,5 @@ enum SyncKind: String {
 }
 
 enum KitchenSchema {
-    static let models: [any PersistentModel.Type] = [PantryItem.self, Recipe.self, ShoppingItem.self, PlannedMeal.self, Tombstone.self, PantryOutcome.self]
+    static let models: [any PersistentModel.Type] = [PantryItem.self, Recipe.self, ShoppingItem.self, PlannedMeal.self, Tombstone.self, PantryOutcome.self, CloudRecordMeta.self]
 }

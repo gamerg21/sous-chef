@@ -20,6 +20,18 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.0 (16)
+
+### What to Test
+
+What to test (please focus here)
+- Households: update every device to this build first. In Settings > Household, invite someone from Contacts; they open the link in Messages and join. Edit the pantry, recipes and shopping list on both phones, then remove them or leave.
+- Shake to undo: delete a pantry item, recipe or shopping item, then shake your iPhone to bring it back. Settings can also show an Undo button after deleting.
+- Recipe ideas: the draft fills in smoothly, then turns into the editor for review.
+
+Fixes to verify
+- Confirmations: deleting, discarding and removing people now confirm in a sheet from the bottom.
+
 ## 1.1.0 (15)
 
 ### What to Test

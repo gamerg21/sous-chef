@@ -1,5 +1,3 @@
-import CloudKit
-import CoreData
 import Foundation
 import MachO
 import Observation
@@ -14,58 +12,49 @@ final class Kitchen {
     static let shared = Kitchen(inMemory: ProcessInfo.processInfo.arguments.contains("-uiTesting"))
     static let cloudContainerID = "iCloud.com.georgevina.souschef"
 
-    private(set) var container: ModelContainer
-    private(set) var usesICloud: Bool
+    let container: ModelContainer
+    /// Whether this device syncs the kitchen through iCloud (`CloudSync` is running).
+    var usesICloud: Bool { cloud.isRunning }
     /// Changes when the store is reopened, so views rebuild on the new container.
+    /// The store is opened once now that `CloudSync` handles iCloud, so it stays 0.
     private(set) var storeGeneration = 0
     let ai = KitchenAI()
     let server = CompanionServer()
+    /// iCloud sync and households (`CKSyncEngine`).
+    let cloud = CloudSync()
     let inMemory: Bool
 
     var context: ModelContext { container.mainContext }
 
+    /// Items another device deleted, so screens showing one stop reading it
+    /// (`DeletedElsewhereGuard`) before it's deleted here.
+    private(set) var deletedElsewhere: Set<PersistentIdentifier> = []
+
+    func markDeletedElsewhere(_ models: [any PersistentModel]) {
+        deletedElsewhere.formUnion(models.map(\.persistentModelID))
+    }
+
+    /// Checks `modelContext` first: it's safe to read on a deleted item.
+    func wasDeletedElsewhere(_ model: any PersistentModel) -> Bool {
+        model.modelContext == nil || deletedElsewhere.contains(model.persistentModelID)
+    }
+
+    // The CloudKit schema needs no setup step: CKSyncEngine creates record
+    // types and fields in the development environment as it saves them.
+    // Deploy the schema to production from the CloudKit Console before a
+    // TestFlight or App Store build.
     init(inMemory: Bool = false) {
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-initCloudKitSchema") { Self.initializeCloudKitSchema() }
-        #endif
         self.inMemory = inMemory
-        (container, usesICloud) = Self.openStore(inMemory: inMemory, cloud: Self.iCloudPreferred)
+        container = Self.openStore(inMemory: inMemory)
         server.kitchen = self
+        cloud.kitchen = self
         ai.serverConnected = { [weak server] in server?.isConnected ?? false }
         ai.serverGenerate = { [weak server] preferences in
             guard let server else { throw ServerClient.ServerError.notAuthenticated }
             return try await server.generateRecipe(preferences: preferences)
         }
+        if Self.iCloudPreferred && iCloudAvailable { cloud.start() }
     }
-
-    #if DEBUG
-    /// Creates every record type and field in the CloudKit development
-    /// environment, so the schema can be deployed to production before a
-    /// TestFlight or App Store build. Run once from Xcode on a device signed
-    /// in to iCloud with the `-initCloudKitSchema` launch argument.
-    private static func initializeCloudKitSchema() {
-        guard hasCloudKitEntitlement, let model = NSManagedObjectModel.makeManagedObjectModel(for: KitchenSchema.models) else { return }
-        let url = URL.temporaryDirectory.appending(path: "schema-\(UUID().uuidString).store")
-        let description = NSPersistentStoreDescription(url: url)
-        description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: cloudContainerID)
-        description.shouldAddStoreAsynchronously = false
-        let container = NSPersistentCloudKitContainer(name: "SchemaSetup", managedObjectModel: model)
-        container.persistentStoreDescriptions = [description]
-        container.loadPersistentStores { _, error in
-            if let error { print("CloudKit schema store failed: \(error)") }
-        }
-        do {
-            try container.initializeCloudKitSchema()
-            print("CloudKit schema initialized. Deploy it to production in the CloudKit Console.")
-        } catch {
-            print("CloudKit schema initialization failed: \(error)")
-        }
-        for store in container.persistentStoreCoordinator.persistentStores {
-            try? container.persistentStoreCoordinator.remove(store)
-        }
-        try? FileManager.default.removeItem(at: url)
-    }
-    #endif
 
     // MARK: iCloud
 
@@ -79,19 +68,14 @@ final class Kitchen {
 
     var iCloudAvailable: Bool { !inMemory && Self.hasCloudKitEntitlement }
 
-    /// The local store and the iCloud-mirrored store are the same file, so
-    /// switching only changes whether it mirrors to the private database.
-    /// SwiftData records history either way, so edits made while sync was off
-    /// upload when it's turned back on.
-    private static func openStore(inMemory: Bool, cloud: Bool) -> (ModelContainer, Bool) {
+    /// The store is always local. SwiftData's built-in CloudKit mirroring used
+    /// this same file, so existing kitchens open unchanged; `CloudSync` now
+    /// does the syncing, from SwiftData's history.
+    private static func openStore(inMemory: Bool) -> ModelContainer {
         let schema = Schema(KitchenSchema.models)
-        if cloud && !inMemory && hasCloudKitEntitlement,
-           let container = try? ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, cloudKitDatabase: .private(cloudContainerID))) {
-            return (container, true)
-        }
         do {
             let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none)
-            return (try ModelContainer(for: schema, configurations: configuration), false)
+            return try ModelContainer(for: schema, configurations: configuration)
         } catch {
             fatalError("Sous Chef couldn't open its kitchen database: \(error)")
         }
@@ -100,22 +84,20 @@ final class Kitchen {
     /// Turns iCloud sync on or off without restarting the app.
     func setICloud(_ enabled: Bool) {
         Self.iCloudPreferred = enabled
-        guard iCloudAvailable, enabled != usesICloud else { return }
-        try? context.save()
-        (container, usesICloud) = Self.openStore(inMemory: inMemory, cloud: enabled)
-        storeGeneration += 1
+        guard iCloudAvailable else { return }
+        if enabled {
+            try? context.save()
+            cloud.start()
+        } else {
+            cloud.stop()
+        }
     }
 
     /// Stops syncing and deletes the kitchen from the person's iCloud. This
-    /// device keeps its copy; other devices clear theirs on their next sync.
+    /// device keeps its copy; other devices turn iCloud off on their next sync.
     func deleteICloudData() async throws {
         setICloud(false)
-        let zone = CKRecordZone.ID(zoneName: "com.apple.coredata.cloudkit.zone", ownerName: CKCurrentUserDefaultName)
-        do {
-            try await CKContainer(identifier: Self.cloudContainerID).privateCloudDatabase.deleteRecordZone(withID: zone)
-        } catch let error as CKError where error.code == .zoneNotFound {
-            // Nothing in iCloud yet.
-        }
+        try await cloud.deleteCloudData()
     }
 
     /// CloudKit traps when the app lacks the iCloud entitlement, which happens
@@ -127,6 +109,7 @@ final class Kitchen {
     /// Saves and lets the companion server know there is something to send.
     func changed() {
         try? context.save()
+        cloud.localChangesSaved()
         server.scheduleSync()
         ExpiryReminders.shared.reschedule(self)
         if !inMemory { WidgetSnapshotWriter.scheduleRefresh(self) }
@@ -138,19 +121,30 @@ final class Kitchen {
 
     // MARK: Deleting
 
-    func delete(_ item: PantryItem) {
+    /// Deletes the person made, so shaking the device brings them back
+    /// (`Kitchen+Undo.swift`). Separate from the window's undo, which typing uses.
+    @ObservationIgnored let deletionUndo = UndoManager()
+    /// The last delete the person made; the Undo bar watches it.
+    var lastUndoableDelete: UndoableDelete?
+
+    /// `undoable` is for deletes the person made, so shaking brings them back.
+    func delete(_ item: PantryItem, undoable: Bool = false) {
+        if undoable { registerUndoDelete([item], name: item.name) }
         if let id = item.serverID { context.insert(Tombstone(kind: .pantry, serverID: id)) }
         context.delete(item)
     }
 
-    func delete(_ recipe: Recipe) {
-        if let id = recipe.serverID { context.insert(Tombstone(kind: .recipe, serverID: id)) }
+    func delete(_ recipe: Recipe, undoable: Bool = false) {
         // The server removes a recipe's planned meals with it; so does the device.
-        for meal in fetch(PlannedMeal.self) where meal.recipeUUID == recipe.uuid { context.delete(meal) }
+        let meals = fetch(PlannedMeal.self).filter { $0.recipeUUID == recipe.uuid }
+        if undoable { registerUndoDelete([recipe] + meals, name: recipe.title) }
+        if let id = recipe.serverID { context.insert(Tombstone(kind: .recipe, serverID: id)) }
+        for meal in meals { context.delete(meal) }
         context.delete(recipe)
     }
 
-    func delete(_ item: ShoppingItem) {
+    func delete(_ item: ShoppingItem, undoable: Bool = false) {
+        if undoable { registerUndoDelete([item], name: item.name) }
         if let id = item.serverID { context.insert(Tombstone(kind: .shopping, serverID: id)) }
         context.delete(item)
     }
@@ -282,7 +276,9 @@ final class Kitchen {
     }
 
     func clearChecked() {
-        for item in fetch(ShoppingItem.self) where item.checked { delete(item) }
+        let checked = fetch(ShoppingItem.self).filter(\.checked)
+        registerUndoDelete(checked, name: checked.count == 1 ? checked[0].name : "\(checked.count) checked items")
+        for item in checked { delete(item) }
         changed()
     }
 

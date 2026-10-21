@@ -26,7 +26,7 @@ struct PlannedMealRow: View {
         }
         .swipeActions(edge: .trailing) {
             Button("Remove", systemImage: "trash", role: .destructive) {
-                kitchen.delete(meal)
+                kitchen.delete(meal, undoable: true)
                 kitchen.changed()
             }
             .tint(.red)
@@ -50,7 +50,7 @@ struct PlannedMealRow: View {
             }
             Divider()
             Button("Remove", systemImage: "trash", role: .destructive) {
-                kitchen.delete(meal)
+                kitchen.delete(meal, undoable: true)
                 kitchen.changed()
             }
         }

@@ -78,6 +78,9 @@ signed device build registers these capabilities for the App ID:
   community account.
 - **iCloud (CloudKit)** with container `iCloud.com.georgevina.souschef`, plus push
   notifications and the remote-notification background mode for CloudKit changes.
+  `CKSharingSupported` in the Info.plist lets the app accept kitchen invitations.
+- **iCloud key-value storage** (`com.apple.developer.ubiquity-kvstore-identifier`),
+  so a person's other devices follow when they join or leave a household.
 
 Private Cloud Compute (`com.apple.developer.private-cloud-compute`) is a managed
 entitlement that automatic signing can't add until Apple grants it to the team.
@@ -92,14 +95,105 @@ on-device model instead of crashing.
 
 ## Data
 
-Everything lives in a SwiftData store. Models follow CloudKit's rules (no unique
-constraints, every property optional or defaulted), and the store syncs through
-the person's private CloudKit database when iCloud is on. There is no Sous
-Chef-operated backend. A new model is a new CloudKit record type: create it in
-the development environment (the `-initCloudKitSchema` launch argument) and
-deploy the schema to production before a TestFlight or App Store build.
-New attributes on an existing model (such as `syncBase`) need the same
-re-initialization and deploy.
+Everything lives in a local SwiftData store. With iCloud on, `Cloud/CloudSync.swift`
+syncs it with `CKSyncEngine` to the "Kitchen" zone in the person's private
+CloudKit database (or, for a household member, the owner's shared zone). There
+is no Sous Chef-operated backend.
+
+- Each synced model is one record: type = model name, record name = the model's
+  `uuid`. `Cloud/CloudRecordMapping.swift` lists the synced fields (unit tested);
+  `needsPush`, `syncBase`, `photoNeedsUpload`, `syncedFavorited` and `Tombstone`
+  stay on the device. Photos travel as `CKAsset`s.
+- Local edits are read from SwiftData's history; CloudSync's own writes are
+  saved under the `CloudSync` author and skipped. Conflicts merge field by
+  field against the last fetched copy (`CloudRecordMeta`): an edit on one side
+  wins, the same field edited on both keeps this device's value, and pantry
+  amounts add both changes. Duplicate unchecked shopping items are collapsed.
+- The first sync of a zone (including the upgrade from SwiftData's built-in
+  mirroring, whose `com.apple.coredata.cloudkit.zone` is left in place for
+  older versions) uploads everything on the device.
+- New models and fields need no setup step: CKSyncEngine creates record types
+  and fields in the CloudKit development environment as it saves. Deploy the
+  schema to production from the CloudKit Console before a TestFlight or App
+  Store build. A field is only created once a value is saved in it, so first
+  compare the development schema with `CloudRecordType.schema`
+  (`xcrun cktool export-schema --team-id X423ZKYPDN --container-id
+  iCloud.com.georgevina.souschef --environment development`, with a management
+  token saved by `xcrun cktool save-token --type management`) and import any
+  missing fields; a field missing in production fails every save that uses it.
+
+### What's new
+
+`Features/Onboarding/WhatsNew.swift` shows "What's new" once after an update
+to a new major or minor version (1.1, 2.0), never for a patch (1.1.x), whose
+App Store update notes are enough. Fresh installs finish onboarding instead and
+it's recorded as seen (`whatsNew.seenRelease`). Add an entry to
+`WhatsNew.releases` for each feature release; a release without one shows
+nothing. `-uiTesting -showWhatsNew` shows it in tests.
+
+### Households
+
+A household is the owner's "Kitchen" zone shared with other Apple IDs through
+a zone-wide `CKShare`; no server is involved, and members need an iPhone, iPad
+or Mac. `Cloud/HouseholdSharing.swift` creates the share (read-write,
+invited people only), invites, resends, removes, stops sharing and leaves.
+The share is saved only together with its first invitee, and removing the last
+person (or finding a share with no one else in it) deletes it, so a kitchen
+with no one invited is never shared.
+A member's device checks the shared zone at launch and on returning to the
+app (CloudKit doesn't always report a removal promptly); when it's gone, the
+device clears the shared kitchen behind a "Switching kitchens" placeholder,
+since deleting items a screen still shows crashes SwiftData, and refetches its
+own kitchen.
+Items deleted on another device (a household member, or the companion server)
+are marked in `Kitchen.deletedElsewhere` before they're deleted here, and
+CloudSync waits a moment before deleting. Every screen about one item wraps its
+body in `DeletedElsewhereGuard`, which shows "Deleted on another device"
+instead of reading the item. Wrap new single-item screens the same way.
+
+Shake to undo: deletes the person makes (`delete(_:undoable: true)`, and
+Clear checked) register on `Kitchen.deletionUndo`, which restores the items
+from their synced fields under the same ids, so the household gets them back
+too. A `UIWindow` shake override shows `UndoDeleteOnShake`'s sheet ("Bring
+back Lemons?"). It's separate from the window's undo, which text fields use,
+and it's cleared when the device switches kitchens.
+Settings > "Undo button after deleting" (`undo.showsBar`, off by default) also
+shows a "Deleted … · Undo" bar at the top for five seconds after each delete.
+Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
+tap (`CNContactPickerViewController`, no Contacts permission); it's the only
+way to invite from iOS. A contact's addresses are tried best first (iPhone and
+mobile numbers, other numbers, emails) with `shareParticipant(forPhoneNumber:)`
+/ `forEmailAddress:`, and the first whose identity `hasiCloudAccount` becomes the
+participant (else the first CloudKit accepted). The share carries the kitchen's
+title and the app logo as its thumbnail. The link sent is
+`souschefkitchen.app/join#<token>` (`InviteLink`), not the icloud.com one, so
+Messages shows Sous Chef's own preview; the token stays in the fragment, the
+website (`sous-chef-website`, `/join` and `/.well-known/apple-app-site-association`)
+never receives it, and the app (`applinks:souschefkitchen.app`) rebuilds only an
+icloud.com share link from it, fetches its metadata and checks the container
+before showing the join sheet. Messages opens addressed to them with the link;
+without Messages it falls back to the share sheet. CloudKit doesn't name a
+participant until they accept, so the name picked from Contacts is remembered
+by address (UserDefaults and iCloud key-value storage) and shown for pending
+invitations. `App/AppDelegate.swift` hands accepted
+invitations to it, and `JoinHouseholdSheet` asks whether to bring the
+member's kitchen along (uploaded into the shared zone) or start fresh with the
+owner's (the device is cleared only once its kitchen is safely in the
+member's personal zone). Either way the member's personal zone is left as it
+was and comes back if they leave or the owner stops sharing.
+
+A member's device syncs only the shared zone, through their shared database;
+the scope is saved per device and in iCloud key-value storage. Households and
+the companion server are one or the other: the server can't be connected
+while a kitchen is shared or joined, and households are unavailable while a
+server is connected.
+
+Test with two Apple IDs on two signed devices: invite by contact (one with
+several numbers and emails too), check the pending name, resend, cancel an
+invitation, accept from Messages
+with the app closed and open, both join choices, simultaneous edits to the
+same pantry item and shopping list offline, leaving, removing a person, and
+stopping sharing.
 
 ## Apple Intelligence
 

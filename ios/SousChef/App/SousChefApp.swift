@@ -3,6 +3,7 @@ import SwiftUI
 
 @main
 struct SousChefApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var kitchen = Kitchen.shared
     @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -27,6 +28,7 @@ struct SousChefApp: App {
                 .task { AppNavigator.shared.receiveSharedRecipes() }
                 .task { CookTimerAlerts.shared.endLeftoverActivities() }
                 .onOpenURL { url in
+                    if HouseholdSharing.shared.open(inviteLink: url) { return }
                     AppNavigator.shared.open(url)
                     AppNavigator.shared.receiveSharedRecipes()
                 }
@@ -95,6 +97,11 @@ final class AppNavigator {
     /// Asks Cook to show the week plan; Cook clears it.
     var showPlan = false
 
+    /// A Settings page to open the next time Settings appears; Settings clears it.
+    var settingsPage: SettingsPage?
+
+    enum SettingsPage: Hashable { case household }
+
     /// Whether the Mac sidebar is showing.
     var showsSidebar = true
 
@@ -146,14 +153,24 @@ struct RootView: View {
     @Bindable private var navigator = AppNavigator.shared
     @State private var showSettings = false
     @AppStorage("onboarding.done") private var onboardingDone = false
+    @AppStorage(WhatsNew.seenKey) private var whatsNewSeen: String?
+    @State private var whatsNew: [WhatsNew.Feature]?
     @Query(filter: #Predicate<ShoppingItem> { !$0.checked }) private var openShopping: [ShoppingItem]
 
     var body: some View {
         Group {
-            if ProcessInfo.processInfo.isiOSAppOnMac { macLayout } else { tabs }
+            if kitchen.cloud.isClearingKitchen {
+                ProgressView("Switching kitchens\u{2026}")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if ProcessInfo.processInfo.isiOSAppOnMac {
+                macLayout
+            } else {
+                tabs
+            }
         }
         // Rebuild on the new store when iCloud sync is switched on or off.
         .id(kitchen.storeGeneration)
+        .undoDeleteOnShake()
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .kitchenEnvironment(kitchen)
@@ -162,6 +179,29 @@ struct RootView: View {
             OnboardingView { onboardingDone = true }
                 .kitchenEnvironment(kitchen)
         }
+        .householdPresentations(showSettings: $showSettings, ready: onboardingDone)
+        .sheet(isPresented: Binding(get: { whatsNew != nil }, set: { if !$0 { whatsNew = nil } })) {
+            WhatsNewView(version: WhatsNew.currentVersion, features: whatsNew ?? [],
+                         onSetUpHousehold: HouseholdSharing.shared.householdActive || !kitchen.iCloudAvailable ? nil : {
+                             navigator.settingsPage = .household
+                             Task {
+                                 try? await Task.sleep(for: .milliseconds(450))
+                                 showSettings = true
+                             }
+                         })
+        }
+        .task(id: onboardingDone) { checkWhatsNew() }
+    }
+
+    /// Shows "What's new" once after updating to a new major or minor
+    /// version. Finishing onboarding counts as having seen this one.
+    private func checkWhatsNew() {
+        let version = WhatsNew.currentVersion
+        guard !ProcessInfo.processInfo.arguments.contains("-uiTesting") || ProcessInfo.processInfo.arguments.contains("-showWhatsNew") else { return }
+        if onboardingDone, let features = WhatsNew.features(version: version, seen: whatsNewSeen, onboarded: true) {
+            whatsNew = features
+        }
+        if onboardingDone { whatsNewSeen = WhatsNew.release(of: version) }
     }
 
     private var tabs: some View {

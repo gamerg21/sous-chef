@@ -34,18 +34,29 @@ struct RecipeImportView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    switch mode {
-                    case .link: linkForm
-                    case .text: textForm
-                    case .photo: photoForm
-                    case .ideas: ideasForm
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        switch mode {
+                        case .link: linkForm
+                        case .text: textForm
+                        case .photo: photoForm
+                        case .ideas: ideasForm
+                        }
+                        if let error { ErrorBanner(message: error) }
+                        if working, mode == .ideas {
+                            PartialRecipePreview(draft: partial)
+                                .id("preview")
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
                     }
-                    if let error { ErrorBanner(message: error) }
-                    if let partial, working { PartialRecipePreview(draft: partial) }
+                    .padding()
+                    .animation(.smooth, value: working)
                 }
-                .padding()
+                .onChange(of: working) { _, working in
+                    guard working, mode == .ideas else { return }
+                    withAnimation(.smooth) { proxy.scrollTo("preview", anchor: .top) }
+                }
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -69,7 +80,12 @@ struct RecipeImportView: View {
                     } else {
                         Button(action: start) {
                             Group {
-                                if working { ProgressView().tint(.white) } else { Text(actionTitle).font(.headline) }
+                                if working {
+                                    Label { Text(workingTitle) } icon: { ProgressView() }
+                                        .font(.headline)
+                                } else {
+                                    Text(actionTitle).font(.headline)
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
@@ -108,6 +124,14 @@ struct RecipeImportView: View {
         case .text: "Read recipe"
         case .photo: "Read recipe"
         case .ideas: "Suggest a recipe"
+        }
+    }
+
+    private var workingTitle: String {
+        switch mode {
+        case .link: "Importing\u{2026}"
+        case .text, .photo: "Reading\u{2026}"
+        case .ideas: "Drafting\u{2026}"
         }
     }
 
@@ -238,6 +262,7 @@ struct RecipeImportView: View {
                     }
                     draft = await RecipeTextReader.read(read, ai: kitchen.ai)
                 case .ideas:
+                    partial = nil
                     draft = try await kitchen.ai.generateRecipe(pantry: pantry, usePantry: usePantry || !kitchen.ai.isAvailable,
                                                                 preferences: preferences) { partial = $0 }
                 }
@@ -267,29 +292,85 @@ struct AIEngineBadge: View {
     }
 }
 
-/// The recipe forming live as Apple Intelligence streams it.
+/// The recipe forming live as Apple Intelligence streams it. Text fills in
+/// place (no crossfades, which flicker as each word arrives); only new
+/// ingredient rows animate in, and placeholder bars hold the shape until
+/// the first words arrive.
 struct PartialRecipePreview: View {
-    let draft: RecipeDraft
+    let draft: RecipeDraft?
 
     var body: some View {
         Card {
-            HStack {
-                Eyebrow("Drafting", systemImage: "apple.intelligence")
+            HStack(spacing: 8) {
+                Image(systemName: "apple.intelligence")
+                    .symbolEffect(.pulse, options: .repeating)
+                    .foregroundStyle(Color.brand)
+                Eyebrow("Drafting your recipe")
                 Spacer()
-                ProgressView()
             }
-            if !draft.title.isEmpty {
-                Text(draft.title).font(.title3.weight(.bold)).contentTransition(.opacity)
+            if let title = draft?.title.nilIfEmpty {
+                Text(title).font(.title3.weight(.bold))
+            } else {
+                placeholder(width: 0.6, height: 22)
             }
-            if let summary = draft.summary { Text(summary).font(.callout).foregroundStyle(.secondary) }
-            ForEach(draft.ingredients) { ingredient in
-                Label("\(Units.amount(ingredient.quantity, ingredient.unit)) \(ingredient.name)", systemImage: "circle.fill")
-                    .labelStyle(BulletLabelStyle())
-                    .font(.callout)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            if let summary = draft?.summary?.nilIfEmpty {
+                Text(summary).font(.callout).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    placeholder(width: 0.95)
+                    placeholder(width: 0.7)
+                }
+            }
+            let ingredients = draft?.ingredients ?? []
+            if !ingredients.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    // By position: each streamed update makes new ingredient
+                    // values, and matching them by id made rows cross-fade over each other.
+                    ForEach(Array(ingredients.enumerated()), id: \.offset) { _, ingredient in
+                        Label("\(Units.amount(ingredient.quantity, ingredient.unit)) \(ingredient.name)", systemImage: "circle.fill")
+                            .labelStyle(BulletLabelStyle())
+                            .font(.callout)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
             }
         }
-        .animation(.snappy, value: draft)
+        .animation(.smooth, value: draft?.ingredients.count ?? 0)
+        .animation(.smooth, value: draft?.title.isEmpty ?? true)
+        .animation(.smooth, value: draft?.summary == nil)
+    }
+
+    private func placeholder(width: CGFloat, height: CGFloat = 12) -> some View {
+        Capsule()
+            .fill(.quaternary)
+            .frame(height: height)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .scaleEffect(x: width, anchor: .leading)
+            .phaseAnimator([0.45, 1]) { bar, opacity in bar.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.9) }
+    }
+}
+
+/// Imports or drafts a recipe, then reviews it in the editor inside the same
+/// sheet: the finished draft turns into the editor instead of one sheet
+/// sliding away and another sliding up.
+struct RecipeImportFlow: View {
+    let mode: RecipeImportView.Mode
+    var shared: String?
+    var onSave: (Recipe) -> Void = { _ in }
+    @State private var draft: RecipeDraft?
+
+    var body: some View {
+        ZStack {
+            if let draft {
+                RecipeEditorView(draft: draft, recipe: nil, onSave: onSave)
+                    .transition(.blurReplace)
+            } else {
+                RecipeImportView(mode: mode, shared: shared) { draft in
+                    withAnimation(.smooth(duration: 0.45)) { self.draft = draft }
+                }
+                .transition(.blurReplace)
+            }
+        }
     }
 }
 
@@ -318,6 +399,11 @@ struct RecipeChatView: View {
     }
 
     var body: some View {
+        // Another device may delete the recipe while this is open.
+        DeletedElsewhereGuard(recipe) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
