@@ -28,6 +28,7 @@ struct WeekPlannerPane: View {
             )
             .id(weekStart)
             .transition(.opacity)
+            .ignoresRailInset()
             .navigationTitle(weekTitle)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {

@@ -189,7 +189,13 @@ struct RecipesView: View {
             }
         }
         .scrollIndicators(.hidden)
-        .scrollClipDisabled()
+        // Edge to edge within the safe area, fading out at the end, so chips
+        // never slide under the unfolded Duo's tab rail or status.
+        .contentMargins(.horizontal, 16, for: .scrollContent)
+        .padding(.horizontal, -16)
+        .mask {
+            LinearGradient(stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing)
+        }
     }
 
     private func filterChip(_ title: String, _ value: Filter, symbol: String?) -> some View {

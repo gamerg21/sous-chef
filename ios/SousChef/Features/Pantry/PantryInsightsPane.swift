@@ -37,6 +37,7 @@ struct PantryInsightsPane: View {
             .scrollIndicators(.hidden)
             // Grouped like the list beside it, so the halves read as one screen.
             .background(Color(.systemGroupedBackground))
+            .ignoresRailInset()
             .navigationTitle("At a Glance")
         }
     }

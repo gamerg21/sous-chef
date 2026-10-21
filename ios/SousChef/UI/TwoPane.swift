@@ -52,6 +52,13 @@ struct TwoPane<Primary: View, Secondary: View>: View {
 }
 
 extension View {
+    /// For the content of a leading pane that has its own NavigationStack.
+    /// The stack still insets its content for the unfolded Duo's tab rail at
+    /// the far edge of the window, leaving a gap before the fold.
+    func ignoresRailInset() -> some View {
+        ignoresSafeArea(.container, edges: .trailing)
+    }
+
     /// Tracks whether this view is wide enough for two panes: the unfolded
     /// iPhone Duo, an iPad, a Mac, or a phone on its side.
     func tracksTwoPaneWidth(_ isWide: Binding<Bool>) -> some View {
