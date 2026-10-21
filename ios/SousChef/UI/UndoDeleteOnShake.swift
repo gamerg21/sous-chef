@@ -20,13 +20,35 @@ extension View {
 
 private struct UndoDeleteOnShake: ViewModifier {
     @Environment(Kitchen.self) private var kitchen
+    @AppStorage(Kitchen.undoBarKey) private var showsBar = false
     @State private var offering: String?
+    @State private var bar: Kitchen.UndoableDelete?
 
     func body(content: Content) -> some View {
         content
+            .overlay(alignment: .top) {
+                if let bar {
+                    UndoBar(name: bar.name) {
+                        self.bar = nil
+                        kitchen.deletionUndo.undo()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    // Each delete restarts the timer.
+                    .task(id: bar.id) {
+                        try? await Task.sleep(for: .seconds(5))
+                        withAnimation(.smooth) { self.bar = nil }
+                    }
+                }
+            }
+            .animation(.smooth, value: bar)
+            .onChange(of: kitchen.lastUndoableDelete) { _, delete in
+                guard showsBar, let delete else { return }
+                bar = delete
+            }
             .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
                 let undo = kitchen.deletionUndo
                 guard undo.canUndo, offering == nil else { return }
+                bar = nil
                 offering = undo.undoActionName
             }
             .sheet(isPresented: Binding(get: { offering != nil }, set: { if !$0 { offering = nil } })) {
@@ -38,5 +60,29 @@ private struct UndoDeleteOnShake: ViewModifier {
                     kitchen.deletionUndo.undo()
                 }
             }
+    }
+}
+
+/// "Deleted Lemons · Undo", shown briefly at the top after a delete when
+/// the setting is on.
+private struct UndoBar: View {
+    let name: String
+    let undo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "trash").foregroundStyle(.secondary)
+            Text("Deleted \(name)").lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Undo", action: undo)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.brand)
+                .accessibilityIdentifier("undoBar")
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .glassEffect(.regular, in: .capsule)
+        .padding(.horizontal)
+        .padding(.top, 4)
     }
 }

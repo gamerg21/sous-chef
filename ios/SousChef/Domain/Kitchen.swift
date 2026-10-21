@@ -124,6 +124,8 @@ final class Kitchen {
     /// Deletes the person made, so shaking the device brings them back
     /// (`Kitchen+Undo.swift`). Separate from the window's undo, which typing uses.
     @ObservationIgnored let deletionUndo = UndoManager()
+    /// The last delete the person made; the Undo bar watches it.
+    var lastUndoableDelete: UndoableDelete?
 
     /// `undoable` is for deletes the person made, so shaking brings them back.
     func delete(_ item: PantryItem, undoable: Bool = false) {

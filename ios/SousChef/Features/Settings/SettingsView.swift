@@ -8,6 +8,7 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var alerts: AlertPermissions.Status?
     @State private var showsBuild = false
+    @AppStorage(Kitchen.undoBarKey) private var showsUndoBar = false
     private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     private let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 
@@ -67,6 +68,15 @@ struct SettingsView: View {
                     .accessibilityIdentifier("communitySettings")
                 } header: {
                     Eyebrow("Features")
+                }
+
+                Section {
+                    Toggle(isOn: $showsUndoBar) {
+                        SettingsIcon("Undo button after deleting", systemImage: "arrow.uturn.backward", color: .gray)
+                    }
+                    .accessibilityIdentifier("undoBarSetting")
+                } footer: {
+                    Text("Shows \u{201C}Deleted \u{2026} \u{00B7} Undo\u{201D} for a few seconds after you delete something. Shaking your iPhone to undo always works.")
                 }
 
                 Section {

@@ -6,6 +6,16 @@ import SwiftData
 /// ids, so the household and other devices get them back too. Shaking shows
 /// `UndoDeleteSheet`, named after the top undo ("Bring back Lemons?").
 extension Kitchen {
+    /// The setting that shows an Undo bar after each delete (off by default;
+    /// shaking always works).
+    static let undoBarKey = "undo.showsBar"
+
+    /// The last delete the person made, for the Undo bar.
+    struct UndoableDelete: Equatable {
+        let id = UUID()
+        let name: String
+    }
+
     struct DeletedItem {
         let type: CloudRecordType
         let uuid: UUID
@@ -20,6 +30,7 @@ extension Kitchen {
         let items = models.map { DeletedItem(type: type(of: $0).cloudRecordType, uuid: $0.uuid, fields: $0.cloudFields) }
         undoManager.registerUndo(withTarget: self) { kitchen in kitchen.restore(items) }
         undoManager.setActionName(name)
+        lastUndoableDelete = UndoableDelete(name: name)
     }
 
     /// Puts deleted items back, skipping any already back (re-added elsewhere).

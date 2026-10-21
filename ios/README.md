@@ -143,6 +143,8 @@ from their synced fields under the same ids, so the household gets them back
 too. A `UIWindow` shake override shows `UndoDeleteOnShake`'s sheet ("Bring
 back Lemons?"). It's separate from the window's undo, which text fields use,
 and it's cleared when the device switches kitchens.
+Settings > "Undo button after deleting" (`undo.showsBar`, off by default) also
+shows a "Deleted … · Undo" bar at the top for five seconds after each delete.
 Inviting (`Cloud/HouseholdInvites.swift`) picks a person from Contacts with one
 tap (`CNContactPickerViewController`, no Contacts permission); it's the only
 way to invite from iOS. A contact's addresses are tried best first (iPhone and
