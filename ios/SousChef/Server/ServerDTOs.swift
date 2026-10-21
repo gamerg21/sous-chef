@@ -97,6 +97,9 @@ enum DTO {
 
     struct Created: Decodable { let id: String }
 
+    /// `merged` when the server folded the add into an open item with the same name.
+    struct AddedItem: Decodable { let id: String; let merged: Bool? }
+
     struct AIDraft: Decodable {
         struct Draft: Decodable {
             struct Item: Decodable { let name: String; let quantity: Double; let unit: String }

@@ -41,6 +41,11 @@ struct RecipeEditorView: View {
     }
 
     var body: some View {
+        // Another device may delete the recipe while this is open.
+        DeletedElsewhereGuard(recipe) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             Form {
                 if !draft.warnings.isEmpty {
@@ -229,9 +234,17 @@ struct RecipeEditorView: View {
                     Button("Cancel", role: .cancel) {
                         if hasUnsavedWork { confirmDiscard = true } else { dismiss() }
                     }
-                    .confirmationDialog(recipe == nil ? "Discard this recipe?" : "Discard your changes?", isPresented: $confirmDiscard, titleVisibility: .visible) {
-                        Button(recipe == nil ? "Discard Recipe" : "Discard Changes", role: .destructive) { dismiss() }
-                        Button("Keep Editing", role: .cancel) {}
+                    .sheet(isPresented: $confirmDiscard) {
+                        ConfirmSheet(systemImage: "trash", title: recipe == nil ? "Discard this recipe?" : "Discard your changes?",
+                                     message: recipe == nil ? "Nothing you've entered here is saved." : "The recipe stays as it was before you started editing.",
+                                     action: recipe == nil ? "Discard recipe" : "Discard changes", cancel: "Keep editing",
+                                     actionIdentifier: "confirmDiscard") {
+                            // Close the editor once the confirmation is gone.
+                            Task {
+                                try? await Task.sleep(for: .milliseconds(350))
+                                dismiss()
+                            }
+                        }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {

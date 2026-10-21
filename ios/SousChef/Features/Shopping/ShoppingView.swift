@@ -88,8 +88,12 @@ struct ShoppingView: View {
             .refreshable { await kitchen.server.syncNow() }
             .sheet(item: $editing) { ShoppingItemEditor(item: $0).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $stocking) { StockPurchasesView(items: inCart).kitchenEnvironment(kitchen) }
-            .confirmationDialog("Remove \(inCart.count) checked item\(inCart.count == 1 ? "" : "s")?", isPresented: $confirmClear, titleVisibility: .visible) {
-                Button("Clear checked", role: .destructive) { kitchen.clearChecked() }
+            .sheet(isPresented: $confirmClear) {
+                ConfirmSheet(systemImage: "checklist.checked", title: "Remove \(inCart.count) checked item\(inCart.count == 1 ? "" : "s")?",
+                             message: "They come off your list. Shake your phone right after to bring them back.",
+                             action: "Clear checked", actionIdentifier: "confirmClearChecked") {
+                    kitchen.clearChecked()
+                }
             }
         }
     }
@@ -145,7 +149,7 @@ struct ShoppingView: View {
         }
         .swipeActions {
             Button(role: .destructive) {
-                kitchen.delete(item)
+                kitchen.delete(item, undoable: true)
                 kitchen.changed()
             } label: { Label("Delete", systemImage: "trash") }
             .tint(.red)
@@ -201,6 +205,11 @@ struct ShoppingItemEditor: View {
     @State private var note = ""
 
     var body: some View {
+        // Another device may delete the item while this is open.
+        DeletedElsewhereGuard(item) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             Form {
                 Section {
@@ -215,7 +224,7 @@ struct ShoppingItemEditor: View {
                 }
                 Section {
                     Button(role: .destructive) {
-                        kitchen.delete(item)
+                        kitchen.delete(item, undoable: true)
                         kitchen.changed()
                         dismiss()
                     } label: { Label("Delete", systemImage: "trash") }

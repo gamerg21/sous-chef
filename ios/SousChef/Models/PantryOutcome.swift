@@ -12,7 +12,7 @@ final class PantryOutcome {
         case used, wasted
     }
 
-    var uuid: UUID = UUID()
+    @Attribute(.preserveValueOnDeletion) var uuid: UUID = UUID()
     var name: String = ""
     var outcomeRaw: String = Kind.used.rawValue
     /// The person's local day it happened, "YYYY-MM-DD", the same key the server uses.

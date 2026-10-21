@@ -9,6 +9,9 @@ function validateItem(name?: string, quantity?: number | null) {
   if (quantity != null && (!Number.isFinite(quantity) || quantity <= 0)) throw new Error("Quantity must be greater than zero");
 }
 
+/** How list rows are matched: trimmed, case-insensitive, whitespace collapsed. A missing unit is "". */
+const listKey = (value?: string) => (value ?? "").toLowerCase().trim().replace(/\s+/g, " ");
+
 /**
  * Adds shortages to a household's list without duplicating what's already there.
  * Rows for the same food in a comparable unit count toward the need, including
@@ -26,10 +29,9 @@ export async function mergeShortagesIntoList(
   if (!list) throw new Error("Shopping list not found");
   const rows = await ctx.db.query("shoppingListItems").withIndex("by_shoppingListId", q => q.eq("shoppingListId", list._id)).collect();
   const { convert } = unitConverter(catalog);
-  const key = (name: string) => name.toLowerCase().trim().replace(/\s+/g, " ");
   let added = 0, updated = 0;
   for (const item of shortages) {
-    const sameFood = rows.filter(row => key(row.name) === key(item.name));
+    const sameFood = rows.filter(row => listKey(row.name) === listKey(item.name));
     if (item.quantity == null) {
       if (!sameFood.length) {
         const id = await ctx.db.insert("shoppingListItems", { shoppingListId: list._id, name: item.name.trim(), unit: item.unit, checked: false, source });
@@ -109,6 +111,9 @@ export const addItem = mutation({
     note: v.optional(v.string()),
     source: v.optional(v.string()),
     recipeId: v.optional(v.id("recipes")),
+    // Fold into an unchecked row with the same name and unit instead of adding
+    // a duplicate, so two members adding "milk" offline end with one row.
+    mergeDuplicate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -122,6 +127,23 @@ export const addItem = mutation({
       .first();
     if (!shoppingList) throw new Error("Shopping list not found");
 
+    if (args.mergeDuplicate) {
+      const rows = await ctx.db
+        .query("shoppingListItems")
+        .withIndex("by_shoppingListId", (q) => q.eq("shoppingListId", shoppingList._id))
+        .collect();
+      const existing = rows.find((row) => !row.checked && listKey(row.name) === listKey(args.name) && listKey(row.unit) === listKey(args.unit));
+      if (existing) {
+        const patch: Record<string, unknown> = {};
+        const quantity = existing.quantity != null && args.quantity != null ? Math.max(existing.quantity, args.quantity) : existing.quantity ?? args.quantity;
+        if (quantity !== existing.quantity) patch.quantity = quantity;
+        if (!existing.category?.trim() && args.category?.trim()) patch.category = args.category;
+        if (!existing.note?.trim() && args.note?.trim()) patch.note = args.note;
+        if (Object.keys(patch).length) await ctx.db.patch(existing._id, patch);
+        return { id: existing._id, merged: true };
+      }
+    }
+
     const itemId = await ctx.db.insert("shoppingListItems", {
       shoppingListId: shoppingList._id,
       name: args.name.trim(),
@@ -134,7 +156,7 @@ export const addItem = mutation({
       recipeId: args.recipeId,
     });
 
-    return { id: itemId };
+    return { id: itemId, merged: false };
   },
 });
 

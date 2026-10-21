@@ -7,8 +7,10 @@ import SwiftData
 /// the working copy, so the app works offline; each sync pushes local changes
 /// and then mirrors the server.
 ///
-/// Conflicts resolve as "latest pusher wins": a device's unsynced edit is sent
-/// before the server copy is read back.
+/// Conflicts merge field by field (`SyncMerge`): a push sends only the fields
+/// edited here since the last sync, and a pull keeps unpushed edits while taking
+/// every other field from the server. Two people editing the same field: the
+/// latest pusher wins.
 @Observable
 final class CompanionServer {
     enum Status: Equatable {
@@ -249,6 +251,12 @@ private struct SyncPass {
         return false
     }
 
+    /// The server predates an argument: its validator rejects unknown keys.
+    private func rejectsArgument(_ error: Error) -> Bool {
+        if case ServerClient.ServerError.server(let message) = error { return message.trimmingCharacters(in: .whitespaces) == "Invalid value" }
+        return false
+    }
+
     // MARK: First connection
 
     /// Pairs records that already exist on both sides so connecting an
@@ -345,11 +353,10 @@ private struct SyncPass {
 
     private func push(_ meal: PlannedMeal, recipes: [UUID: Recipe]) async throws {
         if let id = meal.serverID {
-            let fields: [String: Any] = ["id": id, "date": meal.day, "slot": meal.slot.rawValue, "servings": meal.servings ?? NSNull(),
-                                         "note": meal.note ?? NSNull(), "cooked": meal.isCooked]
+            let changes = meal.localChanges
             do {
-                _ = try await client.call("mealPlan:update", fields)
-                meal.needsPush = false
+                if !changes.isEmpty { _ = try await client.call("mealPlan:update", changes.merging(["id": id]) { $1 }) }
+                meal.pushed()
                 return
             } catch where notFound(error) {
                 meal.serverID = nil
@@ -364,28 +371,30 @@ private struct SyncPass {
         meal.serverID = created.id
         meal.recipeServerID = recipeID
         if meal.isCooked { _ = try await client.call("mealPlan:update", ["id": created.id, "cooked": true]) }
-        meal.needsPush = false
+        meal.pushed()
     }
 
     private func push(_ item: PantryItem) async throws {
-        var fields: [String: Any] = ["name": item.name, "locationId": item.location.rawValue, "quantity": item.quantity, "unit": item.unit]
-        func optional(_ key: String, _ value: Any?) { fields[key] = value ?? NSNull() }
         if let id = item.serverID {
-            optional("expiresOn", DayFormat.string(item.expiresOn))
-            optional("category", item.category)
-            optional("notes", item.notes)
-            optional("barcode", item.barcode)
-            optional("nutritionPer100g", item.nutrition?.jsonObject)
+            var changes = SyncMerge.pantryChanges(item.syncFields, base: item.base)
             do {
-                _ = try await client.call("inventory:update", fields.merging(["id": id]) { $1 })
-                item.needsPush = false
+                if !changes.isEmpty {
+                    do {
+                        _ = try await client.call("inventory:update", changes.merging(["id": id]) { $1 })
+                    } catch where changes["quantityDelta"] != nil && rejectsArgument(error) {
+                        // A server from before quantity deltas takes the amount itself.
+                        changes["quantityDelta"] = nil
+                        changes["quantity"] = item.quantity
+                        _ = try await client.call("inventory:update", changes.merging(["id": id]) { $1 })
+                    }
+                }
+                item.pushed()
                 return
             } catch where notFound(error) {
                 item.serverID = nil
-                fields = ["name": item.name, "locationId": item.location.rawValue, "quantity": item.quantity, "unit": item.unit]
             }
         }
-        fields.merge(scope) { $1 }
+        var fields: [String: Any] = ["name": item.name, "locationId": item.location.rawValue, "quantity": item.quantity, "unit": item.unit].merging(scope) { $1 }
         if let value = DayFormat.string(item.expiresOn) { fields["expiresOn"] = value }
         if let value = item.category { fields["category"] = value }
         if let value = item.notes { fields["notes"] = value }
@@ -393,7 +402,7 @@ private struct SyncPass {
         if let value = item.nutrition?.jsonObject { fields["nutritionPer100g"] = value }
         let created = try await client.call("inventory:create", fields, as: DTO.Created.self)
         item.serverID = created.id
-        item.needsPush = false
+        item.pushed()
     }
 
     private func push(_ recipe: Recipe) async throws {
@@ -405,52 +414,40 @@ private struct SyncPass {
             }
             recipe.photoNeedsUpload = false
         }
-        let ingredients: [[String: Any]] = recipe.ingredients.map { ingredient in
-            var value: [String: Any] = ["name": ingredient.name]
-            if let quantity = ingredient.quantity { value["quantity"] = quantity }
-            if let unit = ingredient.unit?.nilIfEmpty { value["unit"] = unit }
-            if let note = ingredient.note?.nilIfEmpty { value["note"] = note }
-            if let label = ingredient.mappingLabel?.nilIfEmpty { value["mapping"] = ["inventoryItemLabel": label] }
-            return value
-        }
-        let steps = recipe.steps.map { ["text": $0.text] }
-        let optionals: [(String, Any?)] = [
-            ("description", recipe.summary), ("photoUrl", recipe.remotePhotoPath), ("servings", recipe.servings),
-            ("totalTimeMinutes", recipe.totalTimeMinutes), ("caloriesKcal", recipe.caloriesKcal), ("proteinGrams", recipe.proteinGrams),
-            ("carbsGrams", recipe.carbsGrams), ("fatGrams", recipe.fatGrams), ("sourceUrl", recipe.sourceURL), ("notes", recipe.notes),
-        ]
-        var fields: [String: Any] = ["title": recipe.title, "tags": recipe.tags, "ingredients": ingredients, "steps": steps]
         var created = false
         if let id = recipe.serverID, recipe.needsPush {
-            for (key, value) in optionals { fields[key] = value ?? NSNull() }
+            let changes = recipe.localChanges
             do {
-                _ = try await client.call("recipes:update", fields.merging(["id": id]) { $1 })
+                if !changes.isEmpty { _ = try await client.call("recipes:update", changes.merging(["id": id]) { $1 }) }
             } catch where notFound(error) {
                 recipe.serverID = nil
             }
         }
         if recipe.serverID == nil {
-            fields = ["title": recipe.title, "tags": recipe.tags, "ingredients": ingredients, "steps": steps].merging(scope) { $1 }
-            for (key, value) in optionals { if let value { fields[key] = value } }
+            let fields = recipe.syncFields.filter { !($0.value is NSNull) }.merging(scope) { $1 }
             let id = try await client.call("recipes:create", fields)
             recipe.serverID = id as? String
             recipe.syncedFavorited = false
             created = true
         }
         if let id = recipe.serverID, recipe.favorited != recipe.syncedFavorited || (created && recipe.favorited) {
-            _ = try await client.call("recipes:toggleFavorite", ["id": id])
+            // Setting, unlike toggling, can't cancel out another member's matching change.
+            do {
+                _ = try await client.call("recipes:setFavorite", ["id": id, "favorited": recipe.favorited])
+            } catch where unsupported(error) {
+                _ = try await client.call("recipes:toggleFavorite", ["id": id])
+            }
             recipe.syncedFavorited = recipe.favorited
         }
-        recipe.needsPush = false
+        recipe.pushed()
     }
 
     private func push(_ item: ShoppingItem, recipes: [UUID: Recipe]) async throws {
         if let id = item.serverID {
-            let fields: [String: Any] = ["id": id, "name": item.name, "quantity": item.quantity ?? NSNull(), "unit": item.unit ?? NSNull(),
-                                         "category": item.category ?? NSNull(), "checked": item.checked, "note": item.note ?? NSNull()]
+            let changes = item.localChanges
             do {
-                _ = try await client.call("shoppingList:updateItem", fields)
-                item.needsPush = false
+                if !changes.isEmpty { _ = try await client.call("shoppingList:updateItem", changes.merging(["id": id]) { $1 }) }
+                item.pushed()
                 return
             } catch where notFound(error) {
                 item.serverID = nil
@@ -462,10 +459,24 @@ private struct SyncPass {
         if let value = item.category { fields["category"] = value }
         if let value = item.note { fields["note"] = value }
         if let recipeID = item.recipeUUID.flatMap({ recipes[$0]?.serverID }) ?? item.recipeServerID { fields["recipeId"] = recipeID }
-        let created = try await client.call("shoppingList:addItem", fields, as: DTO.Created.self)
+        // Two members adding the same open item offline get one server item.
+        if !item.checked { fields["mergeDuplicate"] = true }
+        let created: DTO.AddedItem
+        do {
+            created = try await client.call("shoppingList:addItem", fields, as: DTO.AddedItem.self)
+        } catch where fields["mergeDuplicate"] != nil && rejectsArgument(error) {
+            fields["mergeDuplicate"] = nil
+            created = try await client.call("shoppingList:addItem", fields, as: DTO.AddedItem.self)
+        }
         item.serverID = created.id
+        // Merged into an item this device already has: keep that one. No
+        // tombstone, since the server item is still wanted.
+        if created.merged == true, all(ShoppingItem.self).contains(where: { $0 !== item && $0.serverID == created.id }) {
+            context.delete(item)
+            return
+        }
         if item.checked { _ = try await client.call("shoppingList:updateItem", ["id": created.id, "checked": true]) }
-        item.needsPush = false
+        item.pushed()
     }
 
     // MARK: Pull
@@ -482,21 +493,24 @@ private struct SyncPass {
                 context.insert(created)
                 return created
             }()
-            guard !item.needsPush else { continue }
-            item.name = remote.name
-            item.location = StorageLocation(rawValue: remote.locationId) ?? .pantry
-            item.quantity = remote.quantity
-            item.unit = remote.unit
-            item.expiresOn = DayFormat.date(remote.expiresOn)
-            item.category = remote.category
-            item.notes = remote.notes
-            item.barcode = remote.barcode
-            item.nutrition = (remote.nutritionPer100g?.any as? [String: Any]).map(Nutrition.init(json:))
+            guard let kept = item.unpushed else { continue }
+            let take = { !kept.contains($0) }
+            if take("name") { item.name = remote.name }
+            if take("locationId") { item.location = StorageLocation(rawValue: remote.locationId) ?? .pantry }
+            if take("quantity") { item.quantity = remote.quantity }
+            if take("unit") { item.unit = remote.unit }
+            if take("expiresOn") { item.expiresOn = DayFormat.date(remote.expiresOn) }
+            if take("category") { item.category = remote.category }
+            if take("notes") { item.notes = remote.notes }
+            if take("barcode") { item.barcode = remote.barcode }
+            if take("nutritionPer100g") { item.nutrition = (remote.nutritionPer100g?.any as? [String: Any]).map(Nutrition.init(json:)) }
             item.foodFacts = remote.foodFacts.map(FoodFacts.init(json:))
             if item.brand == nil, let brand = item.foodFacts?.brand { item.brand = PantryPrefill.primaryBrand(brand) }
-            item.needsPush = false
+            item.pulled(keeping: kept)
         }
         for item in all(PantryItem.self) where item.serverID != nil && !serverPantry.contains(item.serverID!) && !item.needsPush {
+            // Deleted on the server: screens showing it close first.
+            kitchen.markDeletedElsewhere([item])
             context.delete(item)
         }
 
@@ -511,41 +525,53 @@ private struct SyncPass {
                 context.insert(created)
                 return created
             }()
-            guard !recipe.needsPush else { continue }
-            recipe.title = remote.title
-            recipe.summary = remote.description
-            recipe.tags = remote.tags ?? []
-            recipe.servings = remote.servings.map { Int($0) }
-            recipe.totalTimeMinutes = remote.totalTimeMinutes.map { Int($0) }
-            recipe.caloriesKcal = remote.caloriesKcal
-            recipe.proteinGrams = remote.proteinGrams
-            recipe.carbsGrams = remote.carbsGrams
-            recipe.fatGrams = remote.fatGrams
-            recipe.sourceURL = remote.sourceUrl
-            recipe.notes = remote.notes
-            recipe.favorited = remote.favorited
+            guard var kept = recipe.unpushed else { continue }
+            // A new photo waiting to upload outranks the server's.
+            if recipe.photoNeedsUpload { kept.insert("photoUrl") }
+            let take = { !kept.contains($0) }
+            if take("title") { recipe.title = remote.title }
+            if take("description") { recipe.summary = remote.description }
+            if take("tags") { recipe.tags = remote.tags ?? [] }
+            if take("servings") { recipe.servings = remote.servings.map { Int($0) } }
+            if take("totalTimeMinutes") { recipe.totalTimeMinutes = remote.totalTimeMinutes.map { Int($0) } }
+            if take("caloriesKcal") { recipe.caloriesKcal = remote.caloriesKcal }
+            if take("proteinGrams") { recipe.proteinGrams = remote.proteinGrams }
+            if take("carbsGrams") { recipe.carbsGrams = remote.carbsGrams }
+            if take("fatGrams") { recipe.fatGrams = remote.fatGrams }
+            if take("sourceUrl") { recipe.sourceURL = remote.sourceUrl }
+            if take("notes") { recipe.notes = remote.notes }
+            // `syncedFavorited` is the favorite's base: an unpushed change stays.
+            if recipe.favorited == recipe.syncedFavorited { recipe.favorited = remote.favorited }
             recipe.syncedFavorited = remote.favorited
             if let cooked = DayFormat.date(remote.lastCookedAt), cooked > (recipe.lastCookedAt ?? .distantPast).addingTimeInterval(86_400) {
                 recipe.lastCookedAt = cooked
             }
             // Keep ingredient IDs stable when nothing changed, so views don't jump.
             let ingredients = remote.ingredients.map { Ingredient(name: $0.name, quantity: $0.quantity, unit: $0.unit, note: $0.note, mappingLabel: $0.mapping?.inventoryItemLabel) }
-            if recipe.ingredients.map(\.comparable) != ingredients.map(\.comparable) { recipe.ingredients = ingredients }
-            if recipe.steps.map(\.text) != remote.steps.map(\.text) { recipe.steps = remote.steps.map { RecipeStep(text: $0.text) } }
-            if remote.photoUrl != recipe.remotePhotoPath {
+            if take("ingredients"), recipe.ingredients.map(\.comparable) != ingredients.map(\.comparable) { recipe.ingredients = ingredients }
+            if take("steps"), recipe.steps.map(\.text) != remote.steps.map(\.text) { recipe.steps = remote.steps.map { RecipeStep(text: $0.text) } }
+            if take("photoUrl"), remote.photoUrl != recipe.remotePhotoPath {
                 recipe.remotePhotoPath = remote.photoUrl
                 if let path = remote.photoUrl { recipe.photo = (try? await client.download(path)).flatMap { ImageTools.fitted($0) } } else { recipe.photo = nil }
             }
-            recipe.needsPush = false
+            recipe.pulled(keeping: kept)
         }
         for recipe in all(Recipe.self) where recipe.serverID != nil && !serverRecipes.contains(recipe.serverID!) && !recipe.needsPush {
+            // Deleted on the server: screens showing it close first.
+            kitchen.markDeletedElsewhere([recipe])
             context.delete(recipe)
         }
 
         let shopping = try await client.call("shoppingList:get", scope, as: DTO.ShoppingList.self).items
         let serverShopping = Set(shopping.map(\.id))
         let recipeByServerID = Dictionary(all(Recipe.self).compactMap { recipe in recipe.serverID.map { ($0, recipe.uuid) } }, uniquingKeysWith: { first, _ in first })
-        var localShopping = Dictionary(all(ShoppingItem.self).compactMap { item in item.serverID.map { ($0, item) } }, uniquingKeysWith: { first, _ in first })
+        // An add the server merged can leave two local copies of one item;
+        // keep the older and drop the other without a tombstone.
+        var localShopping: [String: ShoppingItem] = [:]
+        for item in all(ShoppingItem.self).sorted(by: { $0.createdAt < $1.createdAt }) {
+            guard let id = item.serverID else { continue }
+            if localShopping[id] == nil { localShopping[id] = item } else { context.delete(item) }
+        }
         for remote in shopping {
             let item = localShopping.removeValue(forKey: remote.id) ?? {
                 let created = ShoppingItem(name: remote.name)
@@ -554,17 +580,18 @@ private struct SyncPass {
                 context.insert(created)
                 return created
             }()
-            guard !item.needsPush else { continue }
-            item.name = remote.name
-            item.quantity = remote.quantity
-            item.unit = remote.unit
-            item.category = remote.category
-            item.checked = remote.checked
-            item.note = remote.note
+            guard let kept = item.unpushed else { continue }
+            let take = { !kept.contains($0) }
+            if take("name") { item.name = remote.name }
+            if take("quantity") { item.quantity = remote.quantity }
+            if take("unit") { item.unit = remote.unit }
+            if take("category") { item.category = remote.category }
+            if take("checked") { item.checked = remote.checked }
+            if take("note") { item.note = remote.note }
             item.sourceRaw = remote.source ?? ShoppingSource.manual.rawValue
             item.recipeServerID = remote.recipeId
             item.recipeUUID = remote.recipeId.flatMap { recipeByServerID[$0] }
-            item.needsPush = false
+            item.pulled(keeping: kept)
         }
         for item in all(ShoppingItem.self) where item.serverID != nil && !serverShopping.contains(item.serverID!) && !item.needsPush {
             context.delete(item)
@@ -624,15 +651,16 @@ private struct SyncPass {
                 context.insert(created)
                 return created
             }()
-            guard !meal.needsPush else { continue }
-            meal.day = remote.date
-            meal.slot = MealSlot(rawValue: remote.slot) ?? .dinner
+            guard let kept = meal.unpushed else { continue }
+            let take = { !kept.contains($0) }
+            if take("date") { meal.day = remote.date }
+            if take("slot") { meal.slot = MealSlot(rawValue: remote.slot) ?? .dinner }
             meal.recipeServerID = remote.recipeId
             meal.recipeUUID = recipeByServerID[remote.recipeId]
-            meal.servings = remote.servings.map { Int($0) }
-            meal.note = remote.note
-            if remote.cooked != meal.isCooked { meal.cookedAt = remote.cooked ? Date() : nil }
-            meal.needsPush = false
+            if take("servings") { meal.servings = remote.servings.map { Int($0) } }
+            if take("note") { meal.note = remote.note }
+            if take("cooked"), remote.cooked != meal.isCooked { meal.cookedAt = remote.cooked ? Date() : nil }
+            meal.pulled(keeping: kept)
         }
         for meal in all(PlannedMeal.self) where meal.serverID != nil && !serverMeals.contains(meal.serverID!) && !meal.needsPush {
             context.delete(meal)
@@ -642,4 +670,76 @@ private struct SyncPass {
 
 private extension Ingredient {
     var comparable: [String] { [name, quantity.map { String($0) } ?? "", unit ?? "", note ?? "", mappingLabel ?? ""] }
+}
+
+/// A record merged field by field against `syncBase`, the server's fields as
+/// of the last sync. `syncFields` uses the server's update argument names.
+private protocol FieldSynced: AnyObject {
+    var syncFields: SyncMerge.Fields { get }
+    var syncBase: Data? { get set }
+    var needsPush: Bool { get set }
+}
+
+private extension FieldSynced {
+    var base: SyncMerge.Fields? { SyncMerge.decode(syncBase) }
+
+    /// What an update sends. Records synced before field merging have no base
+    /// and send everything until a pull gives them one.
+    var localChanges: SyncMerge.Fields { SyncMerge.changes(syncFields, base: base) }
+
+    /// Fields a pull keeps because they were edited here and not pushed yet.
+    /// Nil without a base: the record is left alone until it's pushed.
+    var unpushed: Set<String>? {
+        guard needsPush else { return [] }
+        return base.map { SyncMerge.changedKeys(syncFields, base: $0) }
+    }
+
+    func pushed() {
+        syncBase = SyncMerge.encode(syncFields)
+        needsPush = false
+    }
+
+    func pulled(keeping kept: Set<String>) {
+        syncBase = SyncMerge.rebase(syncFields, base: base, keeping: kept)
+        needsPush = !kept.isEmpty
+    }
+}
+
+extension PantryItem: FieldSynced {
+    fileprivate var syncFields: SyncMerge.Fields {
+        ["name": name, "locationId": location.rawValue, "quantity": quantity, "unit": unit,
+         "expiresOn": DayFormat.string(expiresOn) ?? NSNull(), "category": category ?? NSNull(), "notes": notes ?? NSNull(),
+         "barcode": barcode ?? NSNull(), "nutritionPer100g": nutrition?.jsonObject ?? NSNull()]
+    }
+}
+
+extension Recipe: FieldSynced {
+    /// Ingredients and steps are whole fields; favorites merge through `syncedFavorited`.
+    fileprivate var syncFields: SyncMerge.Fields {
+        let ingredients: [[String: Any]] = ingredients.map { ingredient in
+            var value: [String: Any] = ["name": ingredient.name]
+            if let quantity = ingredient.quantity { value["quantity"] = quantity }
+            if let unit = ingredient.unit?.nilIfEmpty { value["unit"] = unit }
+            if let note = ingredient.note?.nilIfEmpty { value["note"] = note }
+            if let label = ingredient.mappingLabel?.nilIfEmpty { value["mapping"] = ["inventoryItemLabel": label] }
+            return value
+        }
+        return ["title": title, "tags": tags, "ingredients": ingredients, "steps": steps.map { ["text": $0.text] },
+                "description": summary ?? NSNull(), "photoUrl": remotePhotoPath ?? NSNull(), "servings": servings ?? NSNull(),
+                "totalTimeMinutes": totalTimeMinutes ?? NSNull(), "caloriesKcal": caloriesKcal ?? NSNull(), "proteinGrams": proteinGrams ?? NSNull(),
+                "carbsGrams": carbsGrams ?? NSNull(), "fatGrams": fatGrams ?? NSNull(), "sourceUrl": sourceURL ?? NSNull(), "notes": notes ?? NSNull()]
+    }
+}
+
+extension ShoppingItem: FieldSynced {
+    fileprivate var syncFields: SyncMerge.Fields {
+        ["name": name, "quantity": quantity ?? NSNull(), "unit": unit ?? NSNull(), "category": category ?? NSNull(),
+         "checked": checked, "note": note ?? NSNull()]
+    }
+}
+
+extension PlannedMeal: FieldSynced {
+    fileprivate var syncFields: SyncMerge.Fields {
+        ["date": day, "slot": slot.rawValue, "servings": servings ?? NSNull(), "note": note ?? NSNull(), "cooked": isCooked]
+    }
 }

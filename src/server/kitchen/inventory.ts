@@ -188,6 +188,9 @@ export const update = mutation({
     name: v.optional(v.string()),
     locationId: v.optional(v.string()),
     quantity: v.optional(v.number()),
+    // Relative change applied to the stored quantity, so concurrent offline
+    // edits from different members add up instead of overwriting each other.
+    quantityDelta: v.optional(v.number()),
     unit: v.optional(v.string()),
     expiresOn: v.optional(v.union(v.string(), v.null())),
     category: v.optional(v.union(v.string(), v.null())),
@@ -201,6 +204,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (args.nutritionPer100g) validateNutrition(args.nutritionPer100g);
+    if (args.quantity !== undefined && args.quantityDelta !== undefined) throw new Error("Send either quantity or quantityDelta, not both");
     const item = await ctx.db.get(args.id);
     if (!item) throw new Error("Item not found");
 
@@ -238,7 +242,13 @@ export const update = mutation({
       if (location) patch.locationId = location._id;
     }
 
-    if (args.quantity !== undefined) patch.quantity = args.quantity;
+    // A delta resolves against the stored value inside this transaction, then
+    // behaves exactly like an absolute quantity. Rounding to 1e-6 keeps float
+    // fuzz (0.1 + 0.2 - 0.3) from leaving a sliver in stock.
+    const quantity = args.quantityDelta !== undefined
+      ? Math.max(0, Math.round((item.quantity + args.quantityDelta) * 1e6) / 1e6)
+      : args.quantity;
+    if (quantity !== undefined) patch.quantity = quantity;
     if (args.unit !== undefined) patch.unit = args.unit;
     if (args.expiresOn !== undefined)
       patch.expiresOn = args.expiresOn ?? undefined;
@@ -249,10 +259,10 @@ export const update = mutation({
       patch.photoUrl = args.photoUrl ?? undefined;
     if (args.barcode !== undefined) patch.barcode = args.barcode ?? undefined;
     // An item that's out has no expiry date; restocking it brings a new one.
-    if (!((args.quantity ?? item.quantity) > 0)) patch.expiresOn = undefined;
+    if (!((quantity ?? item.quantity) > 0)) patch.expiresOn = undefined;
 
     // Counted only as it runs out, with the date it had; undated food isn't tracked.
-    if (args.outcome && item.quantity > 0 && !((args.quantity ?? item.quantity) > 0) && item.expiresOn) {
+    if (args.outcome && item.quantity > 0 && !((quantity ?? item.quantity) > 0) && item.expiresOn) {
       const name = (await ctx.db.get(item.foodItemId))?.name ?? "Unknown";
       await recordOutcome(ctx, householdId, { name, outcome: args.outcome, on: await todayFor(ctx, userId), expiresOn: item.expiresOn });
     }

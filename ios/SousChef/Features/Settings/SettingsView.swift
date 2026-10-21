@@ -8,6 +8,8 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var alerts: AlertPermissions.Status?
     @State private var showsBuild = false
+    @AppStorage(Kitchen.undoBarKey) private var showsUndoBar = false
+    @Bindable private var navigator = AppNavigator.shared
     private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     private let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
 
@@ -32,6 +34,12 @@ struct SettingsView: View {
                         }
                     }
                     .accessibilityIdentifier("syncSettings")
+                    NavigationLink { HouseholdView() } label: {
+                        LabeledContent { Text(HouseholdSharing.shared.summary) } label: {
+                            SettingsIcon("Household", systemImage: "house.fill", color: .orange)
+                        }
+                    }
+                    .accessibilityIdentifier("householdSettings")
                     NavigationLink { NotificationSettingsView() } label: {
                         LabeledContent {
                             if let alerts, alerts.needsSettings || !alerts.timersCanAlert {
@@ -64,6 +72,15 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle(isOn: $showsUndoBar) {
+                        SettingsIcon("Undo button after deleting", systemImage: "arrow.uturn.backward", color: .gray)
+                    }
+                    .accessibilityIdentifier("undoBarSetting")
+                } footer: {
+                    Text("Shows \u{201C}Deleted \u{2026} \u{00B7} Undo\u{201D} for a few seconds after you delete something. Shaking your iPhone to undo always works.")
+                }
+
+                Section {
                     Link(destination: URL(string: "https://souschefkitchen.app")!) { Label("Website", systemImage: "globe") }
                     Link(destination: URL(string: "mailto:contact@souschefkitchen.app")!) { Label("Contact the developer", systemImage: "envelope") }
                     Link(destination: URL(string: "https://github.com/gamerg21/sous-chef")!) { Label("Source code (AGPL-3.0)", systemImage: "chevron.left.forwardslash.chevron.right") }
@@ -73,6 +90,11 @@ struct SettingsView: View {
                         .onTapGesture { showsBuild.toggle() }
                 } header: {
                     Eyebrow("About")
+                }
+            }
+            .navigationDestination(item: $navigator.settingsPage) { page in
+                switch page {
+                case .household: HouseholdView()
                 }
             }
             .navigationTitle("Settings")
@@ -167,6 +189,9 @@ struct ServerConnectView: View {
                 } header: {
                     Eyebrow("Your account on that server")
                 }
+                if householdActive {
+                    Section { Text(Self.householdNote).foregroundStyle(.orange) }
+                }
                 if let error {
                     Section { Text(error).foregroundStyle(.orange) }
                 }
@@ -185,7 +210,7 @@ struct ServerConnectView: View {
                         Button("Connect", role: .confirm) {
                             if let url = try? ServerClient.normalize(address), ServerClient.isInsecureRemote(url) { confirmInsecure = true } else { Task { await connect() } }
                         }
-                        .disabled(address.nilIfEmpty == nil || email.nilIfEmpty == nil || password.count < 8)
+                        .disabled(householdActive || address.nilIfEmpty == nil || email.nilIfEmpty == nil || password.count < 8)
                     }
                 }
             }
@@ -199,7 +224,13 @@ struct ServerConnectView: View {
         }
     }
 
+    /// A companion server and an iCloud household can't run side by side.
+    private var householdActive: Bool { HouseholdSharing.shared.householdActive }
+
+    static let householdNote = "Your kitchen is shared through an iCloud household. To connect a server, stop sharing or leave the household first."
+
     private func connect(allowInsecure: Bool = false) async {
+        guard !householdActive else { return }
         working = true
         error = nil
         defer { working = false }

@@ -93,11 +93,9 @@ struct CookView: View {
                 }
             }
             .sheet(isPresented: $ideas) {
-                RecipeImportView(mode: .ideas) { draft in
-                    ideas = false
-                    kitchen.save(draft)
-                }
-                .kitchenEnvironment(kitchen)
+                // Reviewed in the editor like any other new recipe.
+                RecipeImportFlow(mode: .ideas)
+                    .kitchenEnvironment(kitchen)
             }
         }
     }

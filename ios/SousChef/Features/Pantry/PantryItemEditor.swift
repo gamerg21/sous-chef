@@ -56,6 +56,11 @@ struct PantryItemEditor: View {
     }
 
     var body: some View {
+        // Another device may delete the item while this is open.
+        DeletedElsewhereGuard(item) { screen }
+    }
+
+    private var screen: some View {
         NavigationStack {
             Form {
                 Section {
@@ -165,7 +170,7 @@ struct PantryItemEditor: View {
                             if kitchen.asksBeforeRemoving(item) {
                                 askingRemoval = item
                             } else {
-                                kitchen.delete(item)
+                                kitchen.delete(item, undoable: true)
                                 kitchen.changed()
                                 dismiss()
                             }

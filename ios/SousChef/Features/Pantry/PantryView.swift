@@ -209,7 +209,7 @@ struct PantryView: View {
         if kitchen.asksBeforeRemoving(item) {
             askingOutcome = item
         } else {
-            kitchen.delete(item)
+            kitchen.delete(item, undoable: true)
             kitchen.changed()
         }
     }

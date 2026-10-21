@@ -30,7 +30,7 @@ nonisolated enum MealSlot: String, CaseIterable, Identifiable, Codable {
 /// CloudKit's rules and survives the recipe being re-created by a sync.
 @Model
 final class PlannedMeal {
-    var uuid: UUID = UUID()
+    @Attribute(.preserveValueOnDeletion) var uuid: UUID = UUID()
     /// Calendar day as "YYYY-MM-DD" in the person's time zone, the same key the
     /// server uses, so a meal stays on its day across devices and time zones.
     var day: String = ""
@@ -45,6 +45,8 @@ final class PlannedMeal {
     var updatedAt: Date = Date()
     var serverID: String?
     var needsPush: Bool = true
+    /// The server's copy as of the last sync (`SyncMerge`), for field-level merges.
+    var syncBase: Data?
 
     init(day: String, slot: MealSlot = .dinner) {
         self.day = day
