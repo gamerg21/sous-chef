@@ -20,6 +20,14 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.0 (17)
+
+### What to Test
+
+What to test (please focus here)
+- What's new: after updating, a screen lists 1.1's new features once. "Set up your household" opens Settings > Household.
+- Invitations: invite someone from Settings > Household. The message now shows a Sous Chef link; tapping it on their iPhone opens Sous Chef straight to the join screen.
+
 ## 1.1.0 (16)
 
 ### What to Test

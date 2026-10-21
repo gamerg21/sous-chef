@@ -11,7 +11,9 @@ struct HouseholdView: View {
 
     var body: some View {
         Form {
-            if !kitchen.iCloudAvailable {
+            if HouseholdSharing.isDemo {
+                ownerSections
+            } else if !kitchen.iCloudAvailable {
                 Section {
                     LabeledContent("Status", value: "Not available in this build")
                 } footer: {

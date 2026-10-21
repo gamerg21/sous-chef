@@ -191,6 +191,13 @@ struct RootView: View {
                          })
         }
         .task(id: onboardingDone) { checkWhatsNew() }
+        .task {
+            // Screenshots of Settings > Household (with -demoHousehold).
+            guard ProcessInfo.processInfo.arguments.contains("-uiTesting"),
+                  ProcessInfo.processInfo.arguments.contains("-openHousehold") else { return }
+            navigator.settingsPage = .household
+            showSettings = true
+        }
     }
 
     /// Shows "What's new" once after updating to a new major or minor
