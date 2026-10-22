@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (27)
+
+### What to Test
+
+What to test (please focus here)
+- Private Cloud Compute: Settings > Intelligence and Lookups should show Private Cloud Compute as available, with Prefer Private Cloud Compute on. Paste or scan a recipe and ask for recipe ideas; imports should be tagged Private Cloud Compute, and results should be at least as good as before.
+
 ## 1.2.0 (26)
 
 ### What to Test
