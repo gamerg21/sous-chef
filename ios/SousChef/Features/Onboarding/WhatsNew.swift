@@ -37,7 +37,7 @@ enum WhatsNew {
             Feature(systemImage: "alarm.fill", color: .red, title: "Timers that ring",
                     detail: "Cook timers ring like alarms and count down on the Lock Screen."),
             Feature(systemImage: "arrow.uturn.backward", color: .blue, title: "Shake to undo",
-                    detail: "Deleted something by mistake? Shake your iPhone to bring it back."),
+                    detail: "Deleted something by mistake? Turn on Shake to undo in Settings, then shake your iPhone to bring it back."),
             Feature(systemImage: "square.grid.2x2.fill", color: .purple, title: "New widgets",
                     detail: "See tonight's meal, food to use soon and your shopping list from the Home Screen."),
         ],

@@ -11,6 +11,7 @@ struct ShoppingView: View {
     @State private var stocking = false
     @State private var sorting = false
     @State private var confirmClear = false
+    @AppStorage(Kitchen.shakeToUndoKey) private var shakeToUndo = false
     @State private var error: String?
     @FocusState private var addFocused: Bool
     /// Unfolded or on a wide screen, the list's numbers sit beside it.
@@ -127,7 +128,9 @@ struct ShoppingView: View {
             .sheet(isPresented: $stocking) { StockPurchasesView(items: inCart).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $confirmClear) {
                 ConfirmSheet(systemImage: "checklist.checked", title: "Remove \(inCart.count) checked item\(inCart.count == 1 ? "" : "s")?",
-                             message: "They come off your list. Shake your phone right after to bring them back.",
+                             message: shakeToUndo && UIAccessibility.isShakeToUndoEnabled
+                                 ? "They come off your list. Shake your phone right after to bring them back."
+                                 : "They come off your list.",
                              action: "Clear checked", actionIdentifier: "confirmClearChecked") {
                     kitchen.clearChecked()
                 }
