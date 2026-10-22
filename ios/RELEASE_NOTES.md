@@ -36,7 +36,8 @@ Also new in 1.2:
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
 
 ### Improved
-- **Shake to undo setting**: Shake to undo has its own switch in Settings, so shaking your iPhone only offers to bring something back when you've turned it on.
+- **Shake to undo setting**: Shake to undo has its own switch in Settings, and it now takes a real shake, so setting your iPhone down hard no longer offers to bring something back.
+- **Undo button**: The optional Undo button after a delete now sits just above the tab bar.
 
 ## 1.1.1
 
