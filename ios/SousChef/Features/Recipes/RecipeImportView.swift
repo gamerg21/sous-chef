@@ -22,7 +22,7 @@ struct RecipeImportView: View {
     @State private var link = ""
     @State private var text = ""
     @State private var preferences = ""
-    @State private var usePantry = true
+    @AppStorage("ideas.usePantry") private var usePantry = true
     @State private var pages: [UIImage] = []
     @State private var working = false
     @State private var error: String?
