@@ -344,10 +344,11 @@ extension CloudSync {
                 case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable, .notAuthenticated, .operationCancelled, .requestRateLimited:
                     // CKSyncEngine retries these itself.
                     break
-                case .quotaExceeded:
-                    deferred.insert(id)
-                    failure = Self.message(for: save.error)
                 default:
+                    // iCloud full, a batch too large, or anything else: keep
+                    // it and try again when the app is next opened, rather
+                    // than leave it out of iCloud until it's edited.
+                    deferred.insert(id)
                     failure = Self.message(for: save.error)
                 }
             }

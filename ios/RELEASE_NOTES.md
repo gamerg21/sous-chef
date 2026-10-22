@@ -38,11 +38,14 @@ Also new in 1.2:
 ## 1.1.2
 
 ### App Store
-Shake to undo now has its own switch in Settings, off unless you turn it on, and it takes a real shake, so setting your iPhone down hard no longer offers to bring something back. The optional Undo button after a delete now sits just above the tab bar.
+Kitchens shared with your household now include everything already in them, not just what was added or changed after you started sharing. Shake to undo now has its own switch in Settings, off unless you turn it on, and it takes a real shake, so setting your iPhone down hard no longer offers to bring something back. The optional Undo button after a delete now sits just above the tab bar.
 
 ### Improved
 - **Shake to undo setting**: Shake to undo has its own switch in Settings, and it now takes a real shake, so setting your iPhone down hard no longer offers to bring something back.
 - **Undo button**: The optional Undo button after a delete now sits just above the tab bar.
+
+### Fixed
+- **Shared kitchens**: Someone joining your kitchen now sees everything in it. Items that hadn't changed since an earlier version could be left out of iCloud until they were edited.
 
 ## 1.1.1
 
