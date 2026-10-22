@@ -20,6 +20,16 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (28)
+
+### What to Test
+
+What to test (please focus here)
+- Barcode scans: scan a few groceries into the pantry. The amount should start as one package (12 cans for a 12-pack, or the size on the label), with fridge, freezer or pantry, category, nutrition and badges like Vegan filled in. Try the count chips and the stepper. Rescan something you've stocked before; it should reuse your name, unit and location.
+
+Fixes to verify
+- Recipe ideas: ask for a few ideas in a row. Each should be a different dish, and a specific request (e.g. "chicken soup") should be followed even in From my pantry. The Pantry/Anything choice should stick between visits.
+
 ## 1.2.0 (27)
 
 ### What to Test
