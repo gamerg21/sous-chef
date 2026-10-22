@@ -99,6 +99,7 @@ final class CloudSync: CKSyncEngineDelegate {
         startEngine()
         followOtherDevices()
         Task { await checkStillMember() }
+        Task { await sendWhatICloudLacks() }
     }
 
     /// Stops syncing; local data stays.
@@ -221,7 +222,7 @@ final class CloudSync: CKSyncEngineDelegate {
         CKSyncEngine.FetchChangesOptions(scope: .zoneIDs([activeZoneID]))
     }
 
-    private func startEngine() {
+    private func startEngine(queueEverything: Bool = true) {
         guard let kitchen else { return }
         let database = scope == .personal ? container.privateCloudDatabase : container.sharedCloudDatabase
         let saved = Self.loadState(for: scope)
@@ -233,13 +234,55 @@ final class CloudSync: CKSyncEngineDelegate {
             // send everything here. Records already in the zone conflict and merge.
             if scope == .personal { engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.personalZoneID))]) }
             if kitchen.context.hasChanges { try? kitchen.context.save() }
-            queueAllLocalRecords()
+            if queueEverything { queueAllLocalRecords() }
             historyToken = latestHistoryToken()
             saveHistoryToken()
         } else {
             localChangesSaved()
         }
         pruneHistory()
+    }
+
+    private static let checkedPersonalZoneKey = "cloudsync.checkedPersonalZone"
+
+    /// Once per device, sends every item the personal zone doesn't have.
+    ///
+    /// Before 1.1.2 an item reached iCloud only when it was added or edited,
+    /// or in a first sync of the zone. A device that had already saved sync
+    /// state (say, from a development build) skipped that first sync, so
+    /// older items never went up, and someone joining the kitchen saw almost
+    /// nothing. This fetches the zone from the start and sends what's
+    /// missing. Nothing is deleted on either side.
+    private func sendWhatICloudLacks() async {
+        guard scope == .personal, !switching, !UserDefaults.standard.bool(forKey: Self.checkedPersonalZoneKey),
+              let previous = engine else { return }
+        // Edits not sent yet carry over to the fresh engine.
+        localChangesSaved()
+        let pending = previous.state.pendingRecordZoneChanges
+        stopEngine()
+        Self.removeState(for: .personal)
+        // Without records' saved versions, what the fetch doesn't return is what iCloud lacks.
+        deleteMetas(in: Self.personalZoneID)
+        startEngine(queueEverything: false)
+        guard let engine else { return }
+        engine.state.add(pendingRecordZoneChanges: pending)
+        do {
+            try await engine.fetchChanges(fetchOptions)
+        } catch {
+            // Tried again next launch.
+            return
+        }
+        guard engine === self.engine, scope == .personal else { return }
+        let inICloud = metas(in: Self.personalZoneID)
+        var missing: [CKSyncEngine.PendingRecordZoneChange] = []
+        for type in CloudRecordType.allCases {
+            for uuid in localModels(of: type).keys where inICloud[uuid.uuidString]?.systemFields == nil {
+                missing.append(.saveRecord(Self.recordID(uuid, in: Self.personalZoneID)))
+            }
+        }
+        engine.state.add(pendingRecordZoneChanges: missing)
+        UserDefaults.standard.set(true, forKey: Self.checkedPersonalZoneKey)
+        try? await engine.sendChanges()
     }
 
     func stopEngine() {

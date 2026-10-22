@@ -20,6 +20,14 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.2 (25)
+
+### What to Test
+
+Fixes to verify
+- Shared kitchen: open this build on the owner's iPhone and leave it open for a minute. Everything in the owner's kitchen should then appear on the member's iPhone, not only items edited since sharing started.
+- Shake to undo and the Undo button, as in (24).
+
 ## 1.1.2 (24)
 
 ### What to Test
