@@ -20,6 +20,14 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (22)
+
+### What to Test
+
+Fixes to verify
+- Shake to undo: it's now off by default. Delete something and shake; nothing should happen. Turn on Settings > Shake to undo, delete again and shake to bring it back.
+- Undo sheet: its Cancel button is red.
+
 ## 1.2.0 (20)
 
 ### What to Test
