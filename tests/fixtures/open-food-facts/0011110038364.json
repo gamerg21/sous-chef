@@ -1,0 +1,47 @@
+{
+ "code": "0011110038364",
+ "product": {
+  "allergens_tags": [],
+  "brands": "Simple Truth",
+  "code": "0011110038364",
+  "ecoscore_grade": "unknown",
+  "ecoscore_tags": [
+   "unknown"
+  ],
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/001/111/003/8364/front_en.11.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/001/111/003/8364/front_en.11.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/001/111/003/8364/ingredients_en.4.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/001/111/003/8364/nutrition_en.13.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:vegan-status-unknown",
+   "en:vegetarian-status-unknown"
+  ],
+  "ingredients_text": "organic rice, organic black beans, organic bell peppers, organic spices, organic corn, organic raw cane sugar, organic onion, potassium chloride, salt, organic tomato, organic paprika, organic corn masa flour, contains 2% or less of organic garlic, organic lime juice powder (organic maltodextrin, or",
+  "ingredients_text_en": "organic rice, organic black beans, organic bell peppers, organic spices, organic corn, organic raw cane sugar, organic onion, potassium chloride, salt, organic tomato, organic paprika, organic corn masa flour, contains 2% or less of organic garlic, organic lime juice powder (organic maltodextrin, or",
+  "labels_tags": [
+   "en:organic",
+   "en:usda-organic"
+  ],
+  "nova_group": 4,
+  "nutriments": {
+   "carbohydrates_100g": 66.666666666667,
+   "energy-kcal_100g": 333.33333333333,
+   "energy_100g": 1394,
+   "fat_100g": 3.7037037037037,
+   "proteins_100g": 11.111111111111,
+   "salt_100g": 3.888888888889,
+   "sodium_100g": 1.5555555555556,
+   "sugars_100g": 18.518518518519
+  },
+  "nutriscore_grade": "unknown",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [],
+  "product_name": "Chicken tortilla soup dry soup mix",
+  "product_name_en": "Chicken tortilla soup dry soup mix",
+  "traces_tags": []
+ },
+ "status": 1
+}

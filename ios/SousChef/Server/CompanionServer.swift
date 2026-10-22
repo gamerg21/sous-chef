@@ -507,9 +507,16 @@ private struct SyncPass {
             if take("expiresOn") { item.expiresOn = DayFormat.date(remote.expiresOn) }
             if take("category") { item.category = remote.category }
             if take("notes") { item.notes = remote.notes }
+            let previousBarcode = item.barcode
             if take("barcode") { item.barcode = remote.barcode }
             if take("nutritionPer100g") { item.nutrition = (remote.nutritionPer100g?.any as? [String: Any]).map(Nutrition.init(json:)) }
-            item.foodFacts = remote.foodFacts.map(FoodFacts.init(json:))
+            // The server only knows products it looked up itself; facts this
+            // phone read from Open Food Facts stay until the barcode changes.
+            if let remoteFacts = remote.foodFacts.map(FoodFacts.init(json:)) {
+                item.foodFacts = remoteFacts
+            } else if item.barcode == nil || item.barcode != previousBarcode {
+                item.foodFacts = nil
+            }
             if item.brand == nil, let brand = item.foodFacts?.brand { item.brand = PantryPrefill.primaryBrand(brand) }
             item.pulled(keeping: kept)
         }

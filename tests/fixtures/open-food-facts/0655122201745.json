@@ -1,0 +1,75 @@
+{
+ "code": "0655122201745",
+ "product": {
+  "allergens_tags": [
+   "en:milk"
+  ],
+  "brands": "Milton's",
+  "categories_tags": [
+   "en:frozen-foods",
+   "en:meals",
+   "en:pizzas-pies-and-quiches",
+   "en:pizzas",
+   "en:frozen-pizzas-and-pies",
+   "en:frozen-pizzas"
+  ],
+  "code": "0655122201745",
+  "ecoscore_grade": "unknown",
+  "generic_name": "",
+  "generic_name_en": "",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/065/512/220/1745/front_en.56.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/065/512/220/1745/front_en.56.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/065/512/220/1745/ingredients_en.21.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/065/512/220/1745/nutrition_en.70.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:non-vegan",
+   "en:vegetarian-status-unknown"
+  ],
+  "ingredients_text": "Cauliflower crust (cauliflower, non-gmo low moisture part-skim mozzarella cheese (non-gmo cultured pasteurized part skim milk, salt vegetarian enzymes, powdered cellulose[ to prevent caking], calcium chloride), rice flour, tapioca starch, water egg whites, modified rice starch, sugar, organic yeast,",
+  "ingredients_text_en": "Cauliflower crust (cauliflower, non-gmo low moisture part-skim mozzarella cheese (non-gmo cultured pasteurized part skim milk, salt vegetarian enzymes, powdered cellulose[ to prevent caking], calcium chloride), rice flour, tapioca starch, water egg whites, modified rice starch, sugar, organic yeast,",
+  "labels_tags": [
+   "en:no-gluten",
+   "en:no-gmos",
+   "en:certified-gluten-free",
+   "en:non-gmo-project",
+   "en:RBST free"
+  ],
+  "nova_group": 4,
+  "nutriments": {
+   "carbohydrates_100g": 21.4285714285714,
+   "carbohydrates_serving": 27,
+   "energy-kcal_100g": 182.539682539683,
+   "energy-kcal_serving": 230,
+   "energy-kj_100g": 773.809523809524,
+   "energy-kj_serving": 975,
+   "energy_100g": 773.809523809524,
+   "energy_serving": 975,
+   "fat_100g": 6.34920634920635,
+   "fat_serving": 8,
+   "fiber_100g": 1.58730158730159,
+   "fiber_serving": 2,
+   "proteins_100g": 9.52380952380952,
+   "proteins_serving": 12,
+   "salt_100g": 1.00977777777778,
+   "salt_serving": 1.27,
+   "sodium_100g": 0.452380952380952,
+   "sodium_serving": 0.57,
+   "sugars_100g": 3.96825396825397,
+   "sugars_serving": 5
+  },
+  "nutriscore_grade": "d",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [],
+  "product_name": "Roasted Vegetable Cauliflower Crust Pizza",
+  "product_name_en": "Roasted Vegetable Cauliflower Crust Pizza",
+  "quantity": "2 pizzas",
+  "serving_quantity": 126,
+  "serving_quantity_unit": "g",
+  "serving_size": "0.25 serving (126 g)",
+  "traces_tags": []
+ },
+ "status": 1
+}
