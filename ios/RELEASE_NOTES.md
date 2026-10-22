@@ -14,6 +14,15 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.1.2
+
+### App Store
+Shake to undo now has its own switch in Settings, off unless you turn it on, and it takes a real shake, so setting your iPhone down hard no longer offers to bring something back. The optional Undo button after a delete now sits just above the tab bar.
+
+### Improved
+- **Shake to undo setting**: Shake to undo has its own switch in Settings, and it now takes a real shake, so setting your iPhone down hard no longer offers to bring something back.
+- **Undo button**: The optional Undo button after a delete now sits just above the tab bar.
+
 ## 1.1.1
 
 ### App Store
