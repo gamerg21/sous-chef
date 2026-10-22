@@ -3,6 +3,10 @@ import { action, query, mutation, internalMutation, internalQuery } from "./_gen
 import { getAuthUserId, resolveHouseholdId, getHouseholdMembership } from "./helpers";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
+import { barcodeFactFields } from "./schema";
+import { OFF_FIELDS, PRODUCT_FACTS_VERSION, inferCategory, parseProduct } from "../../lib/food-product";
+
+export { inferCategory };
 
 /**
  * Barcode lookup: local cache (barcodes table) first, then Open Food Facts,
@@ -19,42 +23,13 @@ export type BarcodeLookupResult = {
   stale?: boolean;
 };
 
-/** Map Open Food Facts category tags onto the app's category options. */
-export function inferCategory(tags: string[] | undefined): string | undefined {
-  if (!tags?.length) return undefined;
-  const joined = tags.join(" ").toLowerCase();
-  const rules: Array<[RegExp, string]> = [
-    [/fruit|vegetable|produce|salad/, "Produce"],
-    [/dairies|dairy|milk|cheese|yogurt|butter|cream/, "Dairy"],
-    [/meat|poultry|seafood|fish|beef|pork|chicken/, "Meat & Seafood"],
-    [/frozen/, "Frozen"],
-    [/bread|bakery|baked|pastr/, "Bakery"],
-    [/beverage|drink|water|juice|soda|coffee|tea/, "Beverages"],
-    [/canned|preserved|tinned/, "Canned Goods"],
-    [/rice|grain|cereal/, "Grains & Rice"],
-    [/pasta|noodle/, "Pasta & Noodles"],
-    [/spice|seasoning|herb/, "Spices & Seasonings"],
-    [/condiment|sauce|ketchup|mustard|mayonnaise|dressing/, "Condiments & Sauces"],
-    [/snack|chip|cracker|candy|chocolate|biscuit|cookie/, "Snacks"],
-  ];
-  for (const [pattern, category] of rules) {
-    if (pattern.test(joined)) return category;
-  }
-  return "Other";
-}
+const FACT_KEYS = Object.keys(barcodeFactFields) as Array<keyof typeof barcodeFactFields>;
 
-function factsFromBarcode(barcode: Doc<"barcodes">): Record<string, unknown> {
-  return {
-    brand: barcode.brand,
-    categoriesTags: barcode.categoriesTags,
-    ingredientsText: barcode.ingredientsText,
-    allergensTags: barcode.allergensTags,
-    nutriscoreGrade: barcode.nutriscoreGrade,
-    novaGroup: barcode.novaGroup,
-    ecoscoreGrade: barcode.ecoscoreGrade,
-    imageFrontUrl: barcode.imageFrontUrl,
-    nutritionPer100g: barcode.nutritionPer100g,
-  };
+/** The product facts saved on a barcode record, as the inventory sees them. */
+export function factsFromBarcode(barcode: Doc<"barcodes">): Record<string, unknown> {
+  const facts: Record<string, unknown> = {};
+  for (const key of FACT_KEYS) if (barcode[key] !== undefined) facts[key] = barcode[key];
+  return facts;
 }
 
 export const getCached = internalQuery({
@@ -72,6 +47,7 @@ export const getCached = internalQuery({
       source: barcode.source,
       manualLocked: barcode.manualLocked,
       lastSyncedAt: barcode.lastSyncedAt,
+      factsVersion: barcode.factsVersion,
       attributionUrl: barcode.attributionUrl,
       categoriesTags: barcode.categoriesTags,
       facts: factsFromBarcode(barcode),
@@ -83,16 +59,8 @@ export const saveLookup = internalMutation({
   args: {
     code: v.string(),
     name: v.string(),
-    brand: v.optional(v.string()),
-    categoriesTags: v.optional(v.array(v.string())),
-    ingredientsText: v.optional(v.string()),
-    allergensTags: v.optional(v.array(v.string())),
-    nutriscoreGrade: v.optional(v.string()),
-    novaGroup: v.optional(v.number()),
-    ecoscoreGrade: v.optional(v.string()),
-    imageFrontUrl: v.optional(v.string()),
-    nutritionPer100g: v.optional(v.any()),
     attributionUrl: v.optional(v.string()),
+    ...barcodeFactFields,
   },
   handler: async (ctx, args) => {
     let foodItem = await ctx.db
@@ -114,11 +82,15 @@ export const saveLookup = internalMutation({
     if (existing) {
       // Manual entries are locked against being overwritten by OFF syncs.
       if (!existing.manualLocked) {
+        // Every fact is written, so ones the product no longer lists are cleared.
+        const cleared = Object.fromEntries(FACT_KEYS.map((key) => [key, undefined]));
         await ctx.db.patch(existing._id, {
           foodItemId,
+          ...cleared,
           ...facts,
           source: "OPEN_FOOD_FACTS",
           lastSyncedAt: Date.now(),
+          factsVersion: PRODUCT_FACTS_VERSION,
         });
       }
       return existing._id;
@@ -131,6 +103,7 @@ export const saveLookup = internalMutation({
       manualLocked: false,
       ...facts,
       lastSyncedAt: Date.now(),
+      factsVersion: PRODUCT_FACTS_VERSION,
     });
   },
 });
@@ -190,6 +163,7 @@ export const lookup = action({
       cached &&
       (cached.manualLocked ||
         (cached.lastSyncedAt &&
+          (cached.factsVersion ?? 1) >= PRODUCT_FACTS_VERSION &&
           Date.now() - cached.lastSyncedAt < ttlDays * 24 * 60 * 60 * 1000));
 
     const baseUrl =
@@ -229,7 +203,7 @@ export const lookup = action({
       if (!allowed) throw new Error("Too many barcode lookups. Try again in a minute.");
       const timeoutMs = Number(process.env.OPEN_FOOD_FACTS_TIMEOUT_MS ?? 2500);
       const response = await fetch(
-        `${baseUrl}/api/v2/product/${encodeURIComponent(code)}.json`,
+        `${baseUrl}/api/v2/product/${encodeURIComponent(code)}.json?fields=${OFF_FIELDS}`,
         {
           headers: {
             "User-Agent":
@@ -249,59 +223,22 @@ export const lookup = action({
         status?: number;
         product?: Record<string, unknown>;
       };
-      const product = payload.product;
-      const name =
-        typeof product?.product_name === "string" && product.product_name
-          ? product.product_name
-          : undefined;
-      if (payload.status !== 1 || !product || !name) {
+      const parsed = payload.status === 1 ? parseProduct(payload.product) : undefined;
+      if (!parsed) {
         return cached ? cachedResult(true) : { found: false, prefill: { barcode: code } };
       }
 
-      const asStringArray = (value: unknown): string[] | undefined =>
-        Array.isArray(value) && value.every((x) => typeof x === "string")
-          ? (value as string[])
-          : undefined;
-      const asString = (value: unknown): string | undefined =>
-        typeof value === "string" && value ? value : undefined;
-      const asNumber = (value: unknown): number | undefined =>
-        typeof value === "number" ? value : undefined;
-
-      const categoriesTags = asStringArray(product.categories_tags);
-      const saved = {
+      await ctx.runMutation(internal.barcodes.saveLookup, {
         code,
-        name,
-        brand: asString(product.brands),
-        categoriesTags,
-        ingredientsText: asString(product.ingredients_text),
-        allergensTags: asStringArray(product.allergens_tags),
-        nutriscoreGrade: asString(product.nutriscore_grade),
-        novaGroup: asNumber(product.nova_group),
-        ecoscoreGrade: asString(product.ecoscore_grade),
-        imageFrontUrl: asString(product.image_front_url),
-        nutritionPer100g: product.nutriments ?? undefined,
+        name: parsed.name,
         attributionUrl: productUrl,
-      };
-      await ctx.runMutation(internal.barcodes.saveLookup, saved);
+        ...parsed.facts,
+      });
 
       return {
         found: true,
-        prefill: {
-          name,
-          barcode: code,
-          category: inferCategory(categoriesTags),
-        },
-        facts: {
-          brand: saved.brand,
-          categoriesTags: saved.categoriesTags,
-          ingredientsText: saved.ingredientsText,
-          allergensTags: saved.allergensTags,
-          nutriscoreGrade: saved.nutriscoreGrade,
-          novaGroup: saved.novaGroup,
-          ecoscoreGrade: saved.ecoscoreGrade,
-          imageFrontUrl: saved.imageFrontUrl,
-          nutritionPer100g: saved.nutritionPer100g,
-        },
+        prefill: { name: parsed.name, barcode: code, category: parsed.category },
+        facts: parsed.facts as Record<string, unknown>,
         source: "open_food_facts",
         attribution: OFF_ATTRIBUTION(productUrl),
         stale: false,

@@ -65,6 +65,22 @@ nonisolated struct FoodFacts: Codable, Hashable {
     var ecoscoreGrade: String?
     var imageFrontUrl: String?
     var nutrition: Nutrition?
+    var tracesTags: [String]?
+    var labelsTags: [String]?
+    var ingredientsAnalysisTags: [String]?
+    var imageFrontSmallUrl: String?
+    var imageNutritionUrl: String?
+    var imageIngredientsUrl: String?
+    var genericName: String?
+    var packaging: ProductPackaging?
+    var serving: ProductServing?
+    var nutritionPerServing: Nutrition?
+    /// "100ml" for liquids; nutrition is otherwise per 100 g.
+    var nutritionBasis: String?
+    /// Suggested `StorageLocation` raw value.
+    var storage: String?
+    /// Storage instructions as printed.
+    var storageText: String?
 }
 
 nonisolated struct Nutrients: Hashable {

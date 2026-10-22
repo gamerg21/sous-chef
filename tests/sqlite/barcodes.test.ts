@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { kitchenTest } from './harness';
 import { api } from '../../src/lib/kitchen/api';
@@ -7,6 +8,7 @@ async function kitchen(t: ReturnType<typeof kitchenTest>, role: 'owner' | 'membe
     const userId = await db.insert('users', { name: 'Barcode tester' });
     const householdId = await db.insert('households', { name: 'Kitchen' });
     await db.insert('householdMembers', { userId, householdId, role });
+    await db.insert('kitchenLocations', { householdId, name: 'Pantry' });
     return userId;
   });
   return t.withIdentity({ subject: id });
@@ -71,5 +73,44 @@ describe('Open Food Facts integration', () => {
     const result = await owner.action(api.barcodes.lookup, { code });
     expect(result.stale).toBe(true);
     expect(result.prefill.name).toBe('Test spread');
+  });
+
+  test('brings the package size, servings and storage, and the inventory lists them', async () => {
+    const t = kitchenTest(); const owner = await kitchen(t);
+    const fixture = readFileSync(new URL('../fixtures/open-food-facts/049000028911.json', import.meta.url), 'utf8');
+    const fetcher = vi.fn().mockImplementation(() => new Response(fixture, { headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetcher);
+    const result = await owner.action(api.barcodes.lookup, { code: '049000028911' });
+    expect(String(fetcher.mock.calls[0][0])).toContain('fields=code,product_name');
+    expect(result.facts).toMatchObject({
+      packaging: { count: 12, container: 'can', amount: 144, unit: 'fl oz' },
+      serving: { amount: 355, unit: 'ml', perPackage: 12 },
+      nutritionBasis: '100ml',
+      storage: 'pantry',
+    });
+    const { items } = await owner.query(api.inventory.list, {});
+    expect(items).toEqual([]);
+    await owner.mutation(api.inventory.create, { name: 'Diet Coke', locationId: 'pantry', quantity: 12, unit: 'can', barcode: '049000028911' });
+    const listed = (await owner.query(api.inventory.list, {})).items[0];
+    expect(listed.foodFacts).toMatchObject({ packaging: { count: 12 }, serving: { perPackage: 12 } });
+  });
+
+  test('refetches lookups saved before package details, clearing what the product dropped', async () => {
+    const t = kitchenTest(); const owner = await kitchen(t);
+    await t.run(async ({ db }) => {
+      const foodItemId = await db.insert('foodItems', { name: 'Test spread' });
+      await db.insert('barcodes', {
+        foodItemId, code, type: 'EAN13', source: 'OPEN_FOOD_FACTS', manualLocked: false,
+        brand: 'Old brand', ecoscoreGrade: 'b', nutritionPer100g: { 'proteins_100g': 6 }, lastSyncedAt: Date.now(),
+      });
+    });
+    const fetcher = vi.fn().mockImplementation(() => Response.json({ status: 1, product: { product_name: 'Test spread', brands: 'Test brand', quantity: '400 g', product_quantity: 400, product_quantity_unit: 'g' } }));
+    vi.stubGlobal('fetch', fetcher);
+    const result = await owner.action(api.barcodes.lookup, { code });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.facts).toEqual({ brand: 'Test brand', packaging: { text: '400 g', amount: 400, unit: 'g', netQuantity: 400, netUnit: 'g' } });
+    // Saved with the current version, so the next scan is served from the cache.
+    expect((await owner.action(api.barcodes.lookup, { code })).facts).toEqual(result.facts);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

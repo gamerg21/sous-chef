@@ -1,0 +1,135 @@
+{
+ "code": "3274080005003",
+ "product": {
+  "abbreviated_product_name": "CRISTALINE Eau De Source 1.5L",
+  "allergens_tags": [
+   "en:none"
+  ],
+  "brands": "Cristaline",
+  "categories_tags": [
+   "en:beverages-and-beverages-preparations",
+   "en:beverages",
+   "en:waters",
+   "en:spring-waters",
+   "en:unsweetened-beverages"
+  ],
+  "code": "3274080005003",
+  "conservation_conditions": "A conserver de préférence à l'abri du soleil, dans un endroit propre, frais et sans odeur.",
+  "ecoscore_grade": "not-applicable",
+  "generic_name": "Eau De Source",
+  "generic_name_en": "Spring water",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/327/408/000/5003/front_en.797.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/327/408/000/5003/front_en.797.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/327/408/000/5003/ingredients_en.748.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/327/408/000/5003/nutrition_en.767.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:vegan",
+   "en:vegetarian"
+  ],
+  "ingredients_text": "Eau de source",
+  "ingredients_text_en": "Eau de source Noemie\r\n\r\nCalcium Ca2+ 113 mg/l\r\nMagnesium Mg2+ 228 mg/l\r\nSodium Na 7 mg/l\r\nPotassium K 2 mg/l\r\nSilice SiOz 15 mg/l\r\nBicarbonates HCO3 - 447 mg/l\r\nSulfates SO42 - 53 mg/l\r\nChlorure Cl - 8 mg/l\r\nNitrates NO3 - &lt;2 mg/l\r\nFluor F - &lt;1 mg/l\r\npH 7.3",
+  "labels_tags": [
+   "fr:triman"
+  ],
+  "nova_group": 1,
+  "nutriments": {
+   "salt_100g": 0.00275,
+   "salt_serving": 0.0412,
+   "sodium_100g": 0.0063,
+   "sodium_serving": 0.0945
+  },
+  "nutriments_estimated": {
+   "alcohol_100g": 0,
+   "beta-carotene_100g": 0,
+   "carbohydrates_100g": 0,
+   "cholesterol_100g": 0,
+   "copper_100g": 8e-06,
+   "energy-kcal_100g": 0,
+   "energy-kj_100g": 0,
+   "energy_100g": 0,
+   "fat_100g": 0,
+   "fiber_100g": 0,
+   "fructose_100g": 0,
+   "galactose_100g": 0,
+   "glucose_100g": 0,
+   "iodine_100g": 0,
+   "iron_100g": 2.3e-05,
+   "lactose_100g": 0,
+   "maltose_100g": 0,
+   "manganese_100g": 8.9e-07,
+   "pantothenic-acid_100g": 0,
+   "phosphorus_100g": 1.5e-06,
+   "phylloquinone_100g": 0,
+   "polyols_100g": 0,
+   "proteins_100g": 0,
+   "saturated-fat_100g": 0,
+   "selenium_100g": 5e-06,
+   "starch_100g": 0,
+   "sucrose_100g": 0,
+   "sugars_100g": 0,
+   "vitamin-a_100g": 0,
+   "vitamin-b12_100g": 0,
+   "vitamin-b1_100g": 0,
+   "vitamin-b2_100g": 0,
+   "vitamin-b6_100g": 0,
+   "vitamin-b9_100g": 0,
+   "vitamin-c_100g": 0,
+   "vitamin-d_100g": 0,
+   "vitamin-e_100g": 0,
+   "vitamin-pp_100g": 0,
+   "water_100g": 100,
+   "zinc_100g": 1.1e-05
+  },
+  "nutriscore_grade": "a",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "food_contact": 1,
+    "material": "en:pet-1-polyethylene-terephthalate",
+    "number_of_units": 1,
+    "quantity_per_unit": "1,5 l",
+    "quantity_per_unit_unit": "l",
+    "quantity_per_unit_value": 1.5,
+    "recycling": "en:recycle-in-sorting-bin",
+    "shape": "en:bottle",
+    "weight_measured": 20.24
+   },
+   {
+    "food_contact": 1,
+    "material": "en:hdpe-2-high-density-polyethylene",
+    "number_of_units": 1,
+    "quantity_per_unit": "1,5 l",
+    "quantity_per_unit_unit": "l",
+    "quantity_per_unit_value": 1.5,
+    "shape": "en:bottle-cap",
+    "weight_measured": 1.2
+   },
+   {
+    "food_contact": 0,
+    "material": "en:plastic",
+    "number_of_units": 1,
+    "quantity_per_unit": "1,5 l",
+    "quantity_per_unit_unit": "l",
+    "quantity_per_unit_value": 1.5,
+    "recycling": "en:recycle-in-sorting-bin",
+    "shape": "en:label",
+    "weight_measured": 0.44
+   }
+  ],
+  "product_name": "isabelle",
+  "product_name_en": "Cristaline",
+  "product_quantity": 1500,
+  "product_quantity_unit": "ml",
+  "quantity": "1500 ml",
+  "serving_quantity": 1500,
+  "serving_quantity_unit": "ml",
+  "serving_size": "1,5L",
+  "traces_tags": [
+   "en:none"
+  ]
+ },
+ "status": 1
+}

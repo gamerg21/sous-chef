@@ -1,0 +1,90 @@
+{
+ "code": "0096619483556",
+ "product": {
+  "allergens_tags": [
+   "en:milk"
+  ],
+  "brands": "KIRKLAND Signature",
+  "categories_tags": [
+   "en:dairies",
+   "en:fermented-foods",
+   "en:fermented-milk-products",
+   "en:desserts",
+   "en:dairy-desserts",
+   "en:fermented-dairy-desserts",
+   "en:yogurts",
+   "en:greek-style-yogurts"
+  ],
+  "code": "0096619483556",
+  "ecoscore_grade": "b",
+  "generic_name": "",
+  "generic_name_en": "",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/009/661/948/3556/front_en.648.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/009/661/948/3556/front_en.648.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/009/661/948/3556/ingredients_en.354.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/009/661/948/3556/nutrition_en.653.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:non-vegan",
+   "en:vegetarian"
+  ],
+  "ingredients_text": "nonfat milk, active cultures (streptococcus thermophilus, lactobacillus bulgaricus, l. acidophilus, lactobacillus acidophilus, bifidus, lactobacillus casei).",
+  "ingredients_text_en": "nonfat milk, active cultures (streptococcus thermophilus, lactobacillus bulgaricus, l. acidophilus, lactobacillus acidophilus, bifidus, lactobacillus casei).",
+  "labels_tags": [
+   "en:no-gluten",
+   "en:organic",
+   "en:kosher",
+   "en:no-artificial-flavors",
+   "en:usda-organic",
+   "en:orthodox-union-kosher"
+  ],
+  "nova_group": 1,
+  "nutriments": {
+   "carbohydrates_100g": 4.11764705882353,
+   "carbohydrates_serving": 7,
+   "energy-kcal_100g": 58.8235294117647,
+   "energy-kcal_serving": 100,
+   "energy-kj_100g": 250,
+   "energy-kj_serving": 425,
+   "energy_100g": 250,
+   "energy_serving": 425,
+   "fat_100g": 0,
+   "fat_serving": 0,
+   "fiber_100g": 0,
+   "fiber_serving": 0,
+   "proteins_100g": 10.5882352941176,
+   "proteins_serving": 18,
+   "salt_100g": 0.0955882352941176,
+   "salt_serving": 0.162,
+   "sodium_100g": 0.0382352941176471,
+   "sodium_serving": 0.065,
+   "sugars_100g": 2.35294117647059,
+   "sugars_serving": 4
+  },
+  "nutriscore_grade": "a",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "number_of_units": 1
+   },
+   {
+    "number_of_units": 1
+   },
+   {
+    "number_of_units": 1
+   }
+  ],
+  "product_name": "organic GREEK YOGURT plain",
+  "product_name_en": "organic GREEK YOGURT plain",
+  "product_quantity": 1360.0,
+  "product_quantity_unit": "g",
+  "quantity": "1.36 kg (48oz)",
+  "serving_quantity": 170,
+  "serving_quantity_unit": "ml",
+  "serving_size": "0.667 cup (170 g)",
+  "traces_tags": []
+ },
+ "status": 1
+}

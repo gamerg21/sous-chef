@@ -1,0 +1,86 @@
+{
+ "code": "0016000275287",
+ "product": {
+  "allergens_tags": [
+   "en:gluten",
+   "en:Corn"
+  ],
+  "brands": "Cheerios",
+  "categories_tags": [
+   "en:plant-based-foods-and-beverages",
+   "en:plant-based-foods",
+   "en:breakfasts",
+   "en:cereals-and-potatoes",
+   "en:cereals-and-their-products",
+   "en:breakfast-cereals"
+  ],
+  "code": "0016000275287",
+  "ecoscore_grade": "c",
+  "generic_name": "",
+  "generic_name_en": "",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/001/600/027/5287/front_en.8.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/001/600/027/5287/front_en.8.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/001/600/027/5287/ingredients_en.10.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/001/600/027/5287/nutrition_en.12.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-content-unknown",
+   "en:vegan-status-unknown",
+   "en:vegetarian-status-unknown"
+  ],
+  "ingredients_text": "Whole grain oats, corn starch, sugar, salt, tripotassium phosphate, vitamin e (mixed tocopherols) added to preserve freshness,vitamins and minerals: calcium carbonate, iron and zinc (mineral nutrients), vitamin c (sodium ascorbate), a b vitamin (niacinamide), vitamin b6 (pyridoxine hydrochloride), v",
+  "ingredients_text_en": "Whole Grain Oats, Corn Starch, Sugar, Salt, Tripotassium Phosphate, Vitamin E (mixed tocopherols), Calcium Carbonate, Iron, Zinc, Vitamin C (sodium ascorbate), A B Vitamin (niacinamide), Vitamin B6 (pyridoxine hydrochloride), Vitamin A (palmitate), Vitamin B1 (thiamin mononitrate), A B Vitamin (foli",
+  "labels_tags": [
+   "en:kosher",
+   "en:orthodox-union-kosher",
+   "en:vitamin-b12-source"
+  ],
+  "nutriments": {
+   "carbohydrates_100g": 74.3589743589744,
+   "carbohydrates_serving": 29,
+   "energy-kcal_100g": 358.974358974359,
+   "energy-kcal_serving": 140,
+   "energy-kj_100g": 1801.28205128205,
+   "energy-kj_serving": 702,
+   "energy_100g": 1801.28205128205,
+   "energy_serving": 702,
+   "fat_100g": 6.41025641025641,
+   "fat_serving": 2.5,
+   "fiber_100g": 10.2564102564103,
+   "fiber_serving": 4,
+   "proteins_100g": 12.8205128205128,
+   "proteins_serving": 5,
+   "salt_100g": 1.21794871794872,
+   "salt_serving": 0.475,
+   "sodium_100g": 0.487179487179487,
+   "sodium_serving": 0.19,
+   "sugars_100g": 5.12820512820513,
+   "sugars_serving": 2
+  },
+  "nutriscore_grade": "c",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "material": "en:cardboard",
+    "recycling": "en:recycle",
+    "shape": "en:box"
+   },
+   {
+    "material": "en:plastic",
+    "recycling": "en:return-to-store",
+    "shape": "en:bag"
+   }
+  ],
+  "product_name": "Cheerios",
+  "product_name_en": "My Bff",
+  "product_quantity": 510.29141625,
+  "product_quantity_unit": "g",
+  "quantity": "18 oz (510 g)",
+  "serving_quantity": 39,
+  "serving_quantity_unit": "g",
+  "serving_size": "39g",
+  "traces_tags": []
+ },
+ "status": 1
+}

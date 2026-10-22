@@ -97,8 +97,13 @@ struct PantryItemEditor: View {
                             .labelsHidden()
                     }
                     UnitPicker(unit: $unit)
+                    if item == nil, let choices = facts?.packaging?.choices, !choices.isEmpty {
+                        PackageChoices(choices: choices, quantity: $quantity, unit: $unit)
+                    }
                 } header: {
                     Eyebrow("Amount")
+                } footer: {
+                    if let summary = facts.flatMap(PackageText.summary) { Text(summary) }
                 }
 
                 Section {
@@ -152,7 +157,7 @@ struct PantryItemEditor: View {
                             }
                         }
                     } label: {
-                        Label("Nutrition per 100 g", systemImage: "chart.bar.doc.horizontal")
+                        Label(facts?.nutritionBasis == "100ml" ? "Nutrition per 100 ml" : "Nutrition per 100 g", systemImage: "chart.bar.doc.horizontal")
                     }
                 } footer: {
                     Text("Shared by every batch of this food. Recipes use it to estimate nutrition.")
@@ -232,16 +237,42 @@ struct PantryItemEditor: View {
     }
 
     private func apply(_ prefill: PantryPrefill) {
-        if !prefill.name.isEmpty { name = prefill.name }
-        if let value = prefill.brand ?? prefill.facts?.brand.map(PantryPrefill.primaryBrand), brand.isEmpty { brand = value }
-        if let value = prefill.quantity { quantity = value }
+        // A product this kitchen has stocked before comes back named, counted
+        // and placed the way the household did it last time.
+        let stocked = item == nil ? prefill.barcode.flatMap(stockedItem) : nil
+        // Until the user changes it, a new item's amount follows the package.
+        let untouched = item == nil && quantity == 1 && unit == "each"
+        let found = prefill.facts ?? stocked?.foodFacts
+        let defaults = ProductParser.defaults(found, previousUnit: stocked?.unit)
+        if let stocked { name = stocked.name } else if !prefill.name.isEmpty { name = prefill.name }
+        if let value = stocked?.brand ?? prefill.brand ?? found?.brand.map(PantryPrefill.primaryBrand), brand.isEmpty { brand = value }
+        if let value = prefill.quantity {
+            quantity = value
+        } else if untouched, let choice = defaults.choice {
+            quantity = choice.quantity
+            unit = choice.unit
+        } else if untouched, let stocked {
+            unit = stocked.unit
+        }
         if let value = prefill.unit { unit = value }
-        if let value = prefill.location { location = value }
+        if let value = prefill.location {
+            location = value
+        } else if let stocked {
+            location = stocked.location
+        } else if item == nil, location == .pantry, let suggested = defaults.location {
+            location = suggested
+        }
         barcode = prefill.barcode ?? barcode
-        category = prefill.category ?? category
-        facts = prefill.facts ?? facts
+        category = stocked?.category ?? prefill.category ?? category
+        facts = found ?? facts
         if let value = prefill.notes, notes.isEmpty { notes = value }
-        if nutrition.isEmpty, let facts = prefill.nutrition ?? prefill.facts?.nutrition { nutrition = facts }
+        if nutrition.isEmpty, let facts = prefill.nutrition ?? found?.nutrition { nutrition = facts }
+    }
+
+    /// The newest item already stocked under a barcode.
+    private func stockedItem(_ code: String) -> PantryItem? {
+        guard !code.isEmpty else { return nil }
+        return existing.filter { $0.barcode == code }.max { $0.createdAt < $1.createdAt }
     }
 
     private func lookup(_ code: String) async {
@@ -361,16 +392,59 @@ private struct UnitOptions: View {
 struct FoodFactsView: View {
     let facts: FoodFacts
 
+    private var perServing: String? {
+        guard let values = facts.nutritionPerServing else { return nil }
+        let parts = [(values.energyKcal, "kcal"), (values.proteinG, "g protein"), (values.carbsG, "g carbs"), (values.fatG, "g fat")]
+            .compactMap { value, unit in value.map { "\(Units.format(ProductParser.tidy($0))) \(unit)" } }
+        guard !parts.isEmpty else { return nil }
+        let size = facts.serving.flatMap { serving in serving.amount.map { "\(Units.format($0)) \(serving.unit ?? "g")" } ?? serving.text }
+        return "Per serving\(size.map { " (\($0))" } ?? ""): " + parts.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                if let grade = facts.nutriscoreGrade?.uppercased(), grade.count == 1 { Chip(text: "Nutri-Score \(grade)", tint: nutriColor(grade)) }
-                if let nova = facts.novaGroup { Chip(text: "NOVA \(nova)", tint: .secondary) }
+            HStack(alignment: .top, spacing: 12) {
+                // Product photos come from Open Food Facts, so they follow its setting.
+                if OpenFoodFacts.enabled, let url = (facts.imageFrontSmallUrl ?? facts.imageFrontUrl).flatMap(URL.init(string:)) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().scaledToFit()
+                    } placeholder: {
+                        Color.secondary.opacity(0.1)
+                    }
+                    .frame(width: 56, height: 56)
+                    .background(.white, in: .rect(cornerRadius: 10))
+                    .clipShape(.rect(cornerRadius: 10))
+                    .accessibilityHidden(true)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        if let grade = facts.nutriscoreGrade?.uppercased(), grade.count == 1 { Chip(text: "Nutri-Score \(grade)", tint: nutriColor(grade)) }
+                        if let nova = facts.novaGroup { Chip(text: "NOVA \(nova)", tint: .secondary) }
+                    }
+                    let badges = ProductParser.badges(facts)
+                    if !badges.isEmpty {
+                        ScrollView(.horizontal) {
+                            HStack { ForEach(badges, id: \.self) { Chip(text: $0) } }
+                        }
+                        .scrollIndicators(.hidden)
+                    }
+                }
+            }
+            if let perServing {
+                Text(perServing).font(.caption).foregroundStyle(.secondary)
             }
             if let allergens = facts.allergensTags, !allergens.isEmpty {
-                Text("Allergens: " + allergens.map { $0.replacingOccurrences(of: "en:", with: "") }.joined(separator: ", "))
+                Text("Allergens: " + allergens.map(PackageText.tag).joined(separator: ", "))
                     .font(.caption)
                     .foregroundStyle(.orange)
+            }
+            if let traces = facts.tracesTags, !traces.isEmpty {
+                Text("May contain: " + traces.map(PackageText.tag).joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let storage = facts.storageText {
+                Text("Storage: " + storage).font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -383,5 +457,80 @@ struct FoodFactsView: View {
         case "D": .orange
         default: .red
         }
+    }
+}
+
+/// One tap to count a package as cans, by its printed size or as one box,
+/// and a stepper for how many packages are going in.
+private struct PackageChoices: View {
+    let choices: [PackageChoice]
+    @Binding var quantity: Double?
+    @Binding var unit: String
+
+    private var selected: PackageChoice? { choices.first { $0.unit == (Units.find(unit)?.label ?? unit) } }
+
+    /// Whole packages the amount adds up to, when it's a clean multiple.
+    private var packages: Int? {
+        guard let selected, let quantity, quantity > 0 else { return nil }
+        let count = quantity / selected.quantity
+        return abs(count - count.rounded()) < 0.001 && count >= 1 ? Int(count.rounded()) : nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollView(.horizontal) {
+                HStack {
+                    ForEach(choices, id: \.self) { choice in
+                        Button {
+                            // Read before the unit changes what `packages` means.
+                            let count = packages ?? 1
+                            unit = choice.unit
+                            quantity = choice.quantity * Double(count)
+                        } label: {
+                            Chip(text: PackageText.amount(choice.quantity, choice.unit), selected: choice == selected)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(choice == selected ? .isSelected : [])
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+            .accessibilityLabel("Count it as")
+            if let selected, let packages {
+                Stepper(packages == 1 ? "1 package" : "\(packages) packages",
+                        onIncrement: { quantity = selected.quantity * Double(packages + 1) },
+                        onDecrement: { quantity = selected.quantity * Double(max(1, packages - 1)) })
+                    .accessibilityIdentifier("pantryPackages")
+            }
+        }
+    }
+}
+
+/// Wording for package details: "12 cans · 12 fl oz each".
+enum PackageText {
+    private static let plurals = ["can": "cans", "jar": "jars", "bottle": "bottles", "box": "boxes", "bag": "bags"]
+
+    static func amount(_ quantity: Double, _ unit: String) -> String {
+        let shown = quantity == 1 ? unit : plurals[unit] ?? unit
+        return unit == "each" ? "\(Units.format(quantity)) each" : "\(Units.format(quantity)) \(shown)"
+    }
+
+    /// Tag text for display: "en:soybeans" → "soybeans".
+    static func tag(_ tag: String) -> String { ProductParser.words(tag) }
+
+    static func summary(_ facts: FoodFacts) -> String? {
+        var parts: [String] = []
+        if let pack = facts.packaging {
+            if let count = pack.count, count > 1, let container = pack.container {
+                let each = pack.eachAmount.map { "\(Units.format($0)) \(pack.eachUnit ?? "") each" }
+                parts.append(([amount(Double(count), container)] + [each].compactMap { $0 }).joined(separator: " · "))
+            } else if let text = pack.text ?? pack.amount.map({ "\(Units.format($0)) \(pack.unit ?? "")" }) {
+                parts.append(text)
+            }
+        }
+        if let serving = facts.serving, let per = serving.perPackage, per >= 2, let size = serving.amount {
+            parts.append("About \(Units.format(per)) servings of \(Units.format(size)) \(serving.unit ?? "g")")
+        }
+        return parts.isEmpty ? nil : "From the package: " + parts.joined(separator: ". ") + "."
     }
 }

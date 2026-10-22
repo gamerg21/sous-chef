@@ -24,6 +24,7 @@ Also new in 1.2:
 • Recipes and Shopping at a glance: tap a number beside your recipes or list to show just those.
 • Pantry at a glance: what's in stock and where, how fresh it is, what to use soon, and what you can cook right now.
 • Sort your pantry by name, what expires first or what you added last.
+• Smarter barcode scans: the amount, servings, storage spot and category fill themselves in, and a 12-pack comes in as 12 cans.
 • Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
 
 ### New
@@ -34,6 +35,7 @@ Also new in 1.2:
 - **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
 - **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
+- **Smarter barcode scans**: Scanning a product fills in how much is in the package, ready to count as cans, by weight or as one box, with a stepper for more packages. It also suggests the pantry, fridge or freezer, shows servings, nutrition per serving and labels like vegan or gluten-free, and remembers how you named and counted a product last time.
 
 ## 1.1.2
 
