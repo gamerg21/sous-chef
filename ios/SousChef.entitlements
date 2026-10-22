@@ -28,5 +28,7 @@
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 	<key>com.apple.developer.usernotifications.time-sensitive</key>
 	<true/>
+	<key>com.apple.developer.private-cloud-compute</key>
+	<true/>
 </dict>
 </plist>

@@ -83,10 +83,11 @@ signed device build registers these capabilities for the App ID:
   so a person's other devices follow when they join or leave a household.
 
 Private Cloud Compute (`com.apple.developer.private-cloud-compute`) is a managed
-entitlement that automatic signing can't add until Apple grants it to the team.
-It isn't in `SousChef.entitlements` yet, so device builds use the on-device
-model. Once the team has it, add the key back (`<true/>`) and the app picks
-Apple's larger model automatically.
+entitlement Apple granted to the George Vina team (X423ZKYPDN). Automatic signing
+can't add it on its own: enable it on the App ID under Additional Capabilities
+in the developer portal, then let Xcode refresh the profile. Builds signed by a
+team without it fail to sign; remove the key from `SousChef.entitlements` to
+fall back to the on-device model.
 
 iCloud containers can't be deleted once created, so choose the final bundle ID
 and container name before the first signed build. Unsigned simulator builds
