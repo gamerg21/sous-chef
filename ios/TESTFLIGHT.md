@@ -20,6 +20,15 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.1.2 (24)
+
+### What to Test
+
+Fixes to verify
+- Shake to undo: it's off by default. Turn it on in Settings, delete something, then drop your iPhone onto a couch; nothing should happen. A quick shake back and forth should offer to bring it back.
+- Undo sheet: its Cancel button is red.
+- Undo button: turn on Settings > Undo button after deleting, then delete something. "Deleted … · Undo" appears just above the tab bar.
+
 ## 1.1.1 (21)
 
 ### What to Test
