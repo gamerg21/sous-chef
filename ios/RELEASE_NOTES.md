@@ -35,6 +35,11 @@ Also new in 1.2:
 - **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
 
+## 1.1.2
+
+### App Store
+Shake to undo now has its own switch in Settings, off unless you turn it on, and it takes a real shake, so setting your iPhone down hard no longer offers to bring something back. The optional Undo button after a delete now sits just above the tab bar.
+
 ### Improved
 - **Shake to undo setting**: Shake to undo has its own switch in Settings, and it now takes a real shake, so setting your iPhone down hard no longer offers to bring something back.
 - **Undo button**: The optional Undo button after a delete now sits just above the tab bar.
