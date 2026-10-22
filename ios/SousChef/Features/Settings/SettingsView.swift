@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var alerts: AlertPermissions.Status?
     @State private var showsBuild = false
     @AppStorage(Kitchen.undoBarKey) private var showsUndoBar = false
+    @AppStorage(Kitchen.shakeToUndoKey) private var shakeToUndo = false
     @Bindable private var navigator = AppNavigator.shared
     private let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     private let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
@@ -72,12 +73,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle(isOn: $shakeToUndo) {
+                        SettingsIcon("Shake to undo", systemImage: "iphone.radiowaves.left.and.right", color: .gray)
+                    }
+                    .accessibilityIdentifier("shakeToUndoSetting")
                     Toggle(isOn: $showsUndoBar) {
                         SettingsIcon("Undo button after deleting", systemImage: "arrow.uturn.backward", color: .gray)
                     }
                     .accessibilityIdentifier("undoBarSetting")
                 } footer: {
-                    Text("Shows \u{201C}Deleted \u{2026} \u{00B7} Undo\u{201D} for a few seconds after you delete something. Shaking your iPhone to undo always works.")
+                    Text(UIAccessibility.isShakeToUndoEnabled
+                         ? "Shake your iPhone right after deleting something to bring it back, or show \u{201C}Deleted \u{2026} \u{00B7} Undo\u{201D} for a few seconds after each delete."
+                         : "Shake to undo also needs Shake to Undo turned on in the Settings app, under Accessibility > Touch. The Undo button shows \u{201C}Deleted \u{2026} \u{00B7} Undo\u{201D} for a few seconds after each delete.")
                 }
 
                 Section {

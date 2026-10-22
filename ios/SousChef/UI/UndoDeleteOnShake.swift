@@ -14,13 +14,15 @@ extension UIWindow {
 }
 
 extension View {
-    /// Shaking the device after deleting something offers to bring it back.
+    /// Shaking the device after deleting something offers to bring it back,
+    /// when Shake to undo is on in Settings.
     func undoDeleteOnShake() -> some View { modifier(UndoDeleteOnShake()) }
 }
 
 private struct UndoDeleteOnShake: ViewModifier {
     @Environment(Kitchen.self) private var kitchen
     @AppStorage(Kitchen.undoBarKey) private var showsBar = false
+    @AppStorage(Kitchen.shakeToUndoKey) private var shakeToUndo = false
     @State private var offering: String?
     @State private var bar: Kitchen.UndoableDelete?
 
@@ -47,7 +49,7 @@ private struct UndoDeleteOnShake: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
                 let undo = kitchen.deletionUndo
-                guard undo.canUndo, offering == nil else { return }
+                guard shakeToUndo, UIAccessibility.isShakeToUndoEnabled, undo.canUndo, offering == nil else { return }
                 bar = nil
                 offering = undo.undoActionName
             }
