@@ -9,7 +9,9 @@
 //   pnpm ios:testflight status   list recent builds
 //   pnpm ios:testflight review   list App Store versions and where they are in review
 //   pnpm ios:testflight submit   send the project's version and build to App Review,
-//                                with What's New from ios/RELEASE_NOTES.md
+//                                with What's New from ios/RELEASE_NOTES.md (or:
+//                                submit 1.1.1,1.1.2 for notes covering a version
+//                                that never shipped)
 //
 // The key stays outside the repository. Put the .p8 file in
 // ~/.appstoreconnect/private_keys/ and its IDs in ~/.appstoreconnect/sous-chef.json:
@@ -154,9 +156,9 @@ async function review() {
 /** App Review takes one version at a time; these are still waiting on it. */
 const IN_REVIEW = ['WAITING_FOR_REVIEW', 'IN_REVIEW', 'PENDING_APPLE_RELEASE'];
 
-async function submit() {
+async function submit(notesVersions) {
   const { version, build } = projectVersion();
-  const whatsNew = execFileSync('node', [join(root, 'scripts', 'release-notes.mjs'), version], { encoding: 'utf8' })
+  const whatsNew = execFileSync('node', [join(root, 'scripts', 'release-notes.mjs'), notesVersions ?? version], { encoding: 'utf8' })
     .replace(/^What's New\n\n/, '')
     .trim();
   const appId = await app();
@@ -287,9 +289,9 @@ switch (command) {
     await review();
     break;
   case 'submit':
-    await submit();
+    await submit(argument);
     break;
   default:
-    console.log('Usage: pnpm ios:testflight <upload | notes [build] | print [build] | status | review | submit>');
+    console.log('Usage: pnpm ios:testflight <upload | notes [build] | print [build] | status | review | submit [versions]>');
     process.exit(command ? 1 : 0);
 }
