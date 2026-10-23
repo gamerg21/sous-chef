@@ -56,7 +56,8 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   upload script refuses to run without one, adds the build line and feedback
   ask, and copies it into the build's "What to Test"; preview it with
   `pnpm ios:testflight print [build]`.
-- When the version changes (for example 1.0.1 to 1.0.2), reset the build number to 1.
+- Build numbers keep counting up across versions; never reset them to 1 when
+  the version changes (1.1.2 was build 25, 1.2.0 continued at 26).
 - The ShareExtension and SousChefWidgets targets carry the same
   `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` as the app; change all
   three targets together or the upload is rejected.
@@ -75,6 +76,18 @@ The iOS app's version (`MARKETING_VERSION`) and build number
   variables in the maintainer's shell belong to another team; don't use them.
 - In `ios/ExportOptions.plist`, never add `testFlightInternalTestingOnly`: it permanently limits a build to
   internal testers, so it can't go to external testers or App Review.
+
+## iOS release branches
+
+Full policy: [docs/IOS_RELEASE_BRANCHES.md](docs/IOS_RELEASE_BRANCHES.md).
+
+- Each iOS version has `beta/ios-X.Y.Z` (cut from `main`; features and fixes
+  merge in by PR; every TestFlight build) and then `release/ios-X.Y.Z` (cut when
+  testing ends; fixes only; the App Review build).
+- After approval, PR `release/ios-X.Y.Z` into `main`, tag it `ios-vX.Y.Z`, and
+  delete both branches. Hotfixes cut `release/ios-X.Y.(Z+1)` from that tag.
+- Web and server code goes into `main` in its own PR, never first on an iOS
+  branch; merge `main` into the iOS branch to pick it up.
 
 ## Release notes
 
