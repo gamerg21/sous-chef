@@ -56,6 +56,9 @@ Kitchens shared with your household now include everything already in them, not 
 
 ## 1.1.1
 
+1.1.1 (21) was withdrawn from App Review and never released; its fix shipped
+in 1.1.2, whose What's New covers both versions.
+
 ### App Store
 Fixed importing structured recipe data. Paste recipe data copied from a website or an AI chat, and Sous Chef now brings in the steps, servings, time, nutrition and tips correctly instead of turning every line into a step.
 
@@ -96,3 +99,45 @@ Plus a monthly count of food used and thrown away, simpler Settings, better cook
 - **Better cookbook scans**: Scanning a cookbook page keeps each ingredient and step on one line, handles side-column ingredients, uses the intro as the description instead of step 1, and fills in servings, time and nutrition.
 - **Recipe edits stay put**: Swiping down on a recipe you're adding or editing no longer closes it and loses your changes. Tap Cancel to discard them.
 - **Cooking across units**: Cooking a recipe in grams from a pack in pounds, or in millilitres from a cup, uses up the pack instead of leaving a sliver or asking for a little more. Cook also warns when food that expires soon is measured in a unit the recipe can't use.
+- **Safer server sign-in**: Your Sous Chef server sign-in is only sent to your server, and connecting over plain HTTP to a server outside your home network asks first.
+- **Safer recipe imports**: Huge pages and photos no longer freeze the app; oversized photos are skipped.
+- **Finish cooking**: At the end of cook mode, after updating the pantry, Finish is the button that ends cooking.
+
+## 1.0.3
+
+1.0.3 (1) went to TestFlight only and was never released on the App Store. Its
+security fixes and the Finish button shipped in 1.1.0.
+
+## 1.0.2
+
+### App Store
+Bug fixes and improvements.
+
+### Improved
+- **Build number**: Tap Version in Settings to show the build number.
+
+### Fixed
+- **Community recipe pages**: Pages no longer drag sideways, and wide photos fill their frames without stretching or scrolling the page.
+- **Cook mode**: The ingredients section is labelled Ingredients instead of Mise en place.
+
+## 1.0.1
+
+### App Store
+Bug fixes and improvements.
+
+- Save recipes to Sous Chef straight from the Share sheet in Safari and other apps
+- Save recipes with Siri and Shortcuts
+- Clearer cooking, shopping and recipe import screens
+- Stability fixes
+
+### New
+- **Save from the Share sheet**: Share a recipe page from Safari or another app to Sous Chef, then tap Open Sous Chef to review it.
+- **Siri and Shortcuts**: Save Recipe from Link and Save Recipe from Text actions, and "Save this recipe to Sous Chef".
+
+### Improved
+- **Clearer screens**: Cooking counts the ingredients left to gather, putting shopping away shows each item on one row, and a failed recipe import offers Cancel.
+- **Mac**: Sous Chef on a Mac opens with a sidebar.
+
+## 1.0
+
+The first App Store release. A first version has no What's New.
