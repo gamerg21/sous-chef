@@ -19,6 +19,10 @@ struct ConfirmSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var height: CGFloat = 340
 
+    /// Red marks the way out, unless the main button is already the red,
+    /// destructive one.
+    private var cancelTint: Color { tint == .red ? .secondary : .red }
+
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: systemImage)
@@ -50,10 +54,10 @@ struct ConfirmSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text(cancel).font(.headline).foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 32)
+                        Text(cancel).font(.headline).foregroundStyle(cancelTint == .red ? Color.red : Color.primary).frame(maxWidth: .infinity, minHeight: 32)
                     }
                     .buttonStyle(.bordered)
-                    .tint(.secondary)
+                    .tint(cancelTint)
                 }
             }
         }

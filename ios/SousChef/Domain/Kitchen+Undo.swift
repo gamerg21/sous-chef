@@ -1,14 +1,16 @@
 import Foundation
 import SwiftData
 
-/// Shake to undo a delete. Each delete the person makes registers an undo
+/// Shake to undo a delete, when it's turned on in Settings. Each delete the person makes registers an undo
 /// that puts the items back from the same fields iCloud syncs, under the same
 /// ids, so the household and other devices get them back too. Shaking shows
 /// `UndoDeleteSheet`, named after the top undo ("Bring back Lemons?").
 extension Kitchen {
-    /// The setting that shows an Undo bar after each delete (off by default;
-    /// shaking always works).
+    /// The setting that shows an Undo bar after each delete (off by default).
     static let undoBarKey = "undo.showsBar"
+    /// The setting that lets a shake offer to bring back the last delete (off
+    /// by default). iOS's own Shake to Undo switch must be on too.
+    static let shakeToUndoKey = "undo.shake"
 
     /// The last delete the person made, for the Undo bar.
     struct UndoableDelete: Equatable {

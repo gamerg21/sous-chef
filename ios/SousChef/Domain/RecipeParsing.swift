@@ -183,8 +183,14 @@ enum IngredientParser {
 enum RecipeTextReader {
     /// Reads text with Apple Intelligence when available, but keeps the plain
     /// reader's lists when the text had clear sections and the model dropped
-    /// lines (small models sometimes skip the last step).
+    /// lines (small models sometimes skip the last step). Pasted schema.org
+    /// JSON is read as structured data, like a recipe link.
     static func read(_ text: String, ai: KitchenAI) async -> RecipeDraft {
+        if let structured = RecipeImporter.fromPastedJSON(text) {
+            var draft = structured.recipe
+            if let photoURL = structured.photoURL { draft.photo = await RecipeImporter.downloadImage(photoURL) }
+            return draft
+        }
         let plain = read(text)
         guard ai.isAvailable, let smart = try? await ai.readRecipe(from: text) else { return plain }
         return merged(smart: smart, plain: plain)

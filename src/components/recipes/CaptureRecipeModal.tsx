@@ -5,6 +5,7 @@ import { useAction } from '@/lib/kitchen/client'
 import { api } from '@/lib/kitchen/api'
 import { Modal } from '../ui/modal'
 import { analyzeRecipeText } from '@/lib/recipe-capture'
+import { recipeFromPastedJson } from '@/lib/recipe-import'
 import type { Recipe } from './types'
 import { ClipboardPaste, Link2 } from 'lucide-react'
 import { buttonClassName, cx, eyebrowClassName, fieldClassName, headingFont, heroCardClassName, rowsClassName, SegmentedControl, StatusDot } from '../ui/kit'
@@ -53,7 +54,8 @@ export function CaptureRecipeModal({ onClose, onCapture }: { onClose: () => void
 
   const analysis = useMemo(() => {
     if (!text.trim()) return null
-    try { return analyzeRecipeText(text, /^https?:\/\/\S+$/i.test(sourceUrl.trim()) ? sourceUrl : undefined) }
+    const url = /^https?:\/\/\S+$/i.test(sourceUrl.trim()) ? sourceUrl.trim() : undefined
+    try { return recipeFromPastedJson(text, url) ?? analyzeRecipeText(text, url) }
     catch (error) { return { error: error instanceof Error ? error.message : 'Check the recipe text.' } }
   }, [text, sourceUrl])
 
