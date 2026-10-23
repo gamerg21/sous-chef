@@ -14,6 +14,34 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.2.0
+
+### App Store
+iPhone Duo is here! Sous Chef now supports iPhone Duo. Unfold it and Sous Chef spreads out: your week sits beside what you can cook, so you can drag a recipe straight onto Tuesday's dinner, and your pantry opens with everything at a glance.
+
+Also new in 1.2:
+• Drag to plan: in Cook, drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.
+• Recipes and Shopping at a glance: tap a number beside your recipes or list to show just those.
+• Pantry at a glance: what's in stock and where, how fresh it is, what to use soon, and what you can cook right now.
+• Sort your pantry by name, what expires first or what you added last.
+• Smarter barcode scans: the amount, servings, storage spot and category fill themselves in, and a 12-pack comes in as 12 cans.
+• Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
+• Recipe ideas and imports can use Private Cloud Compute for better results, and ideas now follow what you ask for with a different dish each time.
+
+### New
+- **Drag to plan**: On an unfolded iPhone Duo, iPad or iPhone on its side, Cook shows your week beside what you can cook. Drag a recipe onto a day's breakfast, lunch or dinner, drag a planned meal to another day, or tap an empty meal to pick a recipe.
+- **Recipes at a glance**: Beside your recipes: how many you can cook now, which are almost there, quick, favorites, popular this week or month, newly added and your tags. Tap any of them to show just those recipes.
+- **Shopping at a glance**: Beside your list: how much is in the cart, what each aisle holds (tap one to show just that aisle), what the week's meals still need and which recipes the list makes cookable.
+- **Pantry at a glance**: Beside your pantry list: how much is in the pantry, fridge and freezer, how fresh it is, what to use soon, what's in stock by category, recipes you can cook now and this month's used and thrown away.
+- **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
+- **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
+- **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
+- **Smarter barcode scans**: Scanning a product fills in how much is in the package, ready to count as cans, by weight or as one box, with a stepper for more packages. It also suggests the pantry, fridge or freezer, shows servings, nutrition per serving and labels like vegan or gluten-free, and remembers how you named and counted a product last time.
+
+### Improved
+- **Private Cloud Compute**: On iPhones with Apple Intelligence, importing recipes and recipe ideas can use Private Cloud Compute for more capable results, while your kitchen stays private. Choose in Settings > Intelligence and Lookups.
+- **Recipe ideas**: Ideas now follow what you ask for, even when cooking from your pantry, and suggest a different dish each time instead of repeating one. Your Pantry or Anything choice is remembered.
+
 ## 1.1.2
 
 ### App Store
@@ -27,6 +55,9 @@ Kitchens shared with your household now include everything already in them, not 
 - **Shared kitchens**: Someone joining your kitchen now sees everything in it. Items that hadn't changed since an earlier version could be left out of iCloud until they were edited.
 
 ## 1.1.1
+
+1.1.1 (21) was withdrawn from App Review and never released; its fix shipped
+in 1.1.2, whose What's New covers both versions.
 
 ### App Store
 Fixed importing structured recipe data. Paste recipe data copied from a website or an AI chat, and Sous Chef now brings in the steps, servings, time, nutrition and tips correctly instead of turning every line into a step.
@@ -68,3 +99,45 @@ Plus a monthly count of food used and thrown away, simpler Settings, better cook
 - **Better cookbook scans**: Scanning a cookbook page keeps each ingredient and step on one line, handles side-column ingredients, uses the intro as the description instead of step 1, and fills in servings, time and nutrition.
 - **Recipe edits stay put**: Swiping down on a recipe you're adding or editing no longer closes it and loses your changes. Tap Cancel to discard them.
 - **Cooking across units**: Cooking a recipe in grams from a pack in pounds, or in millilitres from a cup, uses up the pack instead of leaving a sliver or asking for a little more. Cook also warns when food that expires soon is measured in a unit the recipe can't use.
+- **Safer server sign-in**: Your Sous Chef server sign-in is only sent to your server, and connecting over plain HTTP to a server outside your home network asks first.
+- **Safer recipe imports**: Huge pages and photos no longer freeze the app; oversized photos are skipped.
+- **Finish cooking**: At the end of cook mode, after updating the pantry, Finish is the button that ends cooking.
+
+## 1.0.3
+
+1.0.3 (1) went to TestFlight only and was never released on the App Store. Its
+security fixes and the Finish button shipped in 1.1.0.
+
+## 1.0.2
+
+### App Store
+Bug fixes and improvements.
+
+### Improved
+- **Build number**: Tap Version in Settings to show the build number.
+
+### Fixed
+- **Community recipe pages**: Pages no longer drag sideways, and wide photos fill their frames without stretching or scrolling the page.
+- **Cook mode**: The ingredients section is labelled Ingredients instead of Mise en place.
+
+## 1.0.1
+
+### App Store
+Bug fixes and improvements.
+
+- Save recipes to Sous Chef straight from the Share sheet in Safari and other apps
+- Save recipes with Siri and Shortcuts
+- Clearer cooking, shopping and recipe import screens
+- Stability fixes
+
+### New
+- **Save from the Share sheet**: Share a recipe page from Safari or another app to Sous Chef, then tap Open Sous Chef to review it.
+- **Siri and Shortcuts**: Save Recipe from Link and Save Recipe from Text actions, and "Save this recipe to Sous Chef".
+
+### Improved
+- **Clearer screens**: Cooking counts the ingredients left to gather, putting shopping away shows each item on one row, and a failed recipe import offers Cancel.
+- **Mac**: Sous Chef on a Mac opens with a sidebar.
+
+## 1.0
+
+The first App Store release. A first version has no What's New.

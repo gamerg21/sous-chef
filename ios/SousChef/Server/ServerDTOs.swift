@@ -24,6 +24,8 @@ enum DTO {
         let barcode: String?
         let foodFacts: JSONValue?
         let nutritionPer100g: JSONValue?
+        /// Milliseconds since 1970. Older servers leave it out.
+        let createdAt: Double?
     }
 
     struct RecipeList: Decodable { let recipes: [Recipe] }
@@ -204,12 +206,33 @@ enum JSONValue: Decodable, Hashable {
 }
 
 extension FoodFacts {
+    /// Reads the facts the server keeps on a barcode (`factsFromBarcode`).
     init(json: JSONValue) {
+        func decode<T: Decodable>(_ value: JSONValue?) -> T? {
+            guard let value, case .object = value, let data = try? JSONSerialization.data(withJSONObject: value.any) else { return nil }
+            return try? JSONDecoder().decode(T.self, from: data)
+        }
+        func nutrition(_ key: String) -> Nutrition? {
+            (json[key]?.any as? [String: Any]).map(Nutrition.init(json:)).flatMap { $0.isEmpty ? nil : $0 }
+        }
         self.init(brand: json["brand"]?.stringValue, categoriesTags: json["categoriesTags"]?.stringArray,
                   ingredientsText: json["ingredientsText"]?.stringValue, allergensTags: json["allergensTags"]?.stringArray,
                   nutriscoreGrade: json["nutriscoreGrade"]?.stringValue, novaGroup: json["novaGroup"]?.doubleValue.map { Int($0) },
                   ecoscoreGrade: json["ecoscoreGrade"]?.stringValue, imageFrontUrl: json["imageFrontUrl"]?.stringValue,
-                  nutrition: (json["nutritionPer100g"]?.any as? [String: Any]).map(Nutrition.init(json:)).flatMap { $0.isEmpty ? nil : $0 })
+                  nutrition: nutrition("nutritionPer100g"))
+        tracesTags = json["tracesTags"]?.stringArray
+        labelsTags = json["labelsTags"]?.stringArray
+        ingredientsAnalysisTags = json["ingredientsAnalysisTags"]?.stringArray
+        imageFrontSmallUrl = json["imageFrontSmallUrl"]?.stringValue
+        imageNutritionUrl = json["imageNutritionUrl"]?.stringValue
+        imageIngredientsUrl = json["imageIngredientsUrl"]?.stringValue
+        genericName = json["genericName"]?.stringValue
+        packaging = decode(json["packaging"])
+        serving = decode(json["serving"])
+        nutritionPerServing = nutrition("nutritionPerServing")
+        nutritionBasis = json["nutritionBasis"]?.stringValue
+        storage = json["storage"]?.stringValue
+        storageText = json["storageText"]?.stringValue
     }
 }
 

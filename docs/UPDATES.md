@@ -1,9 +1,9 @@
 # Versions and updates
 
 Open **Settings → System & Updates** from your account menu. The app shows its
-installed version/build, release notes, and the last check result. Version 0.8.0
-is the current development baseline; changing package.json does not publish a
-release. Only the instance administrator can check manually or install updates.
+installed version/build, release notes, and the last check result. Web version
+numbers match Sous Chef for iOS (1.0.3, then 1.1.2); changing package.json does
+not publish a release. Only the instance administrator can check manually or install updates.
 Other signed-in users can see version information. Demo users cannot update.
 
 Checks contact the public GitHub releases API, without kitchen data or credentials.
@@ -121,11 +121,12 @@ For unmanaged Docker, follow [manual update instructions](../DOCKER.md).
 
 ## Publishing a release
 
-Set package.json to the intended semver (currently `0.8.0`), validate the change,
+Set package.json to the intended semver, matching the iOS version it ships with, validate the change,
 then push the matching `vX.Y.Z` tag as an explicit release operation. The workflow
 rejects mismatched tags, builds Docker amd64/arm64 and portable Linux packages,
 and publishes a GitHub release only after all packages are ready. Versioned Docker
 images and portable assets must remain immutable once published. GitHub's release
 metadata and HTTPS are the trust source; there is no separate offline signing key.
 Source commits, image publication, release publication and deployed instances are
-separate states. This implementation does not itself publish or deploy 0.8.0.
+separate states. After the workflow publishes, replace the generated notes with
+that version's customer-facing summary, since the app shows them as release notes.

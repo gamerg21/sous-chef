@@ -2,7 +2,9 @@
 
 import { unitLabel } from "@/lib/units";
 import { NUTRIENT_FIELDS, readNutrition, type NutrientKey, type NutritionPer100g } from "@/lib/nutrition";
-import { useCallback, useEffect, useState } from "react";
+import { formatTag, importDefaults, tidy } from "@/lib/food-product";
+import { ProductPackageCard } from "@/components/inventory/ProductPackageCard";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "@/lib/kitchen/client";
 import { api } from "@/lib/kitchen/api";
@@ -66,8 +68,11 @@ type InventoryPrefillData = Partial<InventoryItem> & {
   stale?: boolean;
 };
 
-function formatTag(tag: string) {
-  return tag.replace(/^en:/, "").replace(/[-_]/g, " ");
+/** The newest item already stocked under a barcode: how this kitchen named and counted it. */
+function stockedWithBarcode(items: InventoryItem[], code: string): InventoryItem | undefined {
+  return items
+    .filter((item) => item.barcode === code)
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0];
 }
 
 export default function InventoryPage() {
@@ -80,7 +85,7 @@ export default function InventoryPage() {
   const settleExpired = useMutation(api.expiry.settle);
   const lookupBarcode = useAction(api.barcodes.lookup);
 
-  const items = inventoryData?.items || [];
+  const items = useMemo(() => inventoryData?.items ?? [], [inventoryData]);
   const locations = inventoryData?.locations || [];
   const dateFormat = preferencesData?.preferences?.dateFormat || "YYYY-MM-DD";
   const expiringWithinDays = preferencesData?.preferences?.expiringWithinDays;
@@ -204,8 +209,11 @@ export default function InventoryPage() {
   const handleBarcodeScanned = useCallback(async (barcode: string) => {
     try {
       const data = (await lookupBarcode({ code: barcode })) as BarcodeLookupResponse;
+      // A product this kitchen has stocked before comes back named, counted
+      // and placed the way the household did it last time.
+      const stocked = stockedWithBarcode(items, barcode);
 
-      if (!data.found) {
+      if (!data.found && !stocked) {
         setConfirmModal({
           isOpen: true,
           message: `Barcode "${barcode}" not found. Would you like to add it manually?`,
@@ -221,11 +229,16 @@ export default function InventoryPage() {
         return;
       }
 
+      const facts = data.found ? (data.facts as FoodFacts | undefined) : stocked?.foodFacts;
+      const defaults = importDefaults(facts, stocked?.unit);
       setPrefillData({
-        name: data.prefill.name,
-        barcode: data.prefill.barcode,
-        category: data.prefill.category,
-        foodFacts: data.facts as FoodFacts | undefined,
+        name: stocked?.name ?? data.prefill.name,
+        barcode,
+        category: stocked?.category ?? data.prefill.category,
+        locationId: stocked?.locationId ?? defaults.location,
+        quantity: defaults.quantity,
+        unit: defaults.unit ?? stocked?.unit,
+        foodFacts: facts,
         source: data.source,
         attribution: data.attribution,
         stale: data.stale,
@@ -249,7 +262,7 @@ export default function InventoryPage() {
         variant: "error",
       });
     }
-  }, [lookupBarcode]);
+  }, [lookupBarcode, items]);
 
   // "Used" or "Thrown away" from Use it up: counted, and the item stays as out of stock.
   const handleSettleExpired = useCallback(async (id: string, outcome: "used" | "wasted") => {
@@ -560,6 +573,11 @@ function InventoryItemModal({
     message: string;
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
+  const productFacts = scanned.foodFacts ?? item?.foodFacts;
+  const perServing = readNutrition(productFacts?.nutritionPerServing);
+  const servingSize = productFacts?.serving?.amount && productFacts.serving.unit
+    ? `${tidy(productFacts.serving.amount)} ${productFacts.serving.unit}`
+    : productFacts?.serving?.text;
   const eyebrowClassName =
     "block text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500 dark:text-stone-400";
   const categorySelectOptions = [
@@ -615,17 +633,25 @@ function InventoryItemModal({
         });
         return;
       }
-      setFormData((previous) => ({
-        ...previous,
-        name: previous.name.trim() ? previous.name : data.prefill.name || previous.name,
-      }));
+      const facts = data.facts as FoodFacts | undefined;
+      const defaults = importDefaults(facts);
+      setFormData((previous) => {
+        // A new item's amount and place are filled in until the user sets them.
+        const untouched = !item && previous.quantity === 1 && previous.unit === "count";
+        return {
+          ...previous,
+          name: previous.name.trim() ? previous.name : data.prefill.name || previous.name,
+          ...(untouched && defaults.quantity && defaults.unit ? { quantity: defaults.quantity, unit: defaults.unit } : {}),
+          locationId: !item && previous.locationId === "pantry" && defaults.location ? defaults.location : previous.locationId,
+        };
+      });
       if (!selectedCategory && data.prefill.category) {
         const next = categoryToFormState(data.prefill.category);
         setSelectedCategory(next.selectedCategory);
         setCustomCategory(next.customCategory);
       }
-      setScanned({ foodFacts: data.facts as FoodFacts | undefined, attribution: data.attribution });
-      const scannedNutrition = readNutrition((data.facts as FoodFacts | undefined)?.nutritionPer100g);
+      setScanned({ foodFacts: facts, attribution: data.attribution });
+      const scannedNutrition = readNutrition(facts?.nutritionPer100g);
       if (scannedNutrition) {
         setNutrition((previous) =>
           Object.values(previous).some((value) => value.trim()) ? previous : nutritionToForm(scannedNutrition)
@@ -874,6 +900,16 @@ function InventoryItemModal({
             </Collapse>
           </div>
 
+          {productFacts && (
+            <ProductPackageCard
+              facts={productFacts}
+              quantity={formData.quantity}
+              unit={formData.unit}
+              editable={!item}
+              onChange={(quantity, unit) => setFormData((previous) => ({ ...previous, quantity, unit }))}
+            />
+          )}
+
           <section>
             <h3 id="inventory-category-label" className={`${eyebrowClassName} mb-2 px-1`}>Category</h3>
             <div className="rounded-2xl border border-stone-200 dark:border-stone-800">
@@ -1040,7 +1076,7 @@ function InventoryItemModal({
                 <Collapse open={nutritionOpen}>
                   <div id="inventory-nutrition" className="border-t border-stone-200 p-4 dark:border-stone-800">
                     <p className="mb-3 text-xs text-stone-500 dark:text-stone-400">
-                      Per 100 g, as printed on the label. Recipes use these to estimate their nutrition.
+                      Per {productFacts?.nutritionBasis === "100ml" ? "100 ml" : "100 g"}, as printed on the label. Recipes use these to estimate their nutrition.
                     </p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {NUTRIENT_FIELDS.map(({ key, label, unit }) => (
@@ -1065,44 +1101,68 @@ function InventoryItemModal({
             </div>
           </section>
 
-          {scanned.foodFacts && (
+          {productFacts && (
             <div className="rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/40 p-3 space-y-2">
               <p className="text-sm font-medium text-stone-800 dark:text-stone-100">
                 Food facts
               </p>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
-                Its nutrition is filled in under Nutrition facts below.
-              </p>
+              {productFacts.nutritionPer100g && (
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Its nutrition is filled in under Nutrition facts above.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2 text-xs text-stone-700 dark:text-stone-300">
-                {scanned.foodFacts.brand && (
+                {productFacts.brand && (
                   <span className="px-2 py-1 rounded bg-stone-200/80 dark:bg-stone-800">
-                    Brand: {scanned.foodFacts.brand}
+                    Brand: {productFacts.brand}
                   </span>
                 )}
-                {scanned.foodFacts.nutriscoreGrade && (
+                {productFacts.nutriscoreGrade && (
                   <span className="px-2 py-1 rounded bg-stone-200/80 dark:bg-stone-800">
-                    Nutri-Score {scanned.foodFacts.nutriscoreGrade.toUpperCase()}
+                    Nutri-Score {productFacts.nutriscoreGrade.toUpperCase()}
                   </span>
                 )}
-                {scanned.foodFacts.novaGroup && (
+                {productFacts.novaGroup && (
                   <span className="px-2 py-1 rounded bg-stone-200/80 dark:bg-stone-800">
-                    NOVA {scanned.foodFacts.novaGroup}
+                    NOVA {productFacts.novaGroup}
                   </span>
                 )}
               </div>
 
-              {scanned.foodFacts.allergensTags &&
-                scanned.foodFacts.allergensTags.length > 0 && (
+              {perServing && (
+                <p className="text-xs text-stone-700 dark:text-stone-300">
+                  Per serving{servingSize ? ` (${servingSize})` : ""}:{" "}
+                  {NUTRIENT_FIELDS.filter(({ key }) => perServing[key] !== undefined)
+                    .slice(0, 4)
+                    .map(({ key, label, unit }) => `${tidy(perServing[key]!)} ${unit} ${unit === "kcal" ? "" : label.toLowerCase()}`.trim())
+                    .join(" · ")}
+                </p>
+              )}
+
+              {productFacts.allergensTags &&
+                productFacts.allergensTags.length > 0 && (
                   <p className="text-xs text-stone-700 dark:text-stone-300">
                     Allergens:{" "}
-                    {scanned.foodFacts.allergensTags.map(formatTag).join(", ")}
+                    {productFacts.allergensTags.map(formatTag).join(", ")}
                   </p>
                 )}
 
-              {scanned.foodFacts.ingredientsText && (
+              {productFacts.tracesTags && productFacts.tracesTags.length > 0 && (
                 <p className="text-xs text-stone-700 dark:text-stone-300">
-                  Ingredients: {scanned.foodFacts.ingredientsText.slice(0, 180)}
-                  {scanned.foodFacts.ingredientsText.length > 180 ? "..." : ""}
+                  May contain: {productFacts.tracesTags.map(formatTag).join(", ")}
+                </p>
+              )}
+
+              {productFacts.ingredientsText && (
+                <p className="text-xs text-stone-700 dark:text-stone-300">
+                  Ingredients: {productFacts.ingredientsText.slice(0, 180)}
+                  {productFacts.ingredientsText.length > 180 ? "..." : ""}
+                </p>
+              )}
+
+              {productFacts.storageText && (
+                <p className="text-xs text-stone-700 dark:text-stone-300">
+                  Storage: {productFacts.storageText}
                 </p>
               )}
 

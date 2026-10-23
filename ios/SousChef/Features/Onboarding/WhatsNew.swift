@@ -17,6 +17,18 @@ enum WhatsNew {
     /// The features each release introduces, keyed by "major.minor". A release
     /// without an entry shows nothing.
     static let releases: [String: [Feature]] = [
+        "1.2": [
+            Feature(systemImage: "sparkles", color: .purple, title: "iPhone Duo is here",
+                    detail: "Sous Chef now supports iPhone Duo. Unfold it and your kitchen spreads across both screens."),
+            Feature(systemImage: "hand.draw.fill", color: .brand, title: "Drag to plan",
+                    detail: "Unfold your iPhone Duo and drag recipes onto your week, right in Cook."),
+            Feature(systemImage: "chart.bar.fill", color: .orange, title: "Everything at a glance",
+                    detail: "Numbers beside your pantry, recipes and list. Tap one to show just those."),
+            Feature(systemImage: "laptopcomputer", color: .blue, title: "Cook on the counter",
+                    detail: "Prop your iPhone Duo half open: steps stand up, timers sit on the flat half."),
+            Feature(systemImage: "arrow.up.arrow.down", color: .teal, title: "Sort your pantry",
+                    detail: "Sort by name, what expires first or what you added last."),
+        ],
         "1.1": [
             Feature(systemImage: "house.fill", color: .orange, title: "Share your kitchen",
                     detail: "Invite the people you cook with. Everyone sees and edits the same pantry, recipes, shopping list and meal plan."),

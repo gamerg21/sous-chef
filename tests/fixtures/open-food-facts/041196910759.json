@@ -1,0 +1,82 @@
+{
+ "code": "0041196910759",
+ "product": {
+  "allergens_tags": [
+   "en:beef",
+   "en:celery",
+   "en:soybeans"
+  ],
+  "brands": "Progresso",
+  "categories_tags": [
+   "en:canned-foods",
+   "en:meals",
+   "en:soups",
+   "en:canned-meals",
+   "en:canned-soups"
+  ],
+  "code": "0041196910759",
+  "ecoscore_grade": "unknown",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/004/119/691/0759/front_en.25.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/004/119/691/0759/front_en.25.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/004/119/691/0759/ingredients_en.12.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/004/119/691/0759/nutrition_en.27.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:may-contain-palm-oil",
+   "en:non-vegan",
+   "en:non-vegetarian"
+  ],
+  "ingredients_text": "Beef broth, water, cooked diced seasoned beef and modified food starch product (beef, beef broth, hydrolyzed soy protein, modified food starch, salt, sodium phosphates, natural flavor, maltodextrin), potatoes, carrots, tomatoes, green beans, modified food starch. contains less than 2% of: sugar, cor",
+  "ingredients_text_en": "Beef broth, water, cooked diced seasoned beef and modified food starch product (beef, beef broth, hydrolyzed soy protein, modified food starch, salt, sodium phosphates, natural flavor, maltodextrin), potatoes, carrots, tomatoes, green beans, modified food starch. contains less than 2% of: sugar, cor",
+  "labels_tags": [
+   "en:no-gluten"
+  ],
+  "nova_group": 4,
+  "nutriments": {
+   "carbohydrates_100g": 6.82730923694779,
+   "carbohydrates_serving": 17,
+   "energy-kcal_100g": 40.1606425702811,
+   "energy-kcal_serving": 100,
+   "energy-kj_100g": 182.530120481928,
+   "energy-kj_serving": 455,
+   "energy_100g": 182.530120481928,
+   "energy_serving": 455,
+   "fat_100g": 0.602409638554217,
+   "fat_serving": 1.5,
+   "fiber_100g": 0.401606425702811,
+   "fiber_serving": 1,
+   "proteins_100g": 2.40963855421687,
+   "proteins_serving": 6,
+   "salt_100g": 0.672690763052209,
+   "salt_serving": 1.68,
+   "sodium_100g": 0.269076305220884,
+   "sodium_serving": 0.67,
+   "sugars_100g": 1.60642570281124,
+   "sugars_serving": 4
+  },
+  "nutriscore_grade": "b",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "food_contact": 1,
+    "material": "en:metal",
+    "number_of_units": "1",
+    "recycling": "en:recycle",
+    "shape": "en:can"
+   }
+  ],
+  "product_name": "Beef & Vegetable Soup",
+  "product_name_en": "Beef & Vegetable Soup",
+  "product_quantity": 524.4661778125,
+  "product_quantity_unit": "g",
+  "quantity": "18.5 oz.",
+  "serving_quantity": 249,
+  "serving_quantity_unit": "ml",
+  "serving_size": "1 cup (249 g)",
+  "traces_tags": [
+   "en:soybeans"
+  ]
+ },
+ "status": 1
+}

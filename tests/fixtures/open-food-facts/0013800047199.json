@@ -1,0 +1,70 @@
+{
+ "code": "0013800047199",
+ "product": {
+  "allergens_tags": [
+   "en:gluten",
+   "en:milk",
+   "en:soybeans"
+  ],
+  "brands": "Lean Cuisine",
+  "categories_tags": [
+   "en:frozen-foods",
+   "en:meals",
+   "en:pizzas-pies-and-quiches",
+   "en:frozen-pizzas-and-pies",
+   "en:pizzas",
+   "en:frozen-pizzas"
+  ],
+  "code": "0013800047199",
+  "ecoscore_grade": "unknown",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/001/380/004/7199/front_en.55.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/001/380/004/7199/front_en.55.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/001/380/004/7199/ingredients_en.14.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/001/380/004/7199/nutrition_en.81.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:non-vegan",
+   "en:vegetarian-status-unknown"
+  ],
+  "ingredients_text": "Crust (enriched flour [wheat flour, niacin, reduced iron, thiamine mononitrate, riboflavin, folic acid], water, yeast, soybean oil, sugar, soluble corn product, dried garlic), reduced fat mozzarella cheese (cultured part-skim milk and skim milk, modified cornstarch*, salt, vitamin a palmitate, enzym",
+  "ingredients_text_en": "Crust (enriched flour [wheat flour, niacin, reduced iron, thiamine mononitrate, riboflavin, folic acid], water, yeast, soybean oil, sugar, soluble corn product, dried garlic), reduced fat mozzarella cheese (cultured part-skim milk and skim milk, modified cornstarch*, salt, vitamin a palmitate, enzym",
+  "nova_group": 4,
+  "nutriments": {
+   "carbohydrates_100g": 35.2941176470588,
+   "carbohydrates_serving": 60,
+   "energy-kcal_100g": 229.411764705882,
+   "energy-kcal_serving": 390,
+   "energy-kj_100g": 988.235294117647,
+   "energy-kj_serving": 1680,
+   "energy_100g": 988.235294117647,
+   "energy_serving": 1680,
+   "fat_100g": 4.70588235294118,
+   "fat_serving": 8,
+   "fiber_100g": 1.76470588235294,
+   "fiber_serving": 3,
+   "proteins_100g": 11.7647058823529,
+   "proteins_serving": 20,
+   "salt_100g": 0.867647058823529,
+   "salt_serving": 1.47,
+   "sodium_100g": 0.347058823529412,
+   "sodium_serving": 0.59,
+   "sugars_100g": 4.11764705882353,
+   "sugars_serving": 7
+  },
+  "nutriscore_grade": "c",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [],
+  "product_name": "Four Cheese Pizza",
+  "product_name_en": "Four Cheese Pizza",
+  "product_quantity": 170.09713875,
+  "product_quantity_unit": "g",
+  "quantity": "6 oz",
+  "serving_quantity": 170,
+  "serving_quantity_unit": "g",
+  "serving_size": "1 Pizza (170 g)",
+  "traces_tags": []
+ },
+ "status": 1
+}

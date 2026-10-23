@@ -20,6 +20,30 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (28)
+
+### What to Test
+
+What to test (please focus here)
+- Barcode scans: scan a few groceries into the pantry. The amount should start as one package (12 cans for a 12-pack, or the size on the label), with fridge, freezer or pantry, category, nutrition and badges like Vegan filled in. Try the count chips and the stepper. Rescan something you've stocked before; it should reuse your name, unit and location.
+
+Fixes to verify
+- Recipe ideas: ask for a few ideas in a row. Each should be a different dish, and a specific request (e.g. "chicken soup") should be followed even in From my pantry. The Pantry/Anything choice should stick between visits.
+
+## 1.2.0 (27)
+
+### What to Test
+
+What to test (please focus here)
+- Private Cloud Compute: Settings > Intelligence and Lookups should show Private Cloud Compute as available, with Prefer Private Cloud Compute on. Paste or scan a recipe and ask for recipe ideas; imports should be tagged Private Cloud Compute, and results should be at least as good as before.
+
+## 1.2.0 (26)
+
+### What to Test
+
+Fixes to verify
+- Shared kitchen: open this build on the owner's iPhone and leave it open for a minute. Everything in the owner's kitchen should then appear on the member's iPhone, not only items edited since sharing started.
+
 ## 1.1.2 (25)
 
 ### What to Test
@@ -37,12 +61,52 @@ Fixes to verify
 - Undo sheet: its Cancel button is red.
 - Undo button: turn on Settings > Undo button after deleting, then delete something. "Deleted … · Undo" appears just above the tab bar.
 
+## 1.2.0 (23)
+
+### What to Test
+
+Fixes to verify
+- Shake to undo: with it on, drop or toss your iPhone onto a couch after deleting something; nothing should happen. A quick shake back and forth should still offer to bring it back.
+- Undo button: turn on Settings > Undo button after deleting, then delete something. "Deleted … · Undo" appears just above the tab bar.
+
+## 1.2.0 (22)
+
+### What to Test
+
+Fixes to verify
+- Shake to undo: it's now off by default. Delete something and shake; nothing should happen. Turn on Settings > Shake to undo, delete again and shake to bring it back.
+- Undo sheet: its Cancel button is red.
+
 ## 1.1.1 (21)
 
 ### What to Test
 
 Fixes to verify
 - Pasting recipe JSON: in Recipes, tap + > Paste recipe text and paste schema.org Recipe JSON (the kind ChatGPT writes). Steps, servings, time, nutrition and tips should come in properly instead of one step per JSON line.
+
+## 1.2.0 (20)
+
+### What to Test
+
+Fixes to verify
+- Pasting recipe JSON: in Recipes, tap + > Paste recipe text and paste schema.org Recipe JSON (the kind ChatGPT writes). Steps, servings, time, nutrition and tips should come in properly instead of one step per JSON line.
+
+## 1.2.0 (19)
+
+### What to Test
+
+What to test (please focus here)
+- What's new: updating from 1.1, the screen now opens with "iPhone Duo is here" and lists pantry sorting. It shows once per version, so if you opened build 18 you won't see it again.
+
+## 1.2.0 (18)
+
+### What to Test
+
+What to test (please focus here)
+- iPhone Duo, unfolded: Cook shows your week beside what you can cook. Drag a recipe onto a breakfast, lunch or dinner slot, then drag the planned meal to another day.
+- At a glance: unfold on Recipes, Shopping and Pantry. Tap a number (ready to cook, popular, an aisle) and the list beside it shows just those; tap again to show everything.
+- Pantry sort: sort the pantry by name, expiry or recently added.
+- Cook on the counter: prop the Duo half open in cook mode; steps stand up, ingredients and timers sit on the flat half.
 
 ## 1.1.0 (17)
 

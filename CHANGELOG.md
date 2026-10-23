@@ -1,5 +1,14 @@
 ## Unreleased
 
+- Barcode import reads much more of Open Food Facts (`src/lib/food-product.ts`, ported to iOS as `ProductParser` in `ProductFacts.swift`). Lookups request only the needed `fields` and derive the package size as printed ("18 oz (510 g)", checked against `product_quantity`), multipacks ("12 x 355 ml", or a "1 can" serving that divides the package evenly; packaging records only when their sizes add up), servings per package, nutrition per serving and per 100 g/ml (kJ and sodium fallbacks), a suggested pantry/fridge/freezer from storage text and categories ("refrigerate after opening" and "do not refrigerate" are ignored), category from the most specific tag, cleaned names, and dietary badges. Contradictory data is dropped instead of guessed (a package smaller than one serving, mislabeled serving units). Scans fill in the amount and unit for one package (12 cans for a 12-pack, else the printed size) with chips to count it another way and a packages stepper, and a barcode the kitchen has stocked before reuses its name, unit, location and category, even when Open Food Facts doesn't know it. Server: `barcodes` gains the new facts (`barcodeFactFields`, additive optional fields) and `factsVersion`; cached lookups from before `PRODUCT_FACTS_VERSION` 2 are refetched and stale facts cleared; `inventory:list` returns them. iOS companion sync keeps facts the phone read itself when the server has none for that barcode. Covered by `tests/food-product.test.ts` and `ProductFactsTests` against shared fixtures in `tests/fixtures/open-food-facts` (ODbL), new cases in `tests/sqlite/barcodes.test.ts`, and the `BarcodeImportTests` UI test (needs the network).
+- iOS (1.2.0): iPhone Duo layouts. On wide windows (`tracksTwoPaneWidth`, 700 pt) Cook shows `WeekPlannerPane`, a week timeline with a breakfast, lunch and dinner well per day, beside its list (whose rows drag onto it), Recipes shows `RecipeInsightsPane` (ready, almost there, quick, favorites, popular by week or month, newly added and tags from `RecipeStats`, each a filter for the library), Shopping shows `ShoppingInsightsPane` (cart progress, aisles that filter the list, the week's shortages and recipes the list unlocks), and Pantry shows `PantryInsightsPane` (stock by location, freshness, use soon, categories in Swift Charts, ready recipes and this month's outcomes) beside the list, whose location filter it shares. Recipe cards and planned meals drag onto wells as text payloads (`PlanDrag`) handled by `Kitchen.drop(_:on:slot:)`, which plans a recipe or moves a meal; on iOS 27 a drag session (`PlanDragState`) lights up the empty wells. The sample kitchen gains a partly planned week and a month of outcomes. Cook mode and recipe detail split at the fold (`TwoPane`), and cook mode follows the hinge (`FoldPosture`): laptop posture stands the steps up with ingredients or timers on the flat half. Covered by `MealPlannerTests` and the `DuoPlannerTests` and `DuoGlanceTests` UI tests (skipped on narrow screens).
+
+## 1.1.2 — Households, password recovery without email, and used or thrown away
+
+Web release v1.1.2, numbered to match Sous Chef for iOS 1.1.2; there are no
+1.1.0–1.1.1 web releases. The iOS changes below shipped in iOS 1.1.0 (17) and
+1.1.2 (25).
+
 - Recipe import: pasted schema.org Recipe JSON (bare, in a ```` ```json ```` fence, or in its `<script type="application/ld+json">` tag) is read as structured data instead of line by line, which turned every JSON line into a step. iOS checks `RecipeImporter.fromPastedJSON` before Apple Intelligence or `RecipeTextReader`; the web capture modal checks `recipeFromPastedJson` before `analyzeRecipeText`. Both parsers now work without a page URL and put `recipeTips` in the notes. iOS 1.1.1 (21) and 1.2.0 (20).
 - iOS: Shake to undo is now a setting (`Kitchen.shakeToUndoKey`, Settings > Shake to undo), off by default, and also follows iOS's own Shake to Undo accessibility switch (`UIAccessibility.isShakeToUndoEnabled`). Before, shaking always offered to undo and the only switch, "Undo button after deleting", looked like it controlled shaking. The Shopping "Clear checked" message and 1.1's What's New only mention shaking when it applies. `ConfirmSheet`'s Cancel button is red when the main button isn't the red, destructive one (such as "Undo delete").
 - iOS: a one-time check sends every item the personal iCloud zone lacks (`CloudSync.sendWhatICloudLacks`): it refetches the zone from scratch with no saved record versions, then queues each local item the fetch didn't return, deleting nothing. Before, a device that already had saved CKSyncEngine state skipped the first-sync upload, so unchanged items stayed out of iCloud and a household member saw almost none of the owner's kitchen. Saves that fail for any reason not already handled now wait for the next activation instead of being dropped. iOS 1.1.2 (25).
@@ -39,7 +48,7 @@
 
 ## 1.0.3 — Meal planning, expiry reminders, and security fixes
 
-- Version numbers now match the iOS app. The web app moves from 0.9.0 to 1.0.3 to line up with Sous Chef for iOS 1.0.3; there are no 1.0.0–1.0.2 web releases.
+- Version numbers now match the iOS app. The web app moves from 0.9.0 to 1.0.3 to line up with Sous Chef for iOS 1.0.3 (which reached TestFlight only; its fixes shipped in iOS 1.1.0); there are no 1.0.0–1.0.2 web releases.
 - Security: Next.js 16.3.8, Auth.js core 0.41.3 and Convex Auth 0.0.96, with refreshed dependencies. `pnpm audit` reports no known advisories (previously 88, including 4 critical).
 - Community password reset no longer writes reset links or email addresses to the logs. Without email delivery configured, community reset is unavailable instead.
 - Weekly meal planning: a Plan page puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
@@ -51,6 +60,9 @@
 
 ## iOS 1.0.3 — Security update
 
+1.0.3 (1) reached TestFlight only and was never released on the App Store; these
+fixes and the cook mode Finish button shipped in iOS 1.1.0.
+
 - Your Sous Chef server sign-in is only sent to your server. Recipe photos
   linked from other websites are downloaded without it, and requests that
   carry it can't be redirected to another address.
@@ -60,7 +72,7 @@
 - Recipe imports and synced photos stop downloading once they pass their size
   limit, and oversized images are refused before they're decoded.
 
-## 0.9.0 — A livelier, clearer kitchen
+## 0.9.0 — A livelier, clearer kitchen (never published; shipped in 1.0.3)
 
 - New design language across the app: grouped cards, section labels, inline expanding menus instead of dropdowns, and a shared UI kit (`src/components/ui/kit.tsx`).
 - Smooth motion: page transitions, animated modals and menus, press feedback, staggered lists, skeleton loading, and a sliding sidebar highlight. Respects reduced-motion settings.
@@ -72,7 +84,7 @@
 - Units read naturally with amounts ("2 cups", "½ cup"); recipe visibility controls removed.
 - Shopping items support notes; "What can I cook?" gains a readiness filter.
 
-## 0.8.0 — SQLite kitchens and optional community (not yet published)
+## 0.8.0 — SQLite kitchens and optional community (never published; shipped in 1.0.3)
 
 - Private kitchens now run on local SQLite with local sessions, photos, and encrypted keys.
 - One-container self-hosting; no Convex account or setup service required.

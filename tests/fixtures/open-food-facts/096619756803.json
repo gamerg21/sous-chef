@@ -1,0 +1,74 @@
+{
+ "code": "0096619756803",
+ "product": {
+  "allergens_tags": [],
+  "brands": "Kirkland Signature",
+  "categories_tags": [
+   "en:beverages-and-beverages-preparations",
+   "en:beverages",
+   "en:waters",
+   "en:unsweetened-beverages"
+  ],
+  "code": "0096619756803",
+  "ecoscore_grade": "not-applicable",
+  "generic_name": "Purified drinking water",
+  "generic_name_en": "Purified drinking water",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/009/661/975/6803/front_en.60.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/009/661/975/6803/front_en.60.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/009/661/975/6803/ingredients_en.25.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/009/661/975/6803/nutrition_en.40.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:vegan",
+   "en:vegetarian"
+  ],
+  "ingredients_text": "Purified Water, Potassium Bicarbonate, Sodium Bicarbonate, Calcium Citrate, Sodium Chloride, Magnesium Oxide",
+  "ingredients_text_en": "Purified Water, Potassium Bicarbonate, Sodium Bicarbonate, Calcium Citrate, Sodium Chloride, Magnesium Oxide",
+  "labels_tags": [],
+  "nova_group": 1,
+  "nutriments": {
+   "carbohydrates_100g": 0,
+   "carbohydrates_serving": 0,
+   "energy-kcal_100g": 0,
+   "energy-kcal_serving": 0,
+   "energy-kj_100g": 0,
+   "energy-kj_serving": 0,
+   "energy_100g": 0,
+   "energy_serving": 0,
+   "fat_100g": 0,
+   "fat_serving": 0,
+   "fiber_100g": 0,
+   "fiber_serving": 0,
+   "proteins_100g": 0,
+   "proteins_serving": 0,
+   "salt_100g": 0.000500207936439178,
+   "salt_serving": 0.0025,
+   "sodium_100g": 0.000200083174575671,
+   "sodium_serving": 0.001,
+   "sugars_100g": 0,
+   "sugars_serving": 0
+  },
+  "nutriscore_grade": "b",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100ml",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "food_contact": 1,
+    "material": "en:pet-1-polyethylene-terephthalate",
+    "recycling": "en:return-pet-bottle-to-store",
+    "shape": "en:bottle"
+   }
+  ],
+  "product_name": "Purified Drinking Water",
+  "product_name_en": "Purified Drinking Water",
+  "product_quantity": 500,
+  "product_quantity_unit": "ml",
+  "quantity": "500 mL",
+  "serving_quantity": 499.79215,
+  "serving_quantity_unit": "ml",
+  "serving_size": "1 Bottle (16.9 fl oz)",
+  "traces_tags": []
+ },
+ "status": 1
+}

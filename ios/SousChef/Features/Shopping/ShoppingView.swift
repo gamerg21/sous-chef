@@ -14,20 +14,57 @@ struct ShoppingView: View {
     @AppStorage(Kitchen.shakeToUndoKey) private var shakeToUndo = false
     @State private var error: String?
     @FocusState private var addFocused: Bool
+    /// Unfolded or on a wide screen, the list's numbers sit beside it.
+    @State private var twoPane = false
+    /// The one aisle shown, picked from the pane beside the list.
+    @State private var aisle: String?
 
     private var open: [ShoppingItem] { items.filter { !$0.checked } }
     private var inCart: [ShoppingItem] { items.filter(\.checked) }
 
     private var groups: [(category: String, items: [ShoppingItem])] {
-        let grouped = Dictionary(grouping: open) { $0.category ?? "Other" }
+        let shown = aisle.map { aisle in open.filter { ($0.category ?? "Other") == aisle } } ?? open
+        let grouped = Dictionary(grouping: shown) { $0.category ?? "Other" }
         let order = ShoppingCategories.all
         return grouped.keys.sorted { (order.firstIndex(of: $0) ?? 99, $0) < (order.firstIndex(of: $1) ?? 99, $1) }
             .map { ($0, grouped[$0]!) }
     }
 
     var body: some View {
+        Group {
+            if twoPane {
+                TwoPane {
+                    ShoppingInsightsPane(items: items, aisle: $aisle)
+                } secondary: {
+                    list
+                }
+            } else {
+                list
+            }
+        }
+        .tracksTwoPaneWidth($twoPane)
+        // Folded, there's no pane to clear the filter from.
+        .onChange(of: twoPane) { if !twoPane { aisle = nil } }
+        // An aisle that empties out stops filtering.
+        .onChange(of: open.map(\.category)) {
+            if let aisle, !open.contains(where: { ($0.category ?? "Other") == aisle }) { self.aisle = nil }
+        }
+    }
+
+    private var list: some View {
         NavigationStack {
             List {
+                if let aisle {
+                    Section {
+                        HStack {
+                            Label("Showing \(aisle)", systemImage: CategoryStyle.symbol(for: aisle, name: ""))
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Button("Show all") { withAnimation(.snappy) { self.aisle = nil } }
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                }
                 if items.isEmpty {
                     ContentUnavailableView {
                         Label("Your list is empty", systemImage: "cart")

@@ -1,0 +1,81 @@
+{
+ "code": "0028400090896",
+ "product": {
+  "allergens_tags": [
+   "en:milk",
+   "en:soybeans"
+  ],
+  "brands": "Doritos",
+  "categories_tags": [
+   "en:snacks",
+   "en:salty-snacks",
+   "en:appetizers",
+   "en:chips-and-fries",
+   "en:crisps",
+   "en:corn-chips",
+   "en:flavoured-corn-crisps"
+  ],
+  "code": "0028400090896",
+  "ecoscore_grade": "b",
+  "generic_name": "nacho cheese flavored tortilla chips.",
+  "generic_name_en": "nacho cheese flavored tortilla chips.",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/002/840/009/0896/front_en.297.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/002/840/009/0896/front_en.297.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/002/840/009/0896/ingredients_en.292.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/002/840/009/0896/nutrition_en.276.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:non-vegan",
+   "en:vegetarian-status-unknown"
+  ],
+  "ingredients_text": "CORN, VEGETABLE OIL (CORN, CANOLA, SOYBEAN, AND/OR SUNFLOWER OIL), CORN MALTODEXTRIN, AND LESS THAN 2% OF CHEDDAR CHEESE (MILK, CHEESE CULTURES, SALT, ENZYMES), SALT, WHEY, MONOSODIUM GLUTAMATE, BUTTERMILK, ROMANO CHEESE (MILK, CHEESE CULTURES, SALT, ENZYMES), WHEY PROTEIN CONCENTRATE, ONION POWDER,",
+  "ingredients_text_en": "CORN, VEGETABLE OIL (CORN, CANOLA, SOYBEAN, AND/OR SUNFLOWER OIL), CORN MALTODEXTRIN, AND LESS THAN 2% OF CHEDDAR CHEESE (MILK, CHEESE CULTURES, SALT, ENZYMES), SALT, WHEY, MONOSODIUM GLUTAMATE, BUTTERMILK, ROMANO CHEESE (MILK, CHEESE CULTURES, SALT, ENZYMES), WHEY PROTEIN CONCENTRATE, ONION POWDER,",
+  "labels_tags": [],
+  "nova_group": 4,
+  "nutriments": {
+   "carbohydrates_100g": 60.7142857142857,
+   "carbohydrates_serving": 17.2,
+   "energy-kcal_100g": 536,
+   "energy-kcal_serving": 152,
+   "energy-kj_100g": 2239.23285714286,
+   "energy-kj_serving": 635,
+   "energy_100g": 2239.23285714286,
+   "energy_serving": 635,
+   "fat_100g": 28.57,
+   "fat_serving": 8.1,
+   "fiber_100g": 3.57142857142857,
+   "fiber_serving": 1.01,
+   "proteins_100g": 7.14285714285714,
+   "proteins_serving": 2.02,
+   "salt_100g": 0.00151785714285714,
+   "salt_serving": 0.00043,
+   "sodium_100g": 0.000607142857142857,
+   "sodium_serving": 0.000172,
+   "sugars_100g": 3.57142857142857,
+   "sugars_serving": 1.01
+  },
+  "nutriscore_grade": "c",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "food_contact": 1,
+    "material": "en:plastic",
+    "number_of_units": 1,
+    "quantity_per_unit": "1 oz",
+    "shape": "en:bag"
+   }
+  ],
+  "product_name": "Nacho Cheese",
+  "product_name_en": "Nacho Cheese",
+  "product_quantity": 28.349523125,
+  "product_quantity_unit": "g",
+  "quantity": "1 oz (28.3 g)",
+  "serving_quantity": 28.349,
+  "serving_quantity_unit": "g",
+  "serving_size": "1 package (28.349 g)",
+  "traces_tags": []
+ },
+ "status": 1
+}

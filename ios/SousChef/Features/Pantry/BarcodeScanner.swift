@@ -7,6 +7,7 @@ import VisionKit
 struct BarcodeLookupSheet: View {
     let onFound: (PantryPrefill) -> Void
 
+    @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
     @State private var manualCode = ""
     @State private var looking = false
@@ -100,7 +101,13 @@ struct BarcodeLookupSheet: View {
             let result = try await OpenFoodFacts.lookup(code)
             onFound(PantryPrefill(name: result.name, barcode: code.filter(\.isNumber), category: result.category, facts: result.facts))
         } catch {
-            lastCode = code.filter(\.isNumber)
+            let digits = code.filter(\.isNumber)
+            // The editor fills in a product this kitchen has stocked before.
+            if kitchen.fetch(PantryItem.self).contains(where: { $0.barcode == digits }) {
+                onFound(PantryPrefill(barcode: digits))
+                return
+            }
+            lastCode = digits
             self.error = error.localizedDescription
         }
     }
