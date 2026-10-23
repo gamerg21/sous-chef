@@ -1,5 +1,11 @@
 ## Unreleased
 
+## 1.1.2 — Households, password recovery without email, and used or thrown away
+
+Web release v1.1.2, numbered to match Sous Chef for iOS 1.1.2; there are no
+1.1.0–1.1.1 web releases. The iOS changes below shipped in iOS 1.1.0 (17) and
+1.1.2 (25).
+
 - Recipe import: pasted schema.org Recipe JSON (bare, in a ```` ```json ```` fence, or in its `<script type="application/ld+json">` tag) is read as structured data instead of line by line, which turned every JSON line into a step. iOS checks `RecipeImporter.fromPastedJSON` before Apple Intelligence or `RecipeTextReader`; the web capture modal checks `recipeFromPastedJson` before `analyzeRecipeText`. Both parsers now work without a page URL and put `recipeTips` in the notes. iOS 1.1.1 (21) and 1.2.0 (20).
 - iOS: Shake to undo is now a setting (`Kitchen.shakeToUndoKey`, Settings > Shake to undo), off by default, and also follows iOS's own Shake to Undo accessibility switch (`UIAccessibility.isShakeToUndoEnabled`). Before, shaking always offered to undo and the only switch, "Undo button after deleting", looked like it controlled shaking. The Shopping "Clear checked" message and 1.1's What's New only mention shaking when it applies. `ConfirmSheet`'s Cancel button is red when the main button isn't the red, destructive one (such as "Undo delete").
 - iOS: a one-time check sends every item the personal iCloud zone lacks (`CloudSync.sendWhatICloudLacks`): it refetches the zone from scratch with no saved record versions, then queues each local item the fetch didn't return, deleting nothing. Before, a device that already had saved CKSyncEngine state skipped the first-sync upload, so unchanged items stayed out of iCloud and a household member saw almost none of the owner's kitchen. Saves that fail for any reason not already handled now wait for the next activation instead of being dropped. iOS 1.1.2 (25).
@@ -39,7 +45,7 @@
 
 ## 1.0.3 — Meal planning, expiry reminders, and security fixes
 
-- Version numbers now match the iOS app. The web app moves from 0.9.0 to 1.0.3 to line up with Sous Chef for iOS 1.0.3; there are no 1.0.0–1.0.2 web releases.
+- Version numbers now match the iOS app. The web app moves from 0.9.0 to 1.0.3 to line up with Sous Chef for iOS 1.0.3 (which reached TestFlight only; its fixes shipped in iOS 1.1.0); there are no 1.0.0–1.0.2 web releases.
 - Security: Next.js 16.3.8, Auth.js core 0.41.3 and Convex Auth 0.0.96, with refreshed dependencies. `pnpm audit` reports no known advisories (previously 88, including 4 critical).
 - Community password reset no longer writes reset links or email addresses to the logs. Without email delivery configured, community reset is unavailable instead.
 - Weekly meal planning: a Plan page puts recipes on a day and meal with servings and a note, showing each meal's pantry readiness. Add recipes from the plan or from a recipe's "Add to plan".
@@ -51,6 +57,9 @@
 
 ## iOS 1.0.3 — Security update
 
+1.0.3 (1) reached TestFlight only and was never released on the App Store; these
+fixes and the cook mode Finish button shipped in iOS 1.1.0.
+
 - Your Sous Chef server sign-in is only sent to your server. Recipe photos
   linked from other websites are downloaded without it, and requests that
   carry it can't be redirected to another address.
@@ -60,7 +69,7 @@
 - Recipe imports and synced photos stop downloading once they pass their size
   limit, and oversized images are refused before they're decoded.
 
-## 0.9.0 — A livelier, clearer kitchen
+## 0.9.0 — A livelier, clearer kitchen (never published; shipped in 1.0.3)
 
 - New design language across the app: grouped cards, section labels, inline expanding menus instead of dropdowns, and a shared UI kit (`src/components/ui/kit.tsx`).
 - Smooth motion: page transitions, animated modals and menus, press feedback, staggered lists, skeleton loading, and a sliding sidebar highlight. Respects reduced-motion settings.
@@ -72,7 +81,7 @@
 - Units read naturally with amounts ("2 cups", "½ cup"); recipe visibility controls removed.
 - Shopping items support notes; "What can I cook?" gains a readiness filter.
 
-## 0.8.0 — SQLite kitchens and optional community (not yet published)
+## 0.8.0 — SQLite kitchens and optional community (never published; shipped in 1.0.3)
 
 - Private kitchens now run on local SQLite with local sessions, photos, and encrypted keys.
 - One-container self-hosting; no Convex account or setup service required.
