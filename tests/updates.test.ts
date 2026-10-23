@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, rm, writeFile, readFile, utimes, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fetchRelease, isNewer, portableAsset, RELEASES_URL } from '../scripts/update/releases.mjs';
 import { replacementConfig } from '../scripts/update/adapters.mjs';
 
-const release = { tag_name: 'v1.1.0', draft: false, prerelease: false, body: 'New kitchen features', assets: [] };
+const installed: string = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version;
+const [major, minor] = installed.split('.').map(Number);
+const next = `${major}.${minor + 1}.0`, unpublished = `${major}.${minor + 2}.0`;
+const release = { tag_name: `v${next}`, draft: false, prerelease: false, body: 'New kitchen features', assets: [] };
 let directory: string;
 beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), 'sous-chef-updates-test-')); });
 afterEach(async () => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetModules(); await rm(directory, { recursive: true, force: true }); });
@@ -17,7 +21,7 @@ test('compares numeric stable semver and rejects prereleases, invalid and unsafe
 });
 test('trusts only stable releases and generates its own official release URL', async () => {
   const fetcher = vi.fn().mockImplementation(async () => Response.json({ ...release, html_url: 'https://evil.example' }));
-  expect(await fetchRelease(undefined, fetcher)).toMatchObject({ version: '1.1.0', url: `${RELEASES_URL}/tag/v1.1.0` });
+  expect(await fetchRelease(undefined, fetcher)).toMatchObject({ version: next, url: `${RELEASES_URL}/tag/v${next}` });
   expect(fetcher.mock.calls[0][0]).toBe('https://api.github.com/repos/gamerg21/sous-chef/releases/latest');
   for (const override of [{ draft: true }, { prerelease: true }, { tag_name: 'v1.1.0-beta.1' }]) {
     await expect(fetchRelease(undefined, vi.fn().mockResolvedValue(Response.json({ ...release, ...override })))).rejects.toThrow('Invalid stable release');
@@ -50,26 +54,26 @@ test('release checks are cached, concurrent requests coalesce and manual refresh
   const { releaseStatus } = await import('../src/server/kitchen/updates');
   const results = await Promise.all([releaseStatus(), releaseStatus(), releaseStatus(true)]);
   expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(results[0]).toMatchObject({ installedVersion: '1.0.3', available: true });
+  expect(results[0]).toMatchObject({ installedVersion: installed, available: true });
   await releaseStatus(true); expect(fetcher).toHaveBeenCalledTimes(1);
 });
 test('offline release checks report uncertainty without throwing or claiming up-to-date', async () => {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
   const { releaseStatus } = await import('../src/server/kitchen/updates');
-  expect(await releaseStatus()).toMatchObject({ installedVersion: '1.0.3', latest: null, available: false, error: expect.stringContaining('Couldn’t check') });
+  expect(await releaseStatus()).toMatchObject({ installedVersion: installed, latest: null, available: false, error: expect.stringContaining('Couldn’t check') });
 });
 test('only a live updater accepts a release request and duplicate submissions are rejected', async () => {
   vi.stubEnv('SOUS_CHEF_UPDATE_DIR', directory);
   vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json(release)));
   const { requestUpdate, updaterStatus } = await import('../src/server/kitchen/updates');
   expect((await updaterStatus()).managed).toBe(false);
-  await expect(requestUpdate('1.1.0')).rejects.toThrow('not connected');
+  await expect(requestUpdate(next)).rejects.toThrow('not connected');
   await writeFile(join(directory, 'heartbeat'), ''); await writeFile(join(directory, 'status.json'), '{"phase":"idle"}');
-  await expect(requestUpdate('1.2.0')).rejects.toThrow('Check for updates');
-  await requestUpdate('1.1.0');
-  expect(JSON.parse(await readFile(join(directory, 'request.json'), 'utf8'))).toMatchObject({ version: '1.1.0' });
+  await expect(requestUpdate(unpublished)).rejects.toThrow('Check for updates');
+  await requestUpdate(next);
+  expect(JSON.parse(await readFile(join(directory, 'request.json'), 'utf8'))).toMatchObject({ version: next });
   expect((await stat(join(directory, 'request.json'))).mode & 0o777).toBe(0o660);
-  await expect(requestUpdate('1.1.0')).rejects.toThrow('already queued');
+  await expect(requestUpdate(next)).rejects.toThrow('already queued');
   await utimes(join(directory, 'heartbeat'), new Date(0), new Date(0));
   expect((await updaterStatus()).managed).toBe(false);
 });
