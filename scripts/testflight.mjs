@@ -7,6 +7,11 @@
 //   pnpm ios:testflight notes    set notes for the project's current build (or: notes 5)
 //   pnpm ios:testflight print    show those notes without sending them (or: print 5)
 //   pnpm ios:testflight status   list recent builds
+//   pnpm ios:testflight review   list App Store versions and where they are in review
+//   pnpm ios:testflight submit   send the project's version and build to App Review,
+//                                with What's New from ios/RELEASE_NOTES.md (or:
+//                                submit 1.1.1,1.1.2 for notes covering a version
+//                                that never shipped)
 //
 // The key stays outside the repository. Put the .p8 file in
 // ~/.appstoreconnect/private_keys/ and its IDs in ~/.appstoreconnect/sous-chef.json:
@@ -143,6 +148,85 @@ async function status() {
   }
 }
 
+async function review() {
+  const { data } = await api(`/v1/apps/${await app()}/appStoreVersions?limit=5`);
+  for (const version of data) console.log(`${version.attributes.versionString}  ${version.attributes.appStoreState}`);
+}
+
+/** App Review takes one version at a time; these are still waiting on it. */
+const IN_REVIEW = ['WAITING_FOR_REVIEW', 'IN_REVIEW', 'PENDING_APPLE_RELEASE'];
+
+async function submit(notesVersions) {
+  const { version, build } = projectVersion();
+  const whatsNew = execFileSync('node', [join(root, 'scripts', 'release-notes.mjs'), notesVersions ?? version], { encoding: 'utf8' })
+    .replace(/^What's New\n\n/, '')
+    .trim();
+  const appId = await app();
+  const found = await findBuild(appId, version, build);
+  if (found?.attributes.processingState !== 'VALID') fail(`${version} (${build}) isn't processed in App Store Connect yet.`);
+
+  const { data: versions } = await api(`/v1/apps/${appId}/appStoreVersions?limit=10`);
+  const busy = versions.find((v) => IN_REVIEW.includes(v.attributes.appStoreState) && v.attributes.versionString !== version);
+  if (busy) fail(`${busy.attributes.versionString} is ${busy.attributes.appStoreState}; App Review takes one version at a time.`);
+  let target = versions.find((v) => v.attributes.versionString === version);
+  if (target && target.attributes.appStoreState !== 'PREPARE_FOR_SUBMISSION' && target.attributes.appStoreState !== 'DEVELOPER_REJECTED') {
+    fail(`${version} is already ${target.attributes.appStoreState}.`);
+  }
+  const buildLink = { build: { data: { type: 'builds', id: found.id } } };
+  if (target) {
+    await api(`/v1/appStoreVersions/${target.id}`, { method: 'PATCH', body: { data: { type: 'appStoreVersions', id: target.id, relationships: buildLink } } });
+  } else {
+    ({ data: target } = await api('/v1/appStoreVersions', {
+      method: 'POST',
+      body: {
+        data: {
+          type: 'appStoreVersions',
+          attributes: { platform: 'IOS', versionString: version, releaseType: 'AFTER_APPROVAL' },
+          relationships: { app: { data: { type: 'apps', id: appId } }, ...buildLink },
+        },
+      },
+    }));
+  }
+
+  const { data: localizations } = await api(`/v1/appStoreVersions/${target.id}/appStoreVersionLocalizations`);
+  for (const localization of localizations) {
+    await api(`/v1/appStoreVersionLocalizations/${localization.id}`, {
+      method: 'PATCH',
+      body: { data: { type: 'appStoreVersionLocalizations', id: localization.id, attributes: { whatsNew } } },
+    });
+  }
+
+  // Reuse a submission left open by an earlier attempt.
+  const { data: open } = await api(`/v1/reviewSubmissions?filter[app]=${appId}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW`);
+  let submission = open[0];
+  if (!submission) {
+    ({ data: submission } = await api('/v1/reviewSubmissions', {
+      method: 'POST',
+      body: { data: { type: 'reviewSubmissions', attributes: { platform: 'IOS' }, relationships: { app: { data: { type: 'apps', id: appId } } } } },
+    }));
+  }
+  const { data: items } = await api(`/v1/reviewSubmissions/${submission.id}/items`);
+  if (!items.length) {
+    await api('/v1/reviewSubmissionItems', {
+      method: 'POST',
+      body: {
+        data: {
+          type: 'reviewSubmissionItems',
+          relationships: {
+            reviewSubmission: { data: { type: 'reviewSubmissions', id: submission.id } },
+            appStoreVersion: { data: { type: 'appStoreVersions', id: target.id } },
+          },
+        },
+      },
+    });
+  }
+  await api(`/v1/reviewSubmissions/${submission.id}`, {
+    method: 'PATCH',
+    body: { data: { type: 'reviewSubmissions', id: submission.id, attributes: { submitted: true } } },
+  });
+  console.log(`✔ ${version} (${build}) submitted for App Review; it releases once approved.`);
+}
+
 function xcodebuild(args) {
   const auth = ['-allowProvisioningUpdates', '-authenticationKeyPath', keyPath, '-authenticationKeyID', keyId, '-authenticationKeyIssuerID', issuerId];
   const result = spawnSync('xcodebuild', [...args, ...auth], { cwd: ios, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
@@ -201,7 +285,13 @@ switch (command) {
   case 'status':
     await status();
     break;
+  case 'review':
+    await review();
+    break;
+  case 'submit':
+    await submit(argument);
+    break;
   default:
-    console.log('Usage: pnpm ios:testflight <upload | notes [build] | print [build] | status>');
+    console.log('Usage: pnpm ios:testflight <upload | notes [build] | print [build] | status | review | submit [versions]>');
     process.exit(command ? 1 : 0);
 }

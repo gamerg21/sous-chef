@@ -26,6 +26,7 @@ Also new in 1.2:
 • Sort your pantry by name, what expires first or what you added last.
 • Smarter barcode scans: the amount, servings, storage spot and category fill themselves in, and a 12-pack comes in as 12 cans.
 • Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
+• Recipe ideas and imports can use Private Cloud Compute for better results, and ideas now follow what you ask for with a different dish each time.
 
 ### New
 - **Drag to plan**: On an unfolded iPhone Duo, iPad or iPhone on its side, Cook shows your week beside what you can cook. Drag a recipe onto a day's breakfast, lunch or dinner, drag a planned meal to another day, or tap an empty meal to pick a recipe.
@@ -36,6 +37,10 @@ Also new in 1.2:
 - **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
 - **Smarter barcode scans**: Scanning a product fills in how much is in the package, ready to count as cans, by weight or as one box, with a stepper for more packages. It also suggests the pantry, fridge or freezer, shows servings, nutrition per serving and labels like vegan or gluten-free, and remembers how you named and counted a product last time.
+
+### Improved
+- **Private Cloud Compute**: On iPhones with Apple Intelligence, importing recipes and recipe ideas can use Private Cloud Compute for more capable results, while your kitchen stays private. Choose in Settings > Intelligence and Lookups.
+- **Recipe ideas**: Ideas now follow what you ask for, even when cooking from your pantry, and suggest a different dish each time instead of repeating one. Your Pantry or Anything choice is remembered.
 
 ## 1.1.2
 

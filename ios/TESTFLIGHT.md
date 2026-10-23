@@ -44,6 +44,23 @@ What to test (please focus here)
 Fixes to verify
 - Shared kitchen: open this build on the owner's iPhone and leave it open for a minute. Everything in the owner's kitchen should then appear on the member's iPhone, not only items edited since sharing started.
 
+## 1.1.2 (25)
+
+### What to Test
+
+Fixes to verify
+- Shared kitchen: open this build on the owner's iPhone and leave it open for a minute. Everything in the owner's kitchen should then appear on the member's iPhone, not only items edited since sharing started.
+- Shake to undo and the Undo button, as in (24).
+
+## 1.1.2 (24)
+
+### What to Test
+
+Fixes to verify
+- Shake to undo: it's off by default. Turn it on in Settings, delete something, then drop your iPhone onto a couch; nothing should happen. A quick shake back and forth should offer to bring it back.
+- Undo sheet: its Cancel button is red.
+- Undo button: turn on Settings > Undo button after deleting, then delete something. "Deleted … · Undo" appears just above the tab bar.
+
 ## 1.2.0 (23)
 
 ### What to Test
@@ -59,6 +76,13 @@ Fixes to verify
 Fixes to verify
 - Shake to undo: it's now off by default. Delete something and shake; nothing should happen. Turn on Settings > Shake to undo, delete again and shake to bring it back.
 - Undo sheet: its Cancel button is red.
+
+## 1.1.1 (21)
+
+### What to Test
+
+Fixes to verify
+- Pasting recipe JSON: in Recipes, tap + > Paste recipe text and paste schema.org Recipe JSON (the kind ChatGPT writes). Steps, servings, time, nutrition and tips should come in properly instead of one step per JSON line.
 
 ## 1.2.0 (20)
 
