@@ -26,6 +26,7 @@ Also new in 1.2:
 • Sort your pantry by name, what expires first or what you added last.
 • Smarter barcode scans: the amount, servings, storage spot and category fill themselves in, and a 12-pack comes in as 12 cans.
 • Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
+• Hold it upright, too: your week or the numbers at a glance sit on the top half and your list on the bottom, so propped like a laptop, what you read stands up and what you tap lies within reach.
 • Recipe ideas and imports can use Private Cloud Compute for better results, and ideas now follow what you ask for with a different dish each time.
 
 ### New
@@ -36,6 +37,7 @@ Also new in 1.2:
 - **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
 - **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
 - **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
+- **Upright on iPhone Duo**: Unfolded and held upright, Sous Chef splits at the fold too. Recipes, Cook, Shopping and Pantry show the week or at a glance on the top half and the list on the bottom, so propped like a laptop, what you read stands up facing you and what you tap lies on the counter. A recipe or cook mode spans both halves, with the steps on top and the ingredients below.
 - **Smarter barcode scans**: Scanning a product fills in how much is in the package, ready to count as cans, by weight or as one box, with a stepper for more packages. It also suggests the pantry, fridge or freezer, shows servings, nutrition per serving and labels like vegan or gluten-free, and remembers how you named and counted a product last time.
 
 ### Improved

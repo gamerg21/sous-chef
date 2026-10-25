@@ -224,7 +224,7 @@ enum SampleKitchen {
                ["Cook the penne in well-salted boiling water for 10 minutes.", "Meanwhile, warm the olive oil and gently fry the sliced garlic for 1 minute.",
                 "Add the chopped tomatoes and simmer for 5 minutes.", "Toss with the pasta and top with grated Parmesan."])
         recipe("Thai green curry", photo: "curry", "Creamy, fragrant and ready in half an hour.", 30, 4, ["dinner", "spicy"], favorite: true,
-               ["2 tbsp Green curry paste", "1 can Coconut milk", "500 g Chicken", "1 bunch Thai basil", "1 Red chili"],
+               ["50 g Green curry paste", "1 can Coconut milk", "500 g Chicken", "1 bunch Thai basil", "1 Red chili"],
                ["Fry the curry paste in a splash of coconut milk for 2 minutes.", "Add the chicken and cook for 5 minutes.",
                 "Pour in the rest of the coconut milk and simmer for 15 minutes.", "Finish with Thai basil and sliced chili."])
         recipe("Fluffy pancakes", photo: "pancakes", "Weekend-morning classic.", 25, 4, ["breakfast", "sweet"],
@@ -266,10 +266,30 @@ enum SampleKitchen {
             (1, .dinner, "Penne all'arrabbiata", false), (2, .breakfast, "Fluffy pancakes", false),
             (3, .dinner, "Lemon herb roast", false), (4, .lunch, "Garden salad", false),
         ]
+        var planned = Set<String>()
         for (offset, slot, title, cooked) in plan {
             guard let recipe = recipes[title] else { continue }
             let meal = kitchen.plan(recipe, on: MealPlanner.day(day(offset)), slot: slot)
             if cooked { meal.cookedAt = day(offset) }
+            planned.insert(MealPlanner.day(day(offset)) + slot.rawValue)
+        }
+        // The rest of this week and next, so the planner looks lived in
+        // whichever day it is. Yesterday, today and tomorrow stay as above, with the empty
+        // slots the planner's UI tests drag meals into.
+        let nearby = Set((-1...1).map { MealPlanner.day(day($0)) })
+        let today = MealPlanner.day(.now)
+        let dinners = ["Penne all'arrabbiata", "Thai green curry", "Lemon herb roast"]
+        let thisWeek = MealPlanner.weekStart()
+        let days = MealPlanner.week(from: thisWeek) + MealPlanner.week(from: MealPlanner.day(thisWeek, adding: 7))
+        for (index, date) in days.enumerated() where !nearby.contains(date) {
+            var meals: [(MealSlot, String)] = [(.dinner, dinners[index % dinners.count])]
+            if index.isMultiple(of: 2) { meals.append((.breakfast, index.isMultiple(of: 4) ? "Fluffy pancakes" : "Spinach & parmesan omelette")) }
+            if index % 3 == 1 { meals.append((.lunch, "Garden salad")) }
+            for (slot, title) in meals where !planned.contains(date + slot.rawValue) {
+                guard let recipe = recipes[title] else { continue }
+                let meal = kitchen.plan(recipe, on: date, slot: slot)
+                if date < today { meal.cookedAt = MealPlanner.date(date) }
+            }
         }
         // This month's tally of what was used up and what went to waste.
         for (name, outcome, daysAgo) in [("Yogurt", PantryOutcome.Kind.used, 1), ("Bananas", .used, 3), ("Bread", .used, 4),

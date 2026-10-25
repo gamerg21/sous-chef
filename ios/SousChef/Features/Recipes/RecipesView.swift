@@ -15,8 +15,8 @@ struct RecipesView: View {
     @State private var importMode: RecipeImportView.Mode?
     @State private var sharedImport: SharedImport?
     @State private var path = NavigationPath()
-    /// Unfolded or on a wide screen, the library's numbers sit beside it.
-    @State private var twoPane = false
+    /// Unfolded or on a wide screen, the library's numbers sit beside or above it.
+    @State private var layout = PaneLayout.single
     private let navigator = AppNavigator.shared
 
     enum Filter: Hashable {
@@ -116,24 +116,29 @@ struct RecipesView: View {
     }
 
     var body: some View {
-        Group {
-            if twoPane {
-                TwoPane {
-                    RecipeInsightsPane(stats: stats, recipes: recipes, filter: $filter, period: $period) { recipe in
-                        path = NavigationPath([recipe])
-                    }
-                } secondary: {
-                    library
-                }
-            } else {
-                library
+        CompanionSplit(layout: layout, path: $path) { shownPath in
+            library(shownPath)
+        } companion: {
+            RecipeInsightsPane(stats: stats, recipes: recipes, filter: $filter, period: $period) { recipe in
+                path = NavigationPath([recipe])
             }
         }
-        .tracksTwoPaneWidth($twoPane)
+        .tracksPaneLayout($layout)
+        // Out here rather than on the library's root, which a change of pane
+        // layout rebuilds and which never appears while a recipe is pushed.
+        // Siri and Shortcuts open recipes through the navigator.
+        .task(id: navigator.recipeToOpen) {
+            guard let id = navigator.recipeToOpen else { return }
+            navigator.recipeToOpen = nil
+            if let recipe = recipes.first(where: { $0.uuid == id }) { path = NavigationPath([recipe]) }
+        }
+        // Recipes shared from other apps, one at a time, once nothing
+        // else is being added.
+        .task(id: navigator.sharedRecipes.first) { importNextShared() }
     }
 
-    private var library: some View {
-        NavigationStack(path: $path) {
+    private func library(_ shownPath: Binding<NavigationPath>) -> some View {
+        NavigationStack(path: shownPath) {
             let readiness = readiness
             let plans = readiness.plans
             let shown = visible(readiness)
@@ -145,7 +150,7 @@ struct RecipesView: View {
                         filterBar
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 14)], spacing: 14) {
                             ForEach(shown) { recipe in
-                                NavigationLink(value: recipe) {
+                                PaneLink(value: recipe) {
                                     RecipeCard(recipe: recipe, plan: plans[recipe.uuid])
                                 }
                                 .buttonStyle(.plain)
@@ -161,6 +166,8 @@ struct RecipesView: View {
                 }
             }
             .navigationTitle("Recipes")
+            // Inline on the lower half of an upright Duo, which is short.
+            .paneTitleDisplayMode(layout == .stacked)
             .searchable(text: $search, prompt: "Recipes, tags or ingredients")
             // A fresh view per recipe, so opening one from Siri over another
             // doesn't carry over its servings or cook state.
@@ -169,15 +176,6 @@ struct RecipesView: View {
                 SettingsToolbarButton(showSettings: $showSettings)
                 ToolbarItem(placement: .topBarTrailing) { addMenu }
             }
-            // Siri and Shortcuts open recipes through the navigator.
-            .task(id: navigator.recipeToOpen) {
-                guard let id = navigator.recipeToOpen else { return }
-                navigator.recipeToOpen = nil
-                if let recipe = recipes.first(where: { $0.uuid == id }) { path = NavigationPath([recipe]) }
-            }
-            // Recipes shared from other apps, one at a time, once nothing
-            // else is being added.
-            .task(id: navigator.sharedRecipes.first) { importNextShared() }
             .refreshable { await kitchen.server.syncNow() }
             .sheet(item: $creating, onDismiss: importNextShared) { session in
                 RecipeEditorView(draft: session.draft, recipe: nil) { saved in

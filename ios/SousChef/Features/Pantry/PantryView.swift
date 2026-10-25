@@ -17,8 +17,9 @@ struct PantryView: View {
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
     @AppStorage(PantrySort.storageKey) private var sort: PantrySort = .name
     private var navigator = AppNavigator.shared
-    /// Unfolded or on a wide screen, the kitchen's numbers sit beside the list.
-    @State private var twoPane = false
+    /// Unfolded or on a wide screen, the kitchen's numbers sit beside or above the list.
+    @State private var layout = PaneLayout.single
+    private var twoPane: Bool { layout.isSplit }
 
     enum LocationScope: Hashable {
         case all, location(StorageLocation)
@@ -38,18 +39,12 @@ struct PantryView: View {
     }
 
     var body: some View {
-        Group {
-            if twoPane {
-                TwoPane {
-                    PantryInsightsPane(items: items, outcomes: outcomes, windowDays: windowDays, scope: $scope) { editing = $0 }
-                } secondary: {
-                    list
-                }
-            } else {
-                list
-            }
+        CompanionSplit(layout: layout) {
+            list
+        } companion: {
+            PantryInsightsPane(items: items, outcomes: outcomes, windowDays: windowDays, scope: $scope) { editing = $0 }
         }
-        .tracksTwoPaneWidth($twoPane)
+        .tracksPaneLayout($layout)
     }
 
     private var list: some View {
@@ -95,6 +90,8 @@ struct PantryView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Pantry")
+            // Inline on the lower half of an upright Duo, which is short.
+            .paneTitleDisplayMode(layout == .stacked)
             .searchable(text: $search, prompt: "Search your kitchen")
             .searchScopes($scope, activation: .onSearchPresentation) {
                 Text("All").tag(LocationScope.all)
