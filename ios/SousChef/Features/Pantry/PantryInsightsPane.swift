@@ -6,6 +6,7 @@ import SwiftUI
 /// (or any wide screen): where things are, what's going off, what it adds up
 /// to, and what can be cooked from it.
 struct PantryInsightsPane: View {
+    @Environment(\.isStackedPane) private var isStacked
     let items: [PantryItem]
     let outcomes: [PantryOutcome]
     let windowDays: Int
@@ -21,15 +22,21 @@ struct PantryInsightsPane: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
+                    // Across the top, so its three places keep their names.
                     locationsCard
-                    HStack(spacing: 14) {
-                        useSoonTile
-                        readyTile
+                    PaneCards(columns: isStacked) {
+                        HStack(spacing: 14) {
+                            useSoonTile
+                            readyTile
+                        }
+                        // As tall as the taller tile, not the column beside it.
+                        .fixedSize(horizontal: false, vertical: true)
+                        freshnessCard
+                    } trailing: {
+                        if !expiring.isEmpty { useSoonCard }
+                        if categories.count > 1 { categoriesCard }
+                        monthCard
                     }
-                    freshnessCard
-                    if !expiring.isEmpty { useSoonCard }
-                    if categories.count > 1 { categoriesCard }
-                    monthCard
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
@@ -39,6 +46,7 @@ struct PantryInsightsPane: View {
             .background(Color(.systemGroupedBackground))
             .ignoresRailInset()
             .navigationTitle("At a Glance")
+            .paneTitleDisplayMode(isStacked)
         }
     }
 

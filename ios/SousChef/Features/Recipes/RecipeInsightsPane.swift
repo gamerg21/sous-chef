@@ -4,6 +4,7 @@ import SwiftUI
 /// any wide screen). Every number is a filter for the library: tap one to
 /// show just those recipes, and tap it again to show them all.
 struct RecipeInsightsPane: View {
+    @Environment(\.isStackedPane) private var isStacked
     let stats: RecipeStats
     let recipes: [Recipe]
     @Binding var filter: RecipesView.Filter
@@ -18,7 +19,7 @@ struct RecipeInsightsPane: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
+                PaneCards(columns: isStacked) {
                     readyCard
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
                         tile(stats.almost.count, "almost there", "cart", .orange, .almost)
@@ -26,6 +27,7 @@ struct RecipeInsightsPane: View {
                         tile(stats.quick.count, "ready in \(RecipeStats.quickMinutes) min", "timer", .blue, .quick)
                         tile(recipes.filter(\.favorited).count, "favorites", "heart.fill", .pink, .favorites)
                     }
+                } trailing: {
                     popularCard
                     if !stats.recent.isEmpty { newCard }
                     if !stats.tags.isEmpty { tagsCard }
@@ -38,6 +40,7 @@ struct RecipeInsightsPane: View {
             .background(Color(.systemGroupedBackground))
             .ignoresRailInset()
             .navigationTitle("At a Glance")
+            .paneTitleDisplayMode(isStacked)
         }
     }
 

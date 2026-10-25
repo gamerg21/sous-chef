@@ -24,8 +24,8 @@ struct CookModeView: View {
     /// alert anyone once Sous Chef is closed.
     @State private var timersCanAlert = true
     @Environment(\.scenePhase) private var scenePhase
-    /// Unfolded or on a wide screen, the ingredients stay beside the steps.
-    @State private var twoPane = false
+    /// Unfolded or on a wide screen, the ingredients stay beside or below the steps.
+    @State private var layout = PaneLayout.single
     /// How an iPhone Duo is being held.
     @State private var posture = FoldPosture.flat
 
@@ -33,8 +33,11 @@ struct CookModeView: View {
     /// the half lying on the counter holds the ingredients or the timers.
     /// Propped like a book, the phone keeps its two panes.
     private var onCounter: Bool { posture == .laptop }
+    /// Steps on the upper half, the rest on the lower: propped on the counter,
+    /// or held upright and open flat.
+    private var stepsAbove: Bool { onCounter || layout == .stacked }
     /// With the ingredients in a pane of their own, beside or below the steps.
-    private var ingredientsBeside: Bool { twoPane || onCounter }
+    private var ingredientsBeside: Bool { layout.isSplit || onCounter }
     private var steps: [RecipeStep] { recipe.steps }
     private var pageCount: Int { steps.count + 2 }
     /// Beside the steps, the ingredients no longer need a page of their own.
@@ -49,12 +52,12 @@ struct CookModeView: View {
     private var screen: some View {
         NavigationStack {
             Group {
-                if onCounter { counterLayout } else if twoPane { twoPaneLayout } else { pagedLayout }
+                if stepsAbove { counterLayout } else if layout.isSplit { twoPaneLayout } else { pagedLayout }
             }
-            .animation(.snappy, value: onCounter)
+            .animation(.snappy, value: stepsAbove)
             .animation(.bouncy, value: timers)
             .sensoryFeedback(.start, trigger: timers.count) { old, new in new > old }
-            .tracksTwoPaneWidth($twoPane)
+            .tracksPaneLayout($layout)
             .tracksFoldPosture($posture)
             .onChange(of: ingredientsBeside) { page = max(page, firstPage) }
             .navigationTitle(recipe.title)
@@ -159,7 +162,8 @@ struct CookModeView: View {
 
     /// Propped on the counter: the steps stand up facing the cook, and the
     /// half lying flat shows the timers in big type once one is running, the
-    /// ingredients until then, with the controls in easy reach.
+    /// ingredients until then, with the controls in easy reach. Held upright
+    /// and open flat, the halves split the same way.
     private var counterLayout: some View {
         TwoPane(axis: .vertical) {
             TabView(selection: $page) { stepPages }
@@ -242,7 +246,8 @@ struct CookModeView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Eyebrow("Step \(index + 1) of \(steps.count)")
                 Text(step.text)
-                    .font(.title.weight(.medium))
+                    // Larger on a half standing up facing the cook.
+                    .font((stepsAbove ? Font.largeTitle : .title).weight(.medium))
                 .fontDesign(.rounded)
                     .fixedSize(horizontal: false, vertical: true)
                 let found = CookTimer.durations(in: step.text)

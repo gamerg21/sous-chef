@@ -14,8 +14,9 @@ struct ShoppingView: View {
     @AppStorage(Kitchen.shakeToUndoKey) private var shakeToUndo = false
     @State private var error: String?
     @FocusState private var addFocused: Bool
-    /// Unfolded or on a wide screen, the list's numbers sit beside it.
-    @State private var twoPane = false
+    /// Unfolded or on a wide screen, the list's numbers sit beside or above it.
+    @State private var layout = PaneLayout.single
+    private var twoPane: Bool { layout.isSplit }
     /// The one aisle shown, picked from the pane beside the list.
     @State private var aisle: String?
 
@@ -31,18 +32,12 @@ struct ShoppingView: View {
     }
 
     var body: some View {
-        Group {
-            if twoPane {
-                TwoPane {
-                    ShoppingInsightsPane(items: items, aisle: $aisle)
-                } secondary: {
-                    list
-                }
-            } else {
-                list
-            }
+        CompanionSplit(layout: layout) {
+            list
+        } companion: {
+            ShoppingInsightsPane(items: items, aisle: $aisle)
         }
-        .tracksTwoPaneWidth($twoPane)
+        .tracksPaneLayout($layout)
         // Folded, there's no pane to clear the filter from.
         .onChange(of: twoPane) { if !twoPane { aisle = nil } }
         // An aisle that empties out stops filtering.
@@ -101,6 +96,8 @@ struct ShoppingView: View {
             .listStyle(.insetGrouped)
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Shopping")
+            // Inline on the lower half of an upright Duo, which is short.
+            .paneTitleDisplayMode(layout == .stacked)
             .animation(.snappy, value: items.map(\.checked))
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)

@@ -9,6 +9,7 @@ struct WeekPlannerPane: View {
     var onOpen: (Recipe) -> Void
 
     @Environment(Kitchen.self) private var kitchen
+    @Environment(\.isStackedPane) private var isStacked
     @State private var weekStart = MealPlanner.weekStart()
     @State private var planning: PlanSlotTarget?
     @State private var cooking: PlannedMeal?
@@ -30,6 +31,7 @@ struct WeekPlannerPane: View {
             .transition(.opacity)
             .ignoresRailInset()
             .navigationTitle(weekTitle)
+            .paneTitleDisplayMode(isStacked)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if weekStart != MealPlanner.weekStart() {
@@ -121,6 +123,8 @@ private struct WeekTimeline: View {
     @Query private var meals: [PlannedMeal]
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
+    /// The day scrolled to, starting on today when it's in the week shown.
+    @State private var shownDay: String?
 
     /// The meals with a well of their own; snacks show beneath the day.
     static let slots: [MealSlot] = [.breakfast, .lunch, .dinner]
@@ -135,6 +139,8 @@ private struct WeekTimeline: View {
         self.onAddShortages = onAddShortages
         let end = MealPlanner.day(weekStart, adding: 7)
         _meals = Query(filter: #Predicate<PlannedMeal> { $0.day >= weekStart && $0.day < end })
+        let today = MealPlanner.day(.now)
+        _shownDay = State(initialValue: MealPlanner.week(from: weekStart).contains(today) ? today : nil)
     }
 
     var body: some View {
@@ -151,6 +157,7 @@ private struct WeekTimeline: View {
                                onOpen: onOpen, onPlan: onPlan, onCook: onCook, onDropped: onDropped)
                     }
                 }
+                .scrollTargetLayout()
                 .background(alignment: .leading) {
                     // The timeline's spine, running behind the day badges.
                     Capsule()
@@ -164,6 +171,9 @@ private struct WeekTimeline: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        // On a short pane, such as the lower half of a Duo held upright,
+        // today may otherwise start out of sight under the tab bar.
+        .scrollPosition(id: $shownDay, anchor: .center)
     }
 }
 

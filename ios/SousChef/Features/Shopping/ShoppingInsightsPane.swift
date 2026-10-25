@@ -6,6 +6,7 @@ import SwiftUI
 /// show just that aisle), what the week's meals still need, and which
 /// recipes this list makes cookable.
 struct ShoppingInsightsPane: View {
+    @Environment(\.isStackedPane) private var isStacked
     let items: [ShoppingItem]
     /// The list's aisle filter; the aisle rows set it.
     @Binding var aisle: String?
@@ -22,9 +23,10 @@ struct ShoppingInsightsPane: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
+                PaneCards(columns: isStacked) {
                     tripCard
                     if !open.isEmpty { aislesCard }
+                } trailing: {
                     planCard
                     unlocksCard
                 }
@@ -36,6 +38,7 @@ struct ShoppingInsightsPane: View {
             .background(Color(.systemGroupedBackground))
             .ignoresRailInset()
             .navigationTitle("At a Glance")
+            .paneTitleDisplayMode(isStacked)
             .overlay(alignment: .top) {
                 if let toast {
                     Label(toast, systemImage: "checkmark.circle.fill")

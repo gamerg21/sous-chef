@@ -33,13 +33,18 @@ struct StatTile: View {
         }
     }
 
+    /// Narrow, as in two columns on the upright iPhone Duo's half, the icon
+    /// sits above the number so the title keeps its width.
+    @State private var narrow = false
+
     private var tile: some View {
-        HStack(spacing: 12) {
+        let stack = narrow ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
+        return stack {
             Image(systemName: systemImage)
-                .font(.title3.weight(.semibold))
+                .font((narrow ? Font.body : .title3).weight(.semibold))
                 .foregroundStyle(selected ? .white : tint)
-                .frame(width: 44, height: 44)
-                .background(selected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.14)), in: .rect(cornerRadius: 13, style: .continuous))
+                .frame(width: narrow ? 34 : 44, height: narrow ? 34 : 44)
+                .background(selected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.14)), in: .rect(cornerRadius: narrow ? 10 : 13, style: .continuous))
                 .symbolEffect(.bounce, value: selected)
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(value)")
@@ -51,10 +56,11 @@ struct StatTile: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
-            Spacer(minLength: 0)
+            if !narrow { Spacer(minLength: 0) }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: narrow ? .topLeading : .leading)
+        .onGeometryChange(for: Bool.self) { $0.size.width < 180 } action: { narrow = $0 }
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 22, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)

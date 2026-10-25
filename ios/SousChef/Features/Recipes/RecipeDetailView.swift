@@ -15,8 +15,7 @@ struct RecipeDetailView: View {
     @State private var planning = false
     @State private var confirmDelete = false
     @State private var toast: String?
-    /// Unfolded or on a wide screen, the recipe sits beside its ingredients and steps.
-    @State private var twoPane = false
+    @Environment(\.deeperScreensStack) private var deeperScreensStack
 
     private var plan: CookingPlan {
         CookingPlanner.plan(ingredients: recipe.ingredients, stock: pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) })
@@ -34,10 +33,21 @@ struct RecipeDetailView: View {
 
     @ViewBuilder private var screen: some View {
         let plan = plan
+        // Unfolded or on a wide screen, the recipe sits beside or above its
+        // ingredients and steps.
         Group {
-            if twoPane { twoPaneLayout(plan) } else { singleColumn(plan) }
+            if deeperScreensStack {
+                stackedLayout(plan)
+            } else {
+                PaneLayoutReader { layout in
+                    switch layout {
+                    case .single: singleColumn(plan)
+                    case .sideBySide: twoPaneLayout(plan)
+                    case .stacked: stackedLayout(plan)
+                    }
+                }
+            }
         }
-        .tracksTwoPaneWidth($twoPane)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
         .overlay(alignment: .top) {
@@ -146,6 +156,36 @@ struct RecipeDetailView: View {
                 }
                 .padding()
             }
+        }
+    }
+
+    /// Upright on an unfolded iPhone Duo: the recipe and what the pantry has
+    /// for it on the upper half, and the ingredients and steps on the lower,
+    /// with Start cooking in reach at the bottom.
+    private func stackedLayout(_ plan: CookingPlan) -> some View {
+        TwoPane(axis: .vertical) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(alignment: .top, spacing: 16) {
+                        RecipeImage(data: recipe.photo, maxPixel: 1200)
+                            .frame(width: 220, height: 220)
+                            .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                        header
+                    }
+                    readiness(plan)
+                    details
+                }
+                .padding()
+            }
+        } secondary: {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ingredients(plan)
+                    steps
+                }
+                .padding()
+            }
+            .safeAreaInset(edge: .bottom) { startCooking }
         }
     }
 
