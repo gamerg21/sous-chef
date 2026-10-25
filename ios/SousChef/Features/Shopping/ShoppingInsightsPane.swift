@@ -77,9 +77,9 @@ struct ShoppingInsightsPane: View {
                 .animation(.smooth, value: fraction)
                 .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    AdaptiveStack(alignment: .firstTextBaseline, spacing: 4, verticalSpacing: 0) {
                         Text("\(done)")
-                            .font(.system(size: 40, weight: .bold, design: .rounded).monospacedDigit())
+                            .statNumber(size: 40)
                             .contentTransition(.numericText(value: Double(done)))
                         Text("of \(total) in the cart")
                             .font(.headline)
@@ -159,10 +159,16 @@ struct ShoppingInsightsPane: View {
         let planned = meals.filter { $0.day >= weekStart && $0.day < MealPlanner.day(weekStart, adding: 7) && !$0.isCooked }.count
         return InsightCard {
             Eyebrow("This week's meals", systemImage: "calendar")
-            HStack(spacing: 14) {
-                metric(planned, planned == 1 ? "meal to cook" : "meals to cook")
-                Divider().frame(height: 40)
-                metric(forPlan, forPlan == 1 ? "item for them" : "items for them")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    metric(planned, planned == 1 ? "meal to cook" : "meals to cook")
+                    Divider().frame(height: 40)
+                    metric(forPlan, forPlan == 1 ? "item for them" : "items for them")
+                }
+                VStack(spacing: 10) {
+                    metric(planned, planned == 1 ? "meal to cook" : "meals to cook")
+                    metric(forPlan, forPlan == 1 ? "item for them" : "items for them")
+                }
             }
             if notListed.isEmpty {
                 Label(planned == 0 ? "Plan meals in Cook to shop for them here." : "Your list covers the week.", systemImage: planned == 0 ? "calendar.badge.plus" : "checkmark.circle.fill")
@@ -202,9 +208,9 @@ struct ShoppingInsightsPane: View {
         let unlocked = unlocked
         return InsightCard {
             Eyebrow("This list unlocks", systemImage: "lock.open")
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            AdaptiveStack(alignment: .firstTextBaseline, spacing: 6, verticalSpacing: 0) {
                 Text("\(unlocked.count)")
-                    .font(.system(size: 32, weight: .bold, design: .rounded).monospacedDigit())
+                    .statNumber(size: 32)
                     .contentTransition(.numericText(value: Double(unlocked.count)))
                 Text(unlocked.count == 1 ? "more recipe to cook" : "more recipes to cook")
                     .font(.headline)
@@ -217,7 +223,7 @@ struct ShoppingInsightsPane: View {
                             RecipeImage(data: recipe.photo, maxPixel: 200)
                                 .frame(width: 34, height: 34)
                                 .clipShape(.rect(cornerRadius: 9, style: .continuous))
-                            Text(recipe.title).font(.subheadline.weight(.medium)).lineLimit(1)
+                            Text(recipe.title).font(.subheadline.weight(.medium)).lineLimit(3)
                             Spacer(minLength: 0)
                         }
                     }
@@ -229,7 +235,7 @@ struct ShoppingInsightsPane: View {
     private func metric(_ value: Int, _ title: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("\(value)")
-                .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
+                .statNumber(size: 28)
                 .contentTransition(.numericText(value: Double(value)))
             Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
         }

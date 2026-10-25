@@ -4,6 +4,7 @@ import SwiftUI
 struct PantryView: View {
     @Binding var showSettings: Bool
     @Environment(Kitchen.self) private var kitchen
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Query(sort: \PantryItem.name) private var items: [PantryItem]
     @Query private var outcomes: [PantryOutcome]
     @State private var search = ""
@@ -19,6 +20,8 @@ struct PantryView: View {
     private var navigator = AppNavigator.shared
     /// Unfolded or on a wide screen, the kitchen's numbers sit beside or above the list.
     @State private var layout = PaneLayout.single
+    /// The narrowest a row's name gets before its quantity moves below it.
+    @ScaledMetric(relativeTo: .body) private var rowNameWidth: CGFloat = 120
     private var twoPane: Bool { layout.isSplit }
 
     enum LocationScope: Hashable {
@@ -148,7 +151,8 @@ struct PantryView: View {
 
     private var summary: some View {
         Section {
-            HStack(spacing: 12) {
+            // Stacked once large text won't fit three across.
+            AdaptiveStack(spacing: 12) {
                 ForEach(StorageLocation.allCases) { location in
                     let count = items.filter { $0.location == location }.count
                     Button {
@@ -181,20 +185,26 @@ struct PantryView: View {
 
     private func row(_ item: PantryItem) -> some View {
         Button { editing = item } label: {
-            HStack(spacing: 12) {
+            // At accessibility sizes the row grows tall, so the badge sits
+            // by the name instead of floating in the middle.
+            HStack(alignment: typeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
                 IconBadge(systemImage: CategoryStyle.symbol(for: item.category, name: item.name), tint: item.quantity <= 0 ? .secondary : .brand)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.name).font(.body.weight(.medium)).foregroundStyle(.primary)
-                    HStack(spacing: 8) {
-                        if let detail = item.brand ?? item.category { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
-                        ExpiryLabel(date: item.quantity > 0 ? item.expiresOn : nil)
+                // With large text in a narrow pane, the quantity drops below
+                // and the details stack, rather than squeezing the name.
+                TrailingDetailLayout(minimumLeadingWidth: rowNameWidth, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.name).font(.body.weight(.medium)).foregroundStyle(.primary)
+                        AdaptiveStack(spacing: 8) {
+                            if let detail = item.brand ?? item.category { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                            ExpiryLabel(date: item.quantity > 0 ? item.expiresOn : nil)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(item.quantity <= 0 ? "Out" : Units.amount(item.quantity, item.unit))
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(item.quantity <= 0 ? .red : .secondary)
+                        .contentTransition(.numericText())
                 }
-                Spacer()
-                Text(item.quantity <= 0 ? "Out" : Units.amount(item.quantity, item.unit))
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(item.quantity <= 0 ? .red : .secondary)
-                    .contentTransition(.numericText())
             }
             .contentShape(.rect)
         }

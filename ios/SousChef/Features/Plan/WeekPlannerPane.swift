@@ -205,7 +205,7 @@ private struct WeekSummaryCard: View {
                         .foregroundStyle(.secondary)
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text("\(planned.count)")
-                            .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                            .statNumber(size: 34)
                             .contentTransition(.numericText(value: Double(planned.count)))
                         Text("of \(total) meals")
                             .font(.subheadline.weight(.medium))
