@@ -20,6 +20,17 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.0 (29)
+
+### What to Test
+
+What to test (please focus here)
+- iPhone Duo held upright: unfold and hold it portrait. Recipes, Cook, Shopping and Pantry should show the week or At a Glance on the top half and the list on the bottom. Open a recipe and start cooking; both should fill the whole screen with the steps on top. Prop it like a laptop and try it on the counter.
+
+Fixes to verify
+- Opening and closing a recipe upright should slide smoothly, with no blank half and no jump in the header photo.
+- Scrolling the bottom half should shrink the tab bar, just like the top half.
+
 ## 1.2.0 (28)
 
 ### What to Test
