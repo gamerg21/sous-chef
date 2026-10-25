@@ -15,8 +15,6 @@ struct PantryInsightsPane: View {
     var onSelect: (PantryItem) -> Void
 
     @Query private var recipes: [Recipe]
-    /// The narrowest a food's name gets before its days left move below it.
-    @ScaledMetric(relativeTo: .body) private var rowNameWidth: CGFloat = 120
     @ScaledMetric(relativeTo: .subheadline) private var legendWidth: CGFloat = 120
     @ScaledMetric(relativeTo: .caption) private var categoryRowHeight: CGFloat = 30
 
@@ -246,7 +244,7 @@ struct PantryInsightsPane: View {
                     } label: {
                         HStack(spacing: 12) {
                             DaysLeftDial(daysLeft: food.daysLeft, window: windowDays)
-                            TrailingDetailLayout(minimumLeadingWidth: rowNameWidth, spacing: 2) {
+                            TrailingDetailRow(spacing: 2) {
                                 Text(food.name)
                                     .font(.body.weight(.medium))
                                     .foregroundStyle(.primary)

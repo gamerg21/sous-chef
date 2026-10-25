@@ -7,6 +7,7 @@ import SwiftUI
 /// recipes this list makes cookable.
 struct ShoppingInsightsPane: View {
     @Environment(\.isStackedPane) private var isStacked
+    @Environment(\.dynamicTypeSize) private var typeSize
     let items: [ShoppingItem]
     /// The list's aisle filter; the aisle rows set it.
     @Binding var aisle: String?
@@ -60,8 +61,11 @@ struct ShoppingInsightsPane: View {
         let total = items.count
         let done = inCart.count
         let fraction = total == 0 ? 0 : Double(done) / Double(total)
+        // At accessibility sizes the ring sits above the numbers so they keep
+        // the card's width.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(spacing: 16))
         return InsightCard {
-            HStack(spacing: 16) {
+            layout {
                 ZStack {
                     Circle().stroke(Color.brand.opacity(0.15), lineWidth: 10)
                     Circle()

@@ -102,7 +102,7 @@ struct RecipeEditorView: View {
                 Section {
                     ForEach($draft.ingredients) { $ingredient in
                         Button { editingIngredient = ingredient } label: {
-                            HStack {
+                            TrailingDetailRow {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(ingredient.name).foregroundStyle(.primary)
                                     if let label = ingredient.mappingLabel?.nilIfEmpty, normalizeName(label) != normalizeName(ingredient.name) {
@@ -111,7 +111,7 @@ struct RecipeEditorView: View {
                                         Text(note).font(.caption).foregroundStyle(.secondary)
                                     }
                                 }
-                                Spacer()
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 Text(Units.amount(ingredient.quantity, ingredient.unit)).foregroundStyle(.secondary).monospacedDigit()
                             }
                             .contentShape(.rect)
@@ -163,9 +163,9 @@ struct RecipeEditorView: View {
                         }
                     }
                 } header: {
-                    HStack {
+                    AdaptiveStack(verticalSpacing: 4) {
                         Eyebrow("Steps · \(draft.steps.count)")
-                        Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         if draft.steps.count > 1 || reorderingSteps {
                             Button(reorderingSteps ? "Done" : "Reorder") {
                                 focus = nil

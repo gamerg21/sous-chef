@@ -151,9 +151,9 @@ struct CommunityRecipeView: View {
                 Card {
                     Eyebrow("Ingredients", systemImage: "list.bullet")
                     ForEach(Array(recipe.ingredients.enumerated()), id: \.offset) { _, ingredient in
-                        HStack {
+                        TrailingDetailRow {
                             Text(ingredient.name)
-                            Spacer()
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             Text(Units.amount(ingredient.quantity, ingredient.unit)).foregroundStyle(.secondary).monospacedDigit()
                         }
                     }
@@ -421,6 +421,7 @@ struct PublishRecipeSheet: View {
             .buttonStyle(.glassProminent)
         }
         .padding(28)
+        .scrollsWhenTall()
         .sensoryFeedback(.success, trigger: outcome)
     }
 

@@ -6,8 +6,6 @@ import SwiftUI
 struct RecipeInsightsPane: View {
     @Environment(\.isStackedPane) private var isStacked
     let stats: RecipeStats
-    /// The narrowest a recipe's title gets before its count moves below it.
-    @ScaledMetric(relativeTo: .body) private var rowTitleWidth: CGFloat = 120
     let recipes: [Recipe]
     @Binding var filter: RecipesView.Filter
     @Binding var period: RecipeStats.Period
@@ -143,7 +141,7 @@ struct RecipeInsightsPane: View {
                                 RecipeImage(data: item.0.photo, maxPixel: 200)
                                     .frame(width: 38, height: 38)
                                     .clipShape(.rect(cornerRadius: 10, style: .continuous))
-                                TrailingDetailLayout(minimumLeadingWidth: rowTitleWidth, spacing: 2) {
+                                TrailingDetailRow(spacing: 2) {
                                     Text(item.0.title)
                                         .font(.body.weight(.medium))
                                         .foregroundStyle(.primary)

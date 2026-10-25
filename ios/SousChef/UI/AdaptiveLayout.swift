@@ -71,6 +71,25 @@ struct TrailingDetailLayout: Layout {
     }
 }
 
+/// A row's main content and a short trailing detail, as in
+/// `TrailingDetailLayout`, with the main content's minimum width given at the
+/// default text size and scaled with it. Takes exactly two views.
+struct TrailingDetailRow<Content: View>: View {
+    var spacing: CGFloat
+    var content: Content
+    @ScaledMetric private var minimumLeadingWidth: CGFloat
+
+    init(minimumLeadingWidth: CGFloat = 120, spacing: CGFloat = 8, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+        _minimumLeadingWidth = ScaledMetric(wrappedValue: minimumLeadingWidth, relativeTo: .body)
+    }
+
+    var body: some View {
+        TrailingDetailLayout(minimumLeadingWidth: minimumLeadingWidth, spacing: spacing) { content }
+    }
+}
+
 /// A big rounded headline number that grows with Dynamic Type, starting from
 /// `size` at the default text size.
 private struct StatNumber: ViewModifier {
@@ -88,5 +107,17 @@ private struct StatNumber: ViewModifier {
 extension View {
     func statNumber(size: CGFloat) -> some View {
         modifier(StatNumber(size: size))
+    }
+
+    /// Fills the space as laid out while it fits, and scrolls once larger
+    /// text makes it taller, so buttons at the bottom stay reachable.
+    func scrollsWhenTall() -> some View {
+        GeometryReader { proxy in
+            ScrollView {
+                // At least the screen's height, so spacers still spread it out.
+                self.frame(minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
     }
 }

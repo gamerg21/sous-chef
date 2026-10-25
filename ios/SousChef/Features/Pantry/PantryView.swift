@@ -20,8 +20,6 @@ struct PantryView: View {
     private var navigator = AppNavigator.shared
     /// Unfolded or on a wide screen, the kitchen's numbers sit beside or above the list.
     @State private var layout = PaneLayout.single
-    /// The narrowest a row's name gets before its quantity moves below it.
-    @ScaledMetric(relativeTo: .body) private var rowNameWidth: CGFloat = 120
     private var twoPane: Bool { layout.isSplit }
 
     enum LocationScope: Hashable {
@@ -191,7 +189,7 @@ struct PantryView: View {
                 IconBadge(systemImage: CategoryStyle.symbol(for: item.category, name: item.name), tint: item.quantity <= 0 ? .secondary : .brand)
                 // With large text in a narrow pane, the quantity drops below
                 // and the details stack, rather than squeezing the name.
-                TrailingDetailLayout(minimumLeadingWidth: rowNameWidth, spacing: 4) {
+                TrailingDetailRow(spacing: 4) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(item.name).font(.body.weight(.medium)).foregroundStyle(.primary)
                         AdaptiveStack(spacing: 8) {
