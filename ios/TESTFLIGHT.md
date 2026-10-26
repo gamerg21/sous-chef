@@ -20,6 +20,17 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.2.1 (30)
+
+### What to Test
+
+What to test (please focus here)
+- Larger text: turn up Larger Text in Settings > Accessibility > Display & Text Size, then browse Pantry, Shopping, Recipes and Cook, folded and unfolded.
+
+Fixes to verify
+- Rows, tiles and At a Glance cards rearrange to fit instead of breaking words letter by letter.
+- At the largest sizes, the welcome screens scroll so Start cooking stays reachable.
+
 ## 1.2.0 (29)
 
 ### What to Test
