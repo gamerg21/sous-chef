@@ -19,6 +19,7 @@ struct ShoppingView: View {
     private var twoPane: Bool { layout.isSplit }
     /// The one aisle shown, picked from the pane beside the list.
     @State private var aisle: String?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var open: [ShoppingItem] { items.filter { !$0.checked } }
     private var inCart: [ShoppingItem] { items.filter(\.checked) }
@@ -51,10 +52,10 @@ struct ShoppingView: View {
             List {
                 if let aisle {
                     Section {
-                        HStack {
+                        AdaptiveStack(verticalSpacing: 6) {
                             Label("Showing \(aisle)", systemImage: CategoryStyle.symbol(for: aisle, name: ""))
                                 .font(.subheadline.weight(.medium))
-                            Spacer()
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             Button("Show all") { withAnimation(.snappy) { self.aisle = nil } }
                                 .font(.subheadline.weight(.semibold))
                         }
@@ -155,7 +156,8 @@ struct ShoppingView: View {
     }
 
     private func row(_ item: ShoppingItem) -> some View {
-        HStack(spacing: 12) {
+        // Tall rows at accessibility sizes keep the checkbox by the name.
+        HStack(alignment: typeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
             Button {
                 withAnimation(.snappy) { kitchen.toggle(item) }
             } label: {
@@ -167,18 +169,20 @@ struct ShoppingView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(item.checked ? "Uncheck \(item.name)" : "Check \(item.name)")
             Button { editing = item } label: {
-                HStack {
+                // With large text the amount drops below rather than
+                // squeezing the name.
+                TrailingDetailRow {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name)
                             .strikethrough(item.checked)
                             .foregroundStyle(item.checked ? .secondary : .primary)
                         if let recipe = recipeTitle(for: item) {
-                            Label(recipe, systemImage: "book.pages").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            Label(recipe, systemImage: "book.pages").font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         } else if let note = item.note?.nilIfEmpty {
                             Text(note).font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     Text(Units.amount(item.quantity, item.unit)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
                 }
             }
@@ -311,21 +315,22 @@ struct StockPurchasesView: View {
                     Section {
                         HStack(spacing: 12) {
                             IconBadge(systemImage: purchase.location.symbol)
-                            Text(purchase.item.name)
-                                .font(.headline)
-                                .lineLimit(2)
-                            Spacer(minLength: 8)
-                            HStack(spacing: 8) {
-                                TextField("0", value: $purchase.quantity, format: .number.precision(.fractionLength(0...3)))
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .font(.system(.title3, design: .rounded, weight: .semibold).monospacedDigit())
-                                    .fixedSize()
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 5)
-                                    .background(.fill.tertiary, in: .capsule)
-                                    .accessibilityLabel("Amount of \(purchase.item.name)")
-                                UnitMenu(unit: $purchase.unit)
+                            TrailingDetailRow(minimumLeadingWidth: 110) {
+                                Text(purchase.item.name)
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                HStack(spacing: 8) {
+                                    TextField("0", value: $purchase.quantity, format: .number.precision(.fractionLength(0...3)))
+                                        .keyboardType(.decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .font(.system(.title3, design: .rounded, weight: .semibold).monospacedDigit())
+                                        .fixedSize()
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 5)
+                                        .background(.fill.tertiary, in: .capsule)
+                                        .accessibilityLabel("Amount of \(purchase.item.name)")
+                                    UnitMenu(unit: $purchase.unit)
+                                }
                             }
                         }
                         Picker("Store in", selection: $purchase.location) {

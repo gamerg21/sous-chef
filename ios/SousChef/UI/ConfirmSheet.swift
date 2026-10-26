@@ -24,48 +24,52 @@ struct ConfirmSheet: View {
     private var cancelTint: Color { tint == .red ? .secondary : .red }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: systemImage)
-                .font(.system(size: 26, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 60, height: 60)
-                .background(tint.opacity(0.15), in: Circle())
-                .accessibilityHidden(true)
-            VStack(spacing: 8) {
-                Text(title)
-                    .font(.title3.bold())
-                Text(message)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            VStack(spacing: 10) {
-                Button {
-                    dismiss()
-                    onConfirm()
-                } label: {
-                    Text(action).font(.headline).frame(maxWidth: .infinity, minHeight: 32)
+        // Scrolls when large text makes it taller than the screen.
+        ScrollView {
+            VStack(spacing: 20) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 60, height: 60)
+                    .background(tint.opacity(0.15), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    Text(title)
+                        .font(.title3.bold())
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(tint)
-                .accessibilityIdentifier(actionIdentifier ?? "")
-                if let cancel {
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 10) {
                     Button {
                         dismiss()
+                        onConfirm()
                     } label: {
-                        Text(cancel).font(.headline).foregroundStyle(cancelTint == .red ? Color.red : Color.primary).frame(maxWidth: .infinity, minHeight: 32)
+                        Text(action).font(.headline).frame(maxWidth: .infinity, minHeight: 32)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(cancelTint)
+                    .buttonStyle(.borderedProminent)
+                    .tint(tint)
+                    .accessibilityIdentifier(actionIdentifier ?? "")
+                    if let cancel {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text(cancel).font(.headline).foregroundStyle(cancelTint == .red ? Color.red : Color.primary).frame(maxWidth: .infinity, minHeight: 32)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(cancelTint)
+                    }
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.top, 32)
+            .padding(.bottom, 12)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 32)
-        .padding(.bottom, 12)
-        .fixedSize(horizontal: false, vertical: true)
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        .scrollBounceBehavior(.basedOnSize)
         .presentationDetents([.height(height)])
         .presentationDragIndicator(.visible)
     }
