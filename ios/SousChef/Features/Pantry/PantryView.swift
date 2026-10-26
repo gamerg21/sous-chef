@@ -15,7 +15,11 @@ struct PantryView: View {
     /// An item past its date that "Use" would run out: ask what happened.
     @State private var askingOutcome: PantryItem?
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
+    @AppStorage(PantrySort.storageKey) private var sort: PantrySort = .name
     private var navigator = AppNavigator.shared
+    /// Unfolded or on a wide screen, the kitchen's numbers sit beside or above the list.
+    @State private var layout = PaneLayout.single
+    private var twoPane: Bool { layout.isSplit }
 
     enum LocationScope: Hashable {
         case all, location(StorageLocation)
@@ -35,13 +39,23 @@ struct PantryView: View {
     }
 
     var body: some View {
+        CompanionSplit(layout: layout) {
+            list
+        } companion: {
+            PantryInsightsPane(items: items, outcomes: outcomes, windowDays: windowDays, scope: $scope) { editing = $0 }
+        }
+        .tracksPaneLayout($layout)
+    }
+
+    private var list: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
                     if items.isEmpty {
                         emptyState
                     } else {
-                        summary
+                        // Beside the at-a-glance pane, its location bar does this.
+                        if !twoPane { summary }
                         if !expiringSoon.isEmpty && search.isEmpty {
                             Section {
                                 ForEach(expiringSoon) { row($0) }
@@ -49,9 +63,9 @@ struct PantryView: View {
                                 Eyebrow("Use soon", systemImage: "clock.badge.exclamationmark")
                             }
                         }
-                        if search.isEmpty { outcomeTally }
+                        if search.isEmpty && !twoPane { outcomeTally }
                         ForEach(StorageLocation.allCases) { location in
-                            let group = filtered.filter { $0.location == location }
+                            let group = sort.sorted(filtered.filter { $0.location == location })
                             if !group.isEmpty {
                                 Section {
                                     ForEach(group) { row($0) }
@@ -76,6 +90,8 @@ struct PantryView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Pantry")
+            // Inline on the lower half of an upright Duo, which is short.
+            .paneTitleDisplayMode(layout == .stacked)
             .searchable(text: $search, prompt: "Search your kitchen")
             .searchScopes($scope, activation: .onSearchPresentation) {
                 Text("All").tag(LocationScope.all)
@@ -84,6 +100,12 @@ struct PantryView: View {
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort by", selection: $sort.animation()) {
+                            ForEach(PantrySort.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
+                        }
+                    } label: { Label("Sort", systemImage: "arrow.up.arrow.down") }
+                        .accessibilityIdentifier("sortPantry")
                     Button { scanning = true } label: { Label("Scan barcode", systemImage: "barcode.viewfinder") }
                     Button { adding = true } label: { Label("Add item", systemImage: "plus") }
                         .accessibilityIdentifier("addPantryItem")

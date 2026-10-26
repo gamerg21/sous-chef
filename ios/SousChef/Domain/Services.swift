@@ -68,7 +68,7 @@ enum OpenFoodFacts {
     static func lookup(_ raw: String) async throws -> Result {
         let code = raw.filter(\.isNumber)
         guard (8...14).contains(code.count) else { throw LookupError.invalid }
-        guard let url = URL(string: "https://world.openfoodfacts.org/api/v2/product/\(code).json") else { throw LookupError.invalid }
+        guard let url = URL(string: "https://world.openfoodfacts.org/api/v2/product/\(code).json?fields=\(ProductParser.fields)") else { throw LookupError.invalid }
         var request = URLRequest(url: url, timeoutInterval: 8)
         request.setValue("SousChef-iOS/\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1") (https://github.com/gamerg21/sous-chef)", forHTTPHeaderField: "User-Agent")
         let (data, response): (Data, URLResponse)
@@ -77,34 +77,13 @@ enum OpenFoodFacts {
         if status == 404 { throw LookupError.notFound }
         guard status == 200, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw LookupError.failed }
         guard (json["status"] as? Int) == 1, let product = json["product"] as? [String: Any],
-              let name = (product["product_name"] as? String)?.nilIfEmpty else { throw LookupError.notFound }
-        let tags = product["categories_tags"] as? [String]
-        let nutrition = (product["nutriments"] as? [String: Any]).map(Nutrition.init(json:))
-        let facts = FoodFacts(brand: (product["brands"] as? String)?.nilIfEmpty, categoriesTags: tags,
-                              ingredientsText: (product["ingredients_text"] as? String)?.nilIfEmpty,
-                              allergensTags: product["allergens_tags"] as? [String],
-                              nutriscoreGrade: product["nutriscore_grade"] as? String,
-                              novaGroup: product["nova_group"] as? Int,
-                              ecoscoreGrade: product["ecoscore_grade"] as? String,
-                              imageFrontUrl: product["image_front_url"] as? String,
-                              nutrition: nutrition?.isEmpty == false ? nutrition : nil)
-        return Result(name: name, category: inferCategory(tags), facts: facts,
+              let parsed = ProductParser.parse(product) else { throw LookupError.notFound }
+        return Result(name: parsed.name, category: parsed.category, facts: parsed.facts,
                       attributionURL: URL(string: "https://world.openfoodfacts.org/product/\(code)")!)
     }
 
     /// Mirrors the server's `inferCategory`.
-    static func inferCategory(_ tags: [String]?) -> String? {
-        guard let tags, !tags.isEmpty else { return nil }
-        let joined = tags.joined(separator: " ").lowercased()
-        let rules: [(String, String)] = [
-            ("fruit|vegetable|produce|salad", "Produce"), ("dairies|dairy|milk|cheese|yogurt|butter|cream", "Dairy"),
-            ("meat|poultry|seafood|fish|beef|pork|chicken", "Meat & Seafood"), ("frozen", "Frozen"), ("bread|bakery|baked|pastr", "Bakery"),
-            ("beverage|drink|water|juice|soda|coffee|tea", "Beverages"), ("canned|preserved|tinned", "Canned Goods"), ("rice|grain|cereal", "Grains & Rice"),
-            ("pasta|noodle", "Pasta & Noodles"), ("spice|seasoning|herb", "Spices & Seasonings"),
-            ("condiment|sauce|ketchup|mustard|mayonnaise|dressing", "Condiments & Sauces"), ("snack|chip|cracker|candy|chocolate|biscuit|cookie", "Snacks"),
-        ]
-        return rules.first { joined.range(of: $0.0, options: .regularExpression) != nil }?.1 ?? "Other"
-    }
+    static func inferCategory(_ tags: [String]?) -> String? { ProductParser.category(tags) }
 }
 
 /// Browses the optional Sous Chef recipe community. Through a connected

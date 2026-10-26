@@ -1,0 +1,93 @@
+{
+ "code": "0894700010137",
+ "product": {
+  "allergens_tags": [
+   "en:milk",
+   "en:cultured nonfat milk"
+  ],
+  "brands": "chobani",
+  "categories_tags": [
+   "en:dairies",
+   "en:fermented-foods",
+   "en:fermented-milk-products",
+   "en:desserts",
+   "en:dairy-desserts",
+   "en:fermented-dairy-desserts",
+   "en:yogurts",
+   "en:greek-style-yogurts"
+  ],
+  "code": "0894700010137",
+  "ecoscore_grade": "a",
+  "generic_name": "Greek Yogurt",
+  "generic_name_en": "Greek Yogurt",
+  "image_front_small_url": "https://images.openfoodfacts.org/images/products/089/470/001/0137/front_en.838.200.jpg",
+  "image_front_url": "https://images.openfoodfacts.org/images/products/089/470/001/0137/front_en.838.400.jpg",
+  "image_ingredients_url": "https://images.openfoodfacts.org/images/products/089/470/001/0137/ingredients_en.29.400.jpg",
+  "image_nutrition_url": "https://images.openfoodfacts.org/images/products/089/470/001/0137/nutrition_en.840.400.jpg",
+  "ingredients_analysis_tags": [
+   "en:palm-oil-free",
+   "en:non-vegan",
+   "en:vegetarian"
+  ],
+  "ingredients_text": "_cultured nonfat milk_, S. Thermophilus, L. Bulgaricus, L. Acidophilus, Bifidus, L. Casei, L. Rhamnosus",
+  "ingredients_text_en": "_cultured nonfat milk_, S. Thermophilus, L. Bulgaricus, L. Acidophilus, Bifidus, L. Casei, L. Rhamnosus",
+  "labels_tags": [
+   "en:fair-trade",
+   "en:no-gluten",
+   "en:no-added-sugar"
+  ],
+  "nova_group": 1,
+  "nutriments": {
+   "carbohydrates_100g": 4,
+   "carbohydrates_serving": 6.8,
+   "energy-kcal_100g": 52.9411764705882,
+   "energy-kcal_serving": 90,
+   "energy-kj_100g": 229.5,
+   "energy-kj_serving": 390,
+   "energy_100g": 229.5,
+   "energy_serving": 390,
+   "fat_100g": 0,
+   "fat_serving": 0,
+   "fiber_100g": 0,
+   "fiber_serving": 0,
+   "proteins_100g": 9.5,
+   "proteins_serving": 16.1,
+   "salt_100g": 0.0875,
+   "salt_serving": 0.149,
+   "sodium_100g": 0.035,
+   "sodium_serving": 0.0595,
+   "sugars_100g": 0,
+   "sugars_serving": 0
+  },
+  "nutriscore_grade": "a",
+  "nutrition_data": "on",
+  "nutrition_data_per": "100g",
+  "nutrition_data_prepared_per": "100g",
+  "packagings": [
+   {
+    "food_contact": 1,
+    "material": "en:pet-1-polyethylene-terephthalate",
+    "shape": "en:lid"
+   },
+   {
+    "food_contact": 1,
+    "material": "en:pp-5-polypropylene",
+    "shape": "en:pot"
+   },
+   {
+    "food_contact": 0,
+    "shape": "en:film"
+   }
+  ],
+  "product_name": "Greek Yogurt Nonfat Plain",
+  "product_name_en": "Greek Yogurt Nonfat Plain",
+  "product_quantity": 907.18474,
+  "product_quantity_unit": "g",
+  "quantity": "32 OZ",
+  "serving_quantity": 170,
+  "serving_quantity_unit": "g",
+  "serving_size": "1 serving (170 g)",
+  "traces_tags": []
+ },
+ "status": 1
+}

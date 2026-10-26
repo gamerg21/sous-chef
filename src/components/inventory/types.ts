@@ -1,3 +1,5 @@
+import type { ProductFacts } from '@/lib/food-product'
+
 export type KitchenLocationId = 'pantry' | 'fridge' | 'freezer'
 
 export const INVENTORY_CATEGORY_OPTIONS = [
@@ -38,17 +40,8 @@ export interface NutritionPer100g {
   fiberG?: number
 }
 
-export interface FoodFacts {
-  brand?: string
-  categoriesTags?: string[]
-  ingredientsText?: string
-  allergensTags?: string[]
-  nutriscoreGrade?: string
-  novaGroup?: number
-  ecoscoreGrade?: string
-  imageFrontUrl?: string
-  nutritionPer100g?: NutritionPer100g
-}
+/** Product facts from a barcode lookup; see `src/lib/food-product.ts`. */
+export type FoodFacts = ProductFacts
 
 export interface InventoryItem {
   id: string
@@ -64,6 +57,8 @@ export interface InventoryItem {
   /** Hand-entered nutrition per 100 g, shared by batches of the same food. */
   nutritionPer100g?: NutritionPer100g | null
   foodFacts?: FoodFacts
+  /** Milliseconds since the epoch, from the server. */
+  createdAt?: number
 }
 
 export type InventoryFilter = 'all' | 'expiring-soon' | 'low-stock'

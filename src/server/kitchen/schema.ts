@@ -12,6 +12,53 @@ export const nutritionPer100g = v.object({
   saltG: v.optional(v.number()),
 });
 
+// Package details read from Open Food Facts (`src/lib/food-product.ts`).
+export const productPackaging = v.object({
+  text: v.optional(v.string()),
+  amount: v.optional(v.number()),
+  unit: v.optional(v.string()),
+  netQuantity: v.optional(v.number()),
+  netUnit: v.optional(v.string()),
+  count: v.optional(v.number()),
+  container: v.optional(v.string()),
+  eachAmount: v.optional(v.number()),
+  eachUnit: v.optional(v.string()),
+});
+
+export const productServing = v.object({
+  text: v.optional(v.string()),
+  amount: v.optional(v.number()),
+  unit: v.optional(v.string()),
+  perPackage: v.optional(v.number()),
+});
+
+/** Product facts cached on a barcode, shared by the lookup and the table. */
+export const barcodeFactFields = {
+  brand: v.optional(v.string()),
+  genericName: v.optional(v.string()),
+  categoriesTags: v.optional(v.array(v.string())),
+  ingredientsText: v.optional(v.string()),
+  allergensTags: v.optional(v.array(v.string())),
+  tracesTags: v.optional(v.array(v.string())),
+  labelsTags: v.optional(v.array(v.string())),
+  ingredientsAnalysisTags: v.optional(v.array(v.string())),
+  nutriscoreGrade: v.optional(v.string()),
+  novaGroup: v.optional(v.number()),
+  ecoscoreGrade: v.optional(v.string()),
+  imageFrontUrl: v.optional(v.string()),
+  imageFrontSmallUrl: v.optional(v.string()),
+  imageNutritionUrl: v.optional(v.string()),
+  imageIngredientsUrl: v.optional(v.string()),
+  // Older lookups saved Open Food Facts' raw "nutriments" here.
+  nutritionPer100g: v.optional(v.any()),
+  nutritionPerServing: v.optional(nutritionPer100g),
+  nutritionBasis: v.optional(v.string()),
+  packaging: v.optional(productPackaging),
+  serving: v.optional(productServing),
+  storage: v.optional(v.string()),
+  storageText: v.optional(v.string()),
+};
+
 export const mealSlot = v.union(
   v.literal("breakfast"),
   v.literal("lunch"),
@@ -55,17 +102,11 @@ export default defineSchema({
     type: v.string(),
     source: v.string(), // "LOCAL_MANUAL" | "OPEN_FOOD_FACTS"
     manualLocked: v.boolean(),
-    brand: v.optional(v.string()),
-    categoriesTags: v.optional(v.array(v.string())),
-    ingredientsText: v.optional(v.string()),
-    allergensTags: v.optional(v.array(v.string())),
-    nutriscoreGrade: v.optional(v.string()),
-    novaGroup: v.optional(v.number()),
-    ecoscoreGrade: v.optional(v.string()),
-    imageFrontUrl: v.optional(v.string()),
-    nutritionPer100g: v.optional(v.any()),
+    ...barcodeFactFields,
     attributionUrl: v.optional(v.string()),
     lastSyncedAt: v.optional(v.number()),
+    // `PRODUCT_FACTS_VERSION` the facts were read with; older ones are refetched.
+    factsVersion: v.optional(v.number()),
   })
     .index("by_code", ["code"])
     .index("by_foodItemId", ["foodItemId"]),

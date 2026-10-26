@@ -15,6 +15,7 @@ struct RecipeDetailView: View {
     @State private var planning = false
     @State private var confirmDelete = false
     @State private var toast: String?
+    @Environment(\.deeperScreensStack) private var deeperScreensStack
 
     private var plan: CookingPlan {
         CookingPlanner.plan(ingredients: recipe.ingredients, stock: pantry.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) })
@@ -32,57 +33,23 @@ struct RecipeDetailView: View {
 
     @ViewBuilder private var screen: some View {
         let plan = plan
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                RecipeImage(data: recipe.photo, maxPixel: 1600)
-                    .frame(height: 280)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .overlay(alignment: .bottom) {
-                        LinearGradient(colors: [.clear, Color(uiColor: .systemBackground)], startPoint: .center, endPoint: .bottom)
-                    }
-                    .padding(.bottom, -60)
-
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    readiness(plan)
-                    ingredients(plan)
-                    steps
-                    RecipeNutritionCard(recipe: recipe, pantry: pantry)
-                    if let notes = recipe.notes?.nilIfEmpty {
-                        Card {
-                            Eyebrow("Notes", systemImage: "note.text")
-                            Text(notes).font(.callout)
-                        }
-                    }
-                    if let source = recipe.sourceURL, let url = URL(string: source) {
-                        Link(destination: url) {
-                            Label(url.host ?? source, systemImage: "safari")
-                                .font(.footnote)
-                        }
+        // Unfolded or on a wide screen, the recipe sits beside or above its
+        // ingredients and steps.
+        Group {
+            if deeperScreensStack {
+                stackedLayout(plan)
+            } else {
+                PaneLayoutReader { layout in
+                    switch layout {
+                    case .single: singleColumn(plan)
+                    case .sideBySide: twoPaneLayout(plan)
+                    case .stacked: stackedLayout(plan)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 100)
             }
         }
-        .ignoresSafeArea(edges: .top)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                cooking = true
-            } label: {
-                Label("Start cooking", systemImage: "flame.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.glassProminent)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("startCooking")
-        }
         .overlay(alignment: .top) {
             if let toast {
                 Text(toast)
@@ -134,6 +101,123 @@ struct RecipeDetailView: View {
         .userActivity(RecipeEntity.activityType) { activity in
             activity.title = recipe.title
             activity.appEntityIdentifier = EntityIdentifier(for: RecipeEntity.self, identifier: recipe.uuid)
+        }
+    }
+
+    private func singleColumn(_ plan: CookingPlan) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                RecipeImage(data: recipe.photo, maxPixel: 1600)
+                    .frame(height: 280)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, Color(uiColor: .systemBackground)], startPoint: .center, endPoint: .bottom)
+                    }
+                    .padding(.bottom, -60)
+
+                VStack(alignment: .leading, spacing: 20) {
+                    header
+                    readiness(plan)
+                    ingredients(plan)
+                    steps
+                    details
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 100)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+        .safeAreaInset(edge: .bottom) { startCooking }
+    }
+
+    /// The recipe and what the pantry has for it on one half, keeping Start
+    /// cooking in reach, and the ingredients and steps on the other.
+    private func twoPaneLayout(_ plan: CookingPlan) -> some View {
+        TwoPane {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    RecipeImage(data: recipe.photo, maxPixel: 1600)
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                    header
+                    readiness(plan)
+                    details
+                }
+                .padding()
+            }
+            .safeAreaInset(edge: .bottom) { startCooking }
+        } secondary: {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ingredients(plan)
+                    steps
+                }
+                .padding()
+            }
+        }
+    }
+
+    /// Upright on an unfolded iPhone Duo: the recipe and what the pantry has
+    /// for it on the upper half, and the ingredients and steps on the lower,
+    /// with Start cooking in reach at the bottom.
+    private func stackedLayout(_ plan: CookingPlan) -> some View {
+        TwoPane(axis: .vertical) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(alignment: .top, spacing: 16) {
+                        RecipeImage(data: recipe.photo, maxPixel: 1200)
+                            .frame(width: 220, height: 220)
+                            .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                        header
+                    }
+                    readiness(plan)
+                    details
+                }
+                .padding()
+            }
+        } secondary: {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ingredients(plan)
+                    steps
+                }
+                .padding()
+            }
+            .safeAreaInset(edge: .bottom) { startCooking }
+        }
+    }
+
+    private var startCooking: some View {
+        Button {
+            cooking = true
+        } label: {
+            Label("Start cooking", systemImage: "flame.fill")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.glassProminent)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .accessibilityIdentifier("startCooking")
+    }
+
+    /// Nutrition, notes and where the recipe came from.
+    @ViewBuilder private var details: some View {
+        RecipeNutritionCard(recipe: recipe, pantry: pantry)
+        if let notes = recipe.notes?.nilIfEmpty {
+            Card {
+                Eyebrow("Notes", systemImage: "note.text")
+                Text(notes).font(.callout)
+            }
+        }
+        if let source = recipe.sourceURL, let url = URL(string: source) {
+            Link(destination: url) {
+                Label(url.host ?? source, systemImage: "safari")
+                    .font(.footnote)
+            }
         }
     }
 

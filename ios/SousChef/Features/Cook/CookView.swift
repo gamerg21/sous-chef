@@ -14,6 +14,10 @@ struct CookView: View {
     @State private var ideas = false
     @State private var path = NavigationPath()
     @Bindable private var navigator = AppNavigator.shared
+    /// Unfolded or on a wide screen, the week plan sits beside or above the
+    /// list, and recipes drag onto it.
+    @State private var layout = PaneLayout.single
+    private var twoPane: Bool { layout.isSplit }
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
 
     /// Ranking reruns only when recipes, the pantry, the window or the day change.
@@ -28,7 +32,26 @@ struct CookView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        CompanionSplit(layout: layout, path: $path) { shownPath in
+            list(shownPath)
+        } companion: {
+            WeekPlannerPane { recipe in path = NavigationPath([recipe]) }
+        }
+        .tracksPaneLayout($layout)
+        // Out here rather than on the list's root, which a change of pane
+        // layout rebuilds and which never appears while a recipe is pushed.
+        .onChange(of: navigator.showPlan, initial: true) { _, show in
+            // A widget or `souschef://plan` link asked for the week plan,
+            // which is already showing beside or above the list when there's
+            // room.
+            guard show else { return }
+            navigator.showPlan = false
+            if !twoPane { path = NavigationPath([PlanRoute()]) }
+        }
+    }
+
+    private func list(_ shownPath: Binding<NavigationPath>) -> some View {
+        NavigationStack(path: shownPath) {
             let ranked = ranked
             let usingUp = Kitchen.rankForUsingUp(ranked)
             List {
@@ -69,14 +92,10 @@ struct CookView: View {
                 }
             }
             .navigationTitle("Cook")
+            // Inline on the lower half of an upright Duo, which is short.
+            .paneTitleDisplayMode(layout == .stacked)
             .navigationDestination(for: Recipe.self) { RecipeDetailView(recipe: $0) }
             .navigationDestination(for: PlanRoute.self) { _ in PlanView() }
-            .onChange(of: navigator.showPlan, initial: true) { _, show in
-                // A widget or `souschef://plan` link asked for the week plan.
-                guard show else { return }
-                navigator.showPlan = false
-                path = NavigationPath([PlanRoute()])
-            }
             .toolbar {
                 SettingsToolbarButton(showSettings: $showSettings)
                 if kitchen.ai.canGenerateRecipes {
@@ -127,8 +146,10 @@ struct CookView: View {
                         .fixedSize()
                 }
             }
-            NavigationLink(value: PlanRoute()) {
-                Label("This week's plan", systemImage: "calendar")
+            if !twoPane {
+                NavigationLink(value: PlanRoute()) {
+                    Label("This week's plan", systemImage: "calendar")
+                }
             }
         }
     }
@@ -170,7 +191,7 @@ struct CookView: View {
         if !items.isEmpty {
             Section {
                 ForEach(items) { item in
-                    NavigationLink(value: item.recipe) {
+                    PaneLink(value: item.recipe, chevron: true) {
                         HStack(spacing: 12) {
                             RecipeImage(data: item.recipe.photo)
                                 .frame(width: 58, height: 58)
@@ -193,6 +214,10 @@ struct CookView: View {
                                 }
                             }
                         }
+                    }
+                    // Beside the week plan, recipes drag onto a day.
+                    .plannable(.recipe(item.recipe.uuid), isEnabled: twoPane) {
+                        PlanDragPreview(title: item.recipe.title, photo: item.recipe.photo)
                     }
                     .swipeActions(edge: .leading) {
                         Button { cooking = item.recipe } label: { Label("Cook", systemImage: "flame") }.tint(Color.brand)

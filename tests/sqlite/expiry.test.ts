@@ -34,6 +34,16 @@ describe('expiry preferences', () => {
   });
 });
 
+describe('inventory list', () => {
+  test('each item carries when it was added, so apps can sort by it', async () => {
+    const before = Date.now();
+    const kitchen = await setup();
+    const { items } = await kitchen.asUser.query(api.inventory.list, {});
+    expect(items[0].createdAt).toBeGreaterThanOrEqual(before);
+    expect(items[0].createdAt).toBeLessThanOrEqual(Date.now());
+  });
+});
+
 describe('used versus wasted', () => {
   test('counts items thrown away or used up this month', async () => {
     const kitchen = await setup();

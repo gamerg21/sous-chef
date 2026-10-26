@@ -5,6 +5,7 @@ import { nutritionPer100g } from "./schema";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { recordOutcome, todayFor } from "./expiry";
+import { factsFromBarcode } from "./barcodes";
 
 type Nutrition = typeof nutritionPer100g.type;
 
@@ -78,17 +79,7 @@ export const list = query({
         .withIndex("by_code", (q) => q.eq("code", code))
         .first();
       if (barcode) {
-        barcodeMap.set(code, {
-          brand: barcode.brand,
-          categoriesTags: barcode.categoriesTags,
-          ingredientsText: barcode.ingredientsText,
-          allergensTags: barcode.allergensTags,
-          nutriscoreGrade: barcode.nutriscoreGrade,
-          novaGroup: barcode.novaGroup,
-          ecoscoreGrade: barcode.ecoscoreGrade,
-          imageFrontUrl: barcode.imageFrontUrl,
-          nutritionPer100g: barcode.nutritionPer100g,
-        });
+        barcodeMap.set(code, factsFromBarcode(barcode));
       }
     }
 
@@ -109,6 +100,7 @@ export const list = query({
         barcode: item.barcode ?? undefined,
         foodFacts: item.barcode ? barcodeMap.get(item.barcode) : undefined,
         nutritionPer100g: item.nutritionPer100g ?? undefined,
+        createdAt: item._creationTime,
       });
     }
 

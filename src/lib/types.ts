@@ -5,6 +5,8 @@
  * Section-specific types are also provided in each section's types.ts file.
  */
 
+import type { ProductFacts } from './food-product'
+
 // ============================================================================
 // Core Entities
 // ============================================================================
@@ -66,17 +68,8 @@ export interface NutritionPer100g {
   fiberG?: number
 }
 
-export interface FoodFacts {
-  brand?: string
-  categoriesTags?: string[]
-  ingredientsText?: string
-  allergensTags?: string[]
-  nutriscoreGrade?: string
-  novaGroup?: number
-  ecoscoreGrade?: string
-  imageFrontUrl?: string
-  nutritionPer100g?: NutritionPer100g
-}
+/** Product facts from a barcode lookup; see `src/lib/food-product.ts`. */
+export type FoodFacts = ProductFacts
 
 export interface InventoryItem {
   id: string

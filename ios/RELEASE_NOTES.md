@@ -14,6 +14,36 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.2.0
+
+### App Store
+iPhone Duo is here! Sous Chef now supports iPhone Duo. Unfold it and Sous Chef spreads out: your week sits beside what you can cook, so you can drag a recipe straight onto Tuesday's dinner, and your pantry opens with everything at a glance.
+
+Also new in 1.2:
+• Drag to plan: in Cook, drag recipes onto breakfast, lunch or dinner, and drag planned meals to another day.
+• Recipes and Shopping at a glance: tap a number beside your recipes or list to show just those.
+• Pantry at a glance: what's in stock and where, how fresh it is, what to use soon, and what you can cook right now.
+• Sort your pantry by name, what expires first or what you added last.
+• Smarter barcode scans: the amount, servings, storage spot and category fill themselves in, and a 12-pack comes in as 12 cans.
+• Cook on the counter: prop your iPhone Duo half open and the steps stand up while ingredients and timers sit on the flat half.
+• Hold it upright, too: your week or the numbers at a glance sit on the top half and your list on the bottom, so propped like a laptop, what you read stands up and what you tap lies within reach.
+• Recipe ideas and imports can use Private Cloud Compute for better results, and ideas now follow what you ask for with a different dish each time.
+
+### New
+- **Drag to plan**: On an unfolded iPhone Duo, iPad or iPhone on its side, Cook shows your week beside what you can cook. Drag a recipe onto a day's breakfast, lunch or dinner, drag a planned meal to another day, or tap an empty meal to pick a recipe.
+- **Recipes at a glance**: Beside your recipes: how many you can cook now, which are almost there, quick, favorites, popular this week or month, newly added and your tags. Tap any of them to show just those recipes.
+- **Shopping at a glance**: Beside your list: how much is in the cart, what each aisle holds (tap one to show just that aisle), what the week's meals still need and which recipes the list makes cookable.
+- **Pantry at a glance**: Beside your pantry list: how much is in the pantry, fridge and freezer, how fresh it is, what to use soon, what's in stock by category, recipes you can cook now and this month's used and thrown away.
+- **Two-pane cooking**: Unfolded, cook mode keeps the ingredients beside the steps and highlights the ones the current step uses, and a recipe sits beside its ingredients and method.
+- **Sort your pantry**: Sort the pantry by name, what expires first or what you added most recently.
+- **Cook on the counter**: Prop your iPhone Duo half open like a laptop and the steps stand up facing you, with ingredients and big timers on the flat half.
+- **Upright on iPhone Duo**: Unfolded and held upright, Sous Chef splits at the fold too. Recipes, Cook, Shopping and Pantry show the week or at a glance on the top half and the list on the bottom, so propped like a laptop, what you read stands up facing you and what you tap lies on the counter. A recipe or cook mode spans both halves, with the steps on top and the ingredients below.
+- **Smarter barcode scans**: Scanning a product fills in how much is in the package, ready to count as cans, by weight or as one box, with a stepper for more packages. It also suggests the pantry, fridge or freezer, shows servings, nutrition per serving and labels like vegan or gluten-free, and remembers how you named and counted a product last time.
+
+### Improved
+- **Private Cloud Compute**: On iPhones with Apple Intelligence, importing recipes and recipe ideas can use Private Cloud Compute for more capable results, while your kitchen stays private. Choose in Settings > Intelligence and Lookups.
+- **Recipe ideas**: Ideas now follow what you ask for, even when cooking from your pantry, and suggest a different dish each time instead of repeating one. Your Pantry or Anything choice is remembered.
+
 ## 1.1.2
 
 ### App Store

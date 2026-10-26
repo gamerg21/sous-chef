@@ -354,6 +354,35 @@ struct MiscTests {
         #expect(CookTimerAlarms.title(for: CookTimer(label: "Step 3", seconds: 60, customStep: 2)) == "Step 3 is done")
     }
 
+    @Test func readsTheDuoPostureFromTheHingeAndFold() {
+        #expect(FoldPosture.resolve(halfOpen: false, foldRunsAcross: false) == .flat)
+        #expect(FoldPosture.resolve(halfOpen: false, foldRunsAcross: true) == .flat)
+        #expect(FoldPosture.resolve(halfOpen: true, foldRunsAcross: false) == .book)
+        #expect(FoldPosture.resolve(halfOpen: true, foldRunsAcross: true) == .laptop)
+    }
+
+    @Test func picksPaneLayoutFromTheWindowAndFold() {
+        // Unfolded Duo held sideways, then upright; folded; a phone; an iPad.
+        #expect(PaneLayout.resolve(size: CGSize(width: 951, height: 669), foldRunsAcross: false) == .sideBySide)
+        #expect(PaneLayout.resolve(size: CGSize(width: 669, height: 951), foldRunsAcross: true) == .stacked)
+        #expect(PaneLayout.resolve(size: CGSize(width: 466, height: 678), foldRunsAcross: true) == .single)
+        #expect(PaneLayout.resolve(size: CGSize(width: 440, height: 956), foldRunsAcross: nil) == .single)
+        #expect(PaneLayout.resolve(size: CGSize(width: 820, height: 1180), foldRunsAcross: nil) == .sideBySide)
+        // A tall split-view window on an iPad has no fold to stack around.
+        #expect(PaneLayout.resolve(size: CGSize(width: 678, height: 1032), foldRunsAcross: nil) == .single)
+    }
+
+    @Test func findsIngredientsInSteps() {
+        let step = RecipeStep(text: "Toss the potatoes with olive oil, zest a lemon and add the berries.")
+        #expect(step.mentions(Ingredient(name: "Potatoes")))
+        #expect(step.mentions(Ingredient(name: "Olive oil")))
+        #expect(step.mentions(Ingredient(name: "Lemons")))
+        #expect(step.mentions(Ingredient(name: "berry")))
+        #expect(!step.mentions(Ingredient(name: "Garlic")))
+        #expect(!RecipeStep(text: "Bring to a boil.").mentions(Ingredient(name: "Olive oil")))
+        #expect(!step.mentions(Ingredient(name: "")))
+    }
+
     @Test func detectsInsecureRemoteServers() throws {
         #expect(!ServerClient.isInsecureRemote(try ServerClient.normalize("192.168.1.20:3000")))
         #expect(!ServerClient.isInsecureRemote(try ServerClient.normalize("http://kitchen.local")))
