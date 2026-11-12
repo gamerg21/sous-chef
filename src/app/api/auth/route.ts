@@ -1,9 +1,9 @@
 import { resetEmailConfiguration } from '@/server/kitchen/reset-email';
 import { cookies } from 'next/headers';
-import { COOKIE, session, authenticate, digest, limit } from '@/server/kitchen/authentication';
+import { COOKIE, session, authenticate, digest, createResetCode } from '@/server/kitchen/authentication';
 import { getDatabase } from '@/server/kitchen/database';
 import { checkOrigin, readJson, failure } from '@/server/kitchen/http';
-import { randomBytes } from 'node:crypto';
+import { after } from 'next/server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export async function GET() {const user=await session((await cookies()).get(COOKIE)?.value);return Response.json({authenticated:!!user,demo:!!user?.demoExpiresAt,demoMode:process.env.SOUS_CHEF_DEMO==='true',resetMode:resetEmailConfiguration()?'email':'operator'},{headers:{'Cache-Control':'no-store'}});}
@@ -14,14 +14,13 @@ export async function POST(request:Request) {
       const emailConfig=resetEmailConfiguration();
       if(!emailConfig)throw new Error('Password reset emails are not set up. Open the recovery instructions to reset your password on the computer running Sous Chef.');
       const email=String(body.email||'').trim().toLowerCase();
-      const code=randomBytes(32).toString('base64url');
-      const found=await database.transaction(async db=>{limit(database,`reset:${digest(email)}`,5);const user=await db.query('users').withIndex('email',q=>q.eq('email',email)).first();if(!user)return false;
-        database.sql.prepare('DELETE FROM reset_tokens WHERE user_id=?').run(user._id);database.sql.prepare('INSERT INTO reset_tokens VALUES(?,?,?)').run(digest(code),user._id,Date.now()+3600000);return true;});
-      if(found) {
+      const code=await createResetCode(email);
+      // Deliver after responding so known and unknown emails get the same answer at the same speed.
+      if(code)after(async()=>{try{
         const url=new URL('/auth/reset-password',emailConfig.origin);url.searchParams.set('code',code);url.searchParams.set('email',email);
         const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${emailConfig.apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from:emailConfig.from,to:email,subject:'Reset your Sous Chef password',text:`Reset your password: ${url}`}),signal:AbortSignal.timeout(10000)});
         if(!sent.ok)console.error('Password reset email delivery failed');
-      }
+      }catch{console.error('Password reset email delivery failed');}});
       return Response.json({signingIn:false});
     }
     const result=await authenticate(body);

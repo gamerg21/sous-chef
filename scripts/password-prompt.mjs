@@ -2,14 +2,25 @@ import { createInterface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
 
 // readline still handles editing and raw mode, but never echoes the password.
+/**
+ * @param {NodeJS.ReadableStream & {isTTY?: boolean}} [input]
+ * @param {NodeJS.WritableStream} [output]
+ * @returns {Promise<string>}
+ */
 export async function readNewPassword(input = process.stdin, output = process.stdout) {
   if (!input.isTTY) {
-    let value = '';
+    // Decode once at the end so a UTF-8 character split across chunks stays intact.
+    const chunks = [];
+    let size = 0;
     for await (const chunk of input) {
-      value += chunk;
-      if (value.length > 256) throw new Error('Password too long');
+      const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+      size += bytes.length;
+      if (size > 1024) throw new Error('Password too long');
+      chunks.push(bytes);
     }
-    return value.replace(/[\r\n]+$/, '');
+    const value = Buffer.concat(chunks).toString('utf8').replace(/[\r\n]+$/, '');
+    if (value.length > 256) throw new Error('Password too long');
+    return value;
   }
   const hidden = new Writable({ write(_chunk, _encoding, done) { done(); } });
   const rl = createInterface({ input, output: hidden, terminal: true });
