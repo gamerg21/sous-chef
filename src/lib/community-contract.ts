@@ -21,3 +21,36 @@ export function communityRecipe(publication:Publication) {
   const s=parseSnapshot(publication.snapshot);
   return {id:publication.id,...s,photoUrl:s.photoDataUrl,ingredients:s.ingredients.map((i,n)=>({...i,id:String(n)})),steps:s.steps.map((step,n)=>({...step,id:String(n)})),author:publication.author,createdAt:publication.createdAt,likes:0,savedCount:0};
 }
+
+// ── API v2 (docs/COMMUNITY_API.md) ──────────────────────────────────────
+export type Author={id:string;name:string};
+/** A recipe in a list: no steps, quantities or inline photo. */
+export type Listing={
+  id:string;revision:number;createdAt:string;updatedAt:string;author:Author;
+  title:string;description?:string;tags:string[];servings?:number;totalTimeMinutes?:number;
+  photoUrl?:string;ingredientNames:string[];
+  likeCount:number;saveCount:number;madeCount:number;rating?:number;shareUrl?:string;liked?:boolean;
+};
+export type Tip={id:string;author:Author;rating:number;tip?:string;createdAt:string};
+export type Detail=Listing&{
+  visibility:'public'|'unlisted';snapshot:RecipeSnapshot;tips:Tip[];
+  viewer?:{liked:boolean;following:boolean;own:boolean;made?:{rating:number;tip?:string}};
+};
+export type Cook={id:string;name:string;bio?:string;recipeCount:number;followerCount:number;followingCount:number;viewer?:{following:boolean;own:boolean}};
+export type Me=Cook&{moderator:boolean};
+export type OwnListing=Listing&{visibility:'public'|'unlisted'|'private';removed:boolean;underReview:boolean};
+export const REPORT_REASONS=['offensive','harassment','sexual','spam','dangerous','copyright','other'] as const;
+export type ReportReason=typeof REPORT_REASONS[number];
+export const REPORT_REASON_LABELS:Record<ReportReason,string>={offensive:'Offensive or hateful',harassment:'Harassment',sexual:'Sexual content',spam:'Spam or scam',dangerous:'Dangerous or unsafe food advice',copyright:'Copyright',other:'Other'};
+export type ReportStatus='open'|'actioned'|'dismissed';
+export type ModAction='dismiss'|'remove_recipe'|'remove_tip'|'ban_user';
+export type Report={
+  id:string;status:ReportStatus;createdAt:string;reason:ReportReason;note?:string;reportCount:number;
+  recipe:{id:string;title:string;author:Author;visibility:string;underReview:boolean}|null;
+  tip?:{id:string;author:Author;rating:number;tip?:string};resolution?:string;resolvedAt?:string;
+};
+export type SortOrder='new'|'hot'|'top';
+export type PantryMatch={have:number;total:number;missing:string[]};
+export type LocalListing=Listing&{saved:boolean;pantry?:PantryMatch};
+export type LocalDetail=Detail&{saved:boolean;savedRecipeId?:string;pantry?:PantryMatch};
+export const COMMUNITY_LIMITS={name:40,bio:160,tip:280,reportNote:500,follows:200,autoHideReports:3} as const;

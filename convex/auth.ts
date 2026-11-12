@@ -7,6 +7,7 @@ import type { GenericActionCtx } from "convex/server";
 import type { DataModel } from "./_generated/dataModel";
 import { resolveAllowedRedirectUrl } from "../src/lib/app-url";
 import { isValidEmail, normalizeEmail } from "../src/lib/auth-utils";
+import { FILTER_MESSAGE, isObjectionable } from "../src/lib/community-filter";
 
 function getPasswordProfile(params: Record<string, unknown>) {
   const rawEmail = typeof params.email === "string" ? params.email : "";
@@ -17,6 +18,9 @@ function getPasswordProfile(params: Record<string, unknown>) {
   }
 
   const rawName = typeof params.name === "string" ? params.name.trim() : "";
+  if (isObjectionable(rawName)) {
+    throw new Error(FILTER_MESSAGE);
+  }
   const profile: Record<string, string> = { email };
 
   if (rawName) {

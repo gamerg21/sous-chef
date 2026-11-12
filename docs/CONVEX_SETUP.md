@@ -23,9 +23,27 @@ For a new community deployment:
    Use the production deploy command only after identifying and authorizing that target.
 8. Configure the web app's `COMMUNITY_API_URL` (`.convex.site`) and
    `COMMUNITY_CONVEX_URL` (`.convex.cloud`), and test Connect community account.
+9. Optionally set `SHARE_URL_BASE` (public recipe page, for share links) and
+   `MODERATION_EMAIL` (receives new reports; needs the email settings from
+   step 5). Give at least one account the moderator role. See
+   [community operations](COMMUNITY.md#moderation).
+10. When updating a community that existed before API v2, run
+    `pnpm exec convex run migrations:run` once after deploying. See
+    [After upgrading an existing community](COMMUNITY.md#after-upgrading-an-existing-community).
 
-Schema: Convex Auth tables, `hubRecipes`, `hubTokens`, `appleCredentials`, and
-`authRateLimitEvents`.
+Schema: Convex Auth tables, plus:
+
+| Table | Holds |
+| --- | --- |
+| `hubRecipes` | Publications: the recipe snapshot, visibility, revision, counters, and the ID of the photo in file storage |
+| `hubRecipeTags`, `hubTagCounts` | Tags of publicly listed recipes, and how many recipes use each |
+| `hubLikes`, `hubSaves`, `hubMade` | Likes, saved-copy counts (one per install), and "made it" ratings and tips |
+| `hubFollows`, `hubProfiles` | Who follows whom; each cook's bio and counters |
+| `hubReports`, `hubModerators`, `hubBans` | Reports, the moderator role, and bans |
+| `hubTokens`, `appleCredentials` | Publisher token hashes; Apple refresh tokens kept for account deletion |
+| `authRateLimitEvents` | Rate limit windows |
+
+Recipe photos are in Convex file storage.
 There is no units seed or kitchen bootstrap on Convex.
 
 Existing deployments need [the migration guide](SQLITE_MIGRATION.md) before any

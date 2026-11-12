@@ -1,6 +1,8 @@
 import { v } from 'convex/values';
 import { internalAction, internalMutation, internalQuery } from './_generated/server';
 import { storePublisherToken } from './hub';
+import { FILTER_MESSAGE, isObjectionable } from '../src/lib/community-filter';
+import { adjustProfile, adjustRecipe, deleteMade, deleteRecipe, profileOf } from './hubLib';
 import { APPLE_ISSUER, DEFAULT_DISPLAY_NAME, appleClientSecret, appleConfig, cleanDisplayName } from './appleAuth';
 
 /**
@@ -12,7 +14,9 @@ export const signIn = internalMutation({
   args: { sub: v.string(), fullName: v.optional(v.string()), refreshToken: v.optional(v.string()), tokenHash: v.string() },
   returns: v.union(v.object({ userId: v.id('users'), name: v.string() }), v.null()),
   handler: async (ctx, { sub, fullName, refreshToken, tokenHash }) => {
-    const name = cleanDisplayName(fullName);
+    // A name the word filter refuses is dropped, like a missing one; sign-in still works.
+    const offered = cleanDisplayName(fullName);
+    const name = isObjectionable(offered) ? undefined : offered;
     if (await ctx.db.query('hubBans').withIndex('by_appleSub', (q) => q.eq('appleSub', sub)).first()) {
       throw new Error('This community account is suspended');
     }
@@ -64,11 +68,14 @@ export const refreshTokensForUser = internalQuery({
 });
 
 const RECIPE_BATCH = 10;
+const ACTIVITY_BATCH = 100;
 
 /**
  * Deletes a community account in batches: publisher tokens first (so nothing
- * new can be published), then recipes, then Apple credentials, Convex Auth
- * accounts, sessions and the user. Call until `done`.
+ * new can be published), then recipes with their photos, likes and tips,
+ * then the person's own likes, tips and follows (fixing the counters they
+ * touched), their profile and moderator role, and finally Apple credentials,
+ * Convex Auth accounts, sessions and the user. Call until `done`.
  */
 export const deleteAccountBatch = internalMutation({
   args: { userId: v.id('users') },
@@ -78,8 +85,34 @@ export const deleteAccountBatch = internalMutation({
       await ctx.db.delete(token._id);
     }
     const recipes = await ctx.db.query('hubRecipes').withIndex('by_userId', (q) => q.eq('userId', userId)).take(RECIPE_BATCH);
-    for (const recipe of recipes) await ctx.db.delete(recipe._id);
+    for (const recipe of recipes) {
+      if (!(await deleteRecipe(ctx, recipe, 'The author deleted their account'))) return { done: false };
+    }
     if (recipes.length === RECIPE_BATCH) return { done: false };
+
+    const likes = await ctx.db.query('hubLikes').withIndex('by_userId', (q) => q.eq('userId', userId)).take(ACTIVITY_BATCH);
+    for (const like of likes) {
+      await ctx.db.delete(like._id);
+      await adjustRecipe(ctx, like.recipeId, { likeCount: -1 });
+    }
+    const made = await ctx.db.query('hubMade').withIndex('by_userId', (q) => q.eq('userId', userId)).take(ACTIVITY_BATCH);
+    for (const entry of made) await deleteMade(ctx, entry, 'The author deleted their account');
+    const following = await ctx.db.query('hubFollows').withIndex('by_followerId_and_followeeId', (q) => q.eq('followerId', userId)).take(ACTIVITY_BATCH);
+    for (const follow of following) {
+      await ctx.db.delete(follow._id);
+      await adjustProfile(ctx, follow.followeeId, 'followerCount', -1);
+    }
+    const followers = await ctx.db.query('hubFollows').withIndex('by_followeeId', (q) => q.eq('followeeId', userId)).take(ACTIVITY_BATCH);
+    for (const follow of followers) {
+      await ctx.db.delete(follow._id);
+      await adjustProfile(ctx, follow.followerId, 'followingCount', -1);
+    }
+    if ([likes, made, following, followers].some((rows) => rows.length === ACTIVITY_BATCH)) return { done: false };
+    const profile = await profileOf(ctx, userId);
+    if (profile) await ctx.db.delete(profile._id);
+    for (const row of await ctx.db.query('hubModerators').withIndex('by_userId', (q) => q.eq('userId', userId)).take(10)) {
+      await ctx.db.delete(row._id);
+    }
 
     for (const credential of await ctx.db.query('appleCredentials').withIndex('by_userId', (q) => q.eq('userId', userId)).take(20)) {
       await ctx.db.delete(credential._id);
@@ -109,6 +142,7 @@ export const setName = internalMutation({
   handler: async (ctx, { userId, name }) => {
     const clean = cleanDisplayName(name);
     if (!clean) throw new Error('Name required');
+    if (isObjectionable(clean)) throw new Error(FILTER_MESSAGE);
     await ctx.db.patch(userId, { name: clean });
     return { name: clean };
   },
