@@ -98,7 +98,7 @@ test('the reset-password command replaces the password and signs everyone out', 
   db.close();
 
   const script = resolve('scripts/local-admin.mjs');
-  const run = (email: string, input: string) => spawnSync(process.execPath, [script, 'reset-password', email], {cwd:dir, input, encoding:'utf8', env:{...process.env, SOUS_CHEF_DATA_DIR:dir}});
+  const run = (email: string, input: string) => spawnSync(process.execPath, [script, 'reset-password', email], {cwd:dir, input, encoding:'utf8', env:{...process.env, SOUS_CHEF_DATA_DIR:dir, NODE_NO_WARNINGS:'1'}});
 
   const missing = run('nobody@example.com', 'NewPassword1!\n');
   expect(missing.status).toBe(1);
