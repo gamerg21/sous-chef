@@ -20,6 +20,8 @@ export async function readNewPassword(input = process.stdin, output = process.st
     }
     const value = Buffer.concat(chunks).toString('utf8').replace(/[\r\n]+$/, '');
     if (value.length > 256) throw new Error('Password too long');
+    // Two piped lines would save a password nobody can type into the sign-in form.
+    if (/[\r\n]/.test(value)) throw new Error('Pipe the new password as a single line. Nothing was changed.');
     return value;
   }
   const hidden = new Writable({ write(_chunk, _encoding, done) { done(); } });

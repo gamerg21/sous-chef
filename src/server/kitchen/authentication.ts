@@ -56,7 +56,9 @@ export async function authenticate(body:Record<string,unknown>,database=getDatab
       const householdId=await createDefaultHousehold(context(database,userId,db),userId);
       if(flow==='demo') await seedDemoKitchen(context(database,userId,db),householdId);
     } else {
-      if(!user) {scryptSync(password.slice(0,128),'dummy-salt',64);throw new Error('Invalid email or password');}
+      // A reset link for an unknown email fails like a wrong or expired code, at the same speed (the new password was
+      // already hashed above), so it can't confirm an account.
+      if(!user) {if(flow!=='reset-verification')scryptSync(password.slice(0,128),'dummy-salt',64);throw new Error(flow==='reset-verification'?'Invalid or expired reset link':'Invalid email or password');}
       userId=user._id;
       if(flow==='reset-verification') {
         const row=database.sql.prepare('SELECT * FROM reset_tokens WHERE token_hash=? AND user_id=? AND expires>?').get(digest(String(body.code||'')),userId,Date.now());
