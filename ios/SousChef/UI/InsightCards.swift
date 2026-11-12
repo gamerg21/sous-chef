@@ -48,13 +48,11 @@ struct StatTile: View {
                 .symbolEffect(.bounce, value: selected)
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(value)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded).monospacedDigit())
+                    .statNumber(size: 28)
                     .contentTransition(.numericText(value: Double(value)))
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
             }
             if !narrow { Spacer(minLength: 0) }
         }
@@ -68,6 +66,35 @@ struct StatTile: View {
         }
         .contentShape(.rect(cornerRadius: 22, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Tiles side by side, as tall as the tallest, or one above the other once
+/// larger text would leave each narrower than `minimumTileWidth` (given at
+/// the default text size and scaled with it).
+struct TileRow<Content: View>: View {
+    var count = 2
+    var spacing: CGFloat
+    var content: Content
+
+    @ScaledMetric private var minimumTileWidth: CGFloat
+    @State private var stacked = false
+
+    init(count: Int = 2, minimumTileWidth: CGFloat = 130, spacing: CGFloat = 14, @ViewBuilder content: () -> Content) {
+        self.count = count
+        self.spacing = spacing
+        self.content = content()
+        _minimumTileWidth = ScaledMetric(wrappedValue: minimumTileWidth, relativeTo: .subheadline)
+    }
+
+    var body: some View {
+        let layout = stacked ? AnyLayout(VStackLayout(spacing: spacing)) : AnyLayout(HStackLayout(spacing: spacing))
+        layout { content }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .onGeometryChange(for: Bool.self) { proxy in
+                (proxy.size.width - spacing * CGFloat(count - 1)) / CGFloat(count) < minimumTileWidth
+            } action: { stacked = $0 }
     }
 }
 

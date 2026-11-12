@@ -21,11 +21,15 @@ struct RecipeInsightsPane: View {
             ScrollView {
                 PaneCards(columns: isStacked) {
                     readyCard
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
-                        tile(stats.almost.count, "almost there", "cart", .orange, .almost)
-                        tile(stats.expiring.count, "use food expiring soon", "hourglass", .red, .expiring)
-                        tile(stats.quick.count, "ready in \(RecipeStats.quickMinutes) min", "timer", .blue, .quick)
-                        tile(recipes.filter(\.favorited).count, "favorites", "heart.fill", .pink, .favorites)
+                    VStack(spacing: 14) {
+                        TileRow {
+                            tile(stats.almost.count, "almost there", "cart", .orange, .almost)
+                            tile(stats.expiring.count, "use food expiring soon", "hourglass", .red, .expiring)
+                        }
+                        TileRow {
+                            tile(stats.quick.count, "ready in \(RecipeStats.quickMinutes) min", "timer", .blue, .quick)
+                            tile(recipes.filter(\.favorited).count, "favorites", "heart.fill", .pink, .favorites)
+                        }
                     }
                 } trailing: {
                     popularCard
@@ -62,12 +66,14 @@ struct RecipeInsightsPane: View {
         return Button { toggle(.ready) } label: {
             InsightCard {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(ready)")
-                        .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
-                        .contentTransition(.numericText(value: Double(ready)))
-                    Text(ready == 1 ? "recipe ready to cook" : "recipes ready to cook")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                    AdaptiveStack(alignment: .firstTextBaseline, spacing: 6, verticalSpacing: 0) {
+                        Text("\(ready)")
+                            .statNumber(size: 44)
+                            .contentTransition(.numericText(value: Double(ready)))
+                        Text(ready == 1 ? "recipe ready to cook" : "recipes ready to cook")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
                     Spacer(minLength: 0)
                     Image(systemName: selected ? "checkmark.circle.fill" : "chevron.right.circle")
                         .font(.title3)
@@ -109,9 +115,9 @@ struct RecipeInsightsPane: View {
         let top = stats.popular.prefix(3).compactMap { entry in byID[entry.id].map { ($0, entry.count) } }
         let selected = filter == .popular
         return InsightCard {
-            HStack {
+            AdaptiveStack(verticalSpacing: 8) {
                 Eyebrow("Popular", systemImage: "flame")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Picker("Period", selection: $period) {
                     ForEach(RecipeStats.Period.allCases) { Text($0.title).tag($0) }
                 }
@@ -135,15 +141,17 @@ struct RecipeInsightsPane: View {
                                 RecipeImage(data: item.0.photo, maxPixel: 200)
                                     .frame(width: 38, height: 38)
                                     .clipShape(.rect(cornerRadius: 10, style: .continuous))
-                                Text(item.0.title)
-                                    .font(.body.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                                Text("\(item.1)×")
-                                    .font(.subheadline.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityLabel("\(item.1) times")
+                                TrailingDetailRow(spacing: 2) {
+                                    Text(item.0.title)
+                                        .font(.body.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(3)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text("\(item.1)×")
+                                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityLabel("\(item.1) times")
+                                }
                             }
                             .padding(.vertical, 7)
                             .contentShape(.rect)
@@ -162,16 +170,16 @@ struct RecipeInsightsPane: View {
         let selected = filter == .recent
         return Button { toggle(.recent) } label: {
             InsightCard {
-                HStack {
+                AdaptiveStack(verticalSpacing: 4) {
                     Eyebrow("Newly added", systemImage: "sparkles")
-                    Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text("Last \(RecipeStats.newDays) days")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 12) {
                     Text("\(stats.recent.count)")
-                        .font(.system(size: 32, weight: .bold, design: .rounded).monospacedDigit())
+                        .statNumber(size: 32)
                     // Their photos, overlapping like a fanned hand of cards.
                     HStack(spacing: -12) {
                         ForEach(stats.recent.prefix(5).compactMap { byID[$0] }, id: \.uuid) { recipe in

@@ -207,6 +207,7 @@ struct ReportRecipeSheet: View {
         .background(.background, in: .rect(cornerRadius: 28, style: .continuous))
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .scrollsWhenTall()
     }
 
     private var fallback: some View {

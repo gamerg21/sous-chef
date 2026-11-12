@@ -247,9 +247,9 @@ struct RecipeDetailView: View {
 
     private func readiness(_ plan: CookingPlan) -> some View {
         Card {
-            HStack(alignment: .firstTextBaseline) {
+            AdaptiveStack(alignment: .firstTextBaseline, verticalSpacing: 4) {
                 Eyebrow("From your pantry", systemImage: "cabinet")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 ReadinessBadge(plan: recipe.ingredients.isEmpty ? nil : plan)
             }
             let total = recipe.ingredients.count
@@ -286,9 +286,9 @@ struct RecipeDetailView: View {
     private func ingredients(_ plan: CookingPlan) -> some View {
         let missing = Set(plan.missingIngredients.map { normalizeName($0.name) })
         return VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            AdaptiveStack(verticalSpacing: 6) {
                 Eyebrow("Ingredients", systemImage: "list.bullet")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if let base = recipe.servings, base > 0 {
                     Stepper(value: Binding(get: { servings ?? base }, set: { servings = $0 }), in: 1...48) {
                         Text("\(servings ?? base) servings").font(.caption.weight(.medium)).monospacedDigit()
@@ -301,14 +301,16 @@ struct RecipeDetailView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Image(systemName: missing.contains(normalizeName(ingredient.name)) ? "circle" : "checkmark.circle.fill")
                             .foregroundStyle(missing.contains(normalizeName(ingredient.name)) ? Color.secondary : Color.brand)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(ingredient.name).font(.body)
-                            if let note = ingredient.note?.nilIfEmpty { Text(note).font(.caption).foregroundStyle(.secondary) }
+                        TrailingDetailRow {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ingredient.name).font(.body)
+                                if let note = ingredient.note?.nilIfEmpty { Text(note).font(.caption).foregroundStyle(.secondary) }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(Units.amount(ingredient.quantity.map { $0 * scale }, ingredient.unit))
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(.secondary)
                         }
-                        Spacer()
-                        Text(Units.amount(ingredient.quantity.map { $0 * scale }, ingredient.unit))
-                            .font(.callout.monospacedDigit())
-                            .foregroundStyle(.secondary)
                     }
                     if ingredient.id != recipe.ingredients.last?.id { Divider() }
                 }

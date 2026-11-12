@@ -15,6 +15,8 @@ struct PantryInsightsPane: View {
     var onSelect: (PantryItem) -> Void
 
     @Query private var recipes: [Recipe]
+    @ScaledMetric(relativeTo: .subheadline) private var legendWidth: CGFloat = 120
+    @ScaledMetric(relativeTo: .caption) private var categoryRowHeight: CGFloat = 30
 
     private var inStock: [PantryItem] { items.filter { $0.quantity > 0 } }
 
@@ -25,12 +27,10 @@ struct PantryInsightsPane: View {
                     // Across the top, so its three places keep their names.
                     locationsCard
                     PaneCards(columns: isStacked) {
-                        HStack(spacing: 14) {
+                        TileRow {
                             useSoonTile
                             readyTile
                         }
-                        // As tall as the taller tile, not the column beside it.
-                        .fixedSize(horizontal: false, vertical: true)
                         freshnessCard
                     } trailing: {
                         if !expiring.isEmpty { useSoonCard }
@@ -56,9 +56,9 @@ struct PantryInsightsPane: View {
         let counts = StorageLocation.allCases.map { location in (location, inStock.filter { $0.location == location }.count) }
         let total = max(1, counts.reduce(0) { $0 + $1.1 })
         return InsightCard {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            AdaptiveStack(alignment: .firstTextBaseline, spacing: 6, verticalSpacing: 0) {
                 Text("\(inStock.count)")
-                    .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
+                    .statNumber(size: 44)
                     .contentTransition(.numericText(value: Double(inStock.count)))
                 Text(inStock.count == 1 ? "item in stock" : "items in stock")
                     .font(.headline)
@@ -79,7 +79,8 @@ struct PantryInsightsPane: View {
             }
             .frame(height: 12)
             .accessibilityHidden(true)
-            HStack(spacing: 8) {
+            // Three across while their names fit, else one under another.
+            TileRow(count: 3, minimumTileWidth: 90, spacing: 8) {
                 ForEach(counts, id: \.0) { location, count in
                     let selected = scope == .location(location)
                     Button {
@@ -191,9 +192,9 @@ struct PantryInsightsPane: View {
         let dated = inStock.filter { $0.expiresOn != nil }.count
         let freshShare = dated == 0 ? 0 : Int((Double(counts.first { $0.0 == .fresh }?.1 ?? 0) / Double(dated) * 100).rounded())
         return InsightCard {
-            HStack(alignment: .firstTextBaseline) {
+            AdaptiveStack(alignment: .firstTextBaseline, verticalSpacing: 4) {
                 Eyebrow("Freshness", systemImage: "leaf")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if dated > 0 {
                     Text("\(freshShare)% fresh")
                         .font(.subheadline.weight(.semibold).monospacedDigit())
@@ -213,7 +214,7 @@ struct PantryInsightsPane: View {
             }
             .frame(height: 12)
             .accessibilityHidden(true)
-            LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)], spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: legendWidth), alignment: .leading)], alignment: .leading, spacing: 8) {
                 ForEach(counts, id: \.0) { kind, count in
                     Label {
                         HStack(spacing: 4) {
@@ -243,13 +244,15 @@ struct PantryInsightsPane: View {
                     } label: {
                         HStack(spacing: 12) {
                             DaysLeftDial(daysLeft: food.daysLeft, window: windowDays)
-                            Text(food.name)
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
-                            Spacer(minLength: 0)
-                            Text(daysText(food.daysLeft))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(food.daysLeft < 0 ? .red : food.daysLeft <= 1 ? .orange : .secondary)
+                            TrailingDetailRow(spacing: 2) {
+                                Text(food.name)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(daysText(food.daysLeft))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(food.daysLeft < 0 ? .red : food.daysLeft <= 1 ? .orange : .secondary)
+                            }
                         }
                         .padding(.vertical, 8)
                         .contentShape(.rect)
@@ -299,7 +302,7 @@ struct PantryInsightsPane: View {
                     AxisValueLabel().font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .frame(height: CGFloat(categories.count) * 30)
+            .frame(height: CGFloat(categories.count) * categoryRowHeight)
         }
     }
 
@@ -310,9 +313,9 @@ struct PantryInsightsPane: View {
         let total = tally.used + tally.wasted
         let usedShare = total == 0 ? 0 : Double(tally.used) / Double(total)
         return InsightCard {
-            HStack(alignment: .firstTextBaseline) {
+            AdaptiveStack(alignment: .firstTextBaseline, verticalSpacing: 4) {
                 Eyebrow(Date.now.formatted(.dateTime.month(.wide)), systemImage: "chart.bar")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if total > 0 {
                     Text("\(Int((usedShare * 100).rounded()))% used up")
                         .font(.subheadline.weight(.semibold).monospacedDigit())
@@ -324,7 +327,7 @@ struct PantryInsightsPane: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } else {
-                HStack(spacing: 20) {
+                AdaptiveStack(spacing: 20, verticalSpacing: 8) {
                     Label { Text("\(tally.used) used").monospacedDigit() } icon: {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.brand)
                     }

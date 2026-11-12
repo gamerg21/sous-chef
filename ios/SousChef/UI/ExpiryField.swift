@@ -17,16 +17,18 @@ struct ExpiryField: View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             withAnimation(.snappy) { open.toggle() }
         } label: {
-            HStack {
+            TrailingDetailRow(minimumLeadingWidth: 100) {
                 Label("Expires", systemImage: "calendar.badge.clock")
                     .foregroundStyle(.primary)
-                Spacer()
-                Text(date.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "No expiration")
-                    .foregroundStyle(date == nil ? .secondary : Color.brand)
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .rotationEffect(.degrees(open ? 180 : 0))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack {
+                    Text(date.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "No expiration")
+                        .foregroundStyle(date == nil ? .secondary : Color.brand)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(open ? 180 : 0))
+                }
             }
             .contentShape(.rect)
         }

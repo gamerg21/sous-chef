@@ -173,10 +173,10 @@ struct RecipeImportView: View {
                 .padding(8)
                 .scrollContentBackground(.hidden)
                 .background(.background.secondary, in: .rect(cornerRadius: 16, style: .continuous))
-            HStack {
+            AdaptiveStack(verticalSpacing: 8) {
                 Button { if let pasted = UIPasteboard.general.string { text = pasted } } label: { Label("Paste", systemImage: "doc.on.clipboard") }
                     .buttonStyle(.glass)
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 AIEngineBadge()
             }
         }
@@ -184,9 +184,9 @@ struct RecipeImportView: View {
 
     private var photoForm: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            AdaptiveStack(verticalSpacing: 6) {
                 Eyebrow("Pages", systemImage: "book")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 AIEngineBadge()
             }
             PhotoStrip(photos: $pages, maxCount: 6, openCameraFirst: true)
@@ -204,13 +204,15 @@ struct RecipeImportView: View {
             }
             .pickerStyle(.segmented)
             .disabled(!kitchen.ai.isAvailable)
-            HStack {
-                if usePantry {
-                    Eyebrow("Cooking with \(pantry.filter { $0.quantity > 0 }.count) pantry items", systemImage: "cabinet")
-                } else {
-                    Eyebrow("Any recipe", systemImage: "sparkles")
+            AdaptiveStack(verticalSpacing: 6) {
+                Group {
+                    if usePantry {
+                        Eyebrow("Cooking with \(pantry.filter { $0.quantity > 0 }.count) pantry items", systemImage: "cabinet")
+                    } else {
+                        Eyebrow("Any recipe", systemImage: "sparkles")
+                    }
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
                 AIEngineBadge()
             }
             TextField(usePantry ? "Anything in mind? e.g. quick vegetarian dinner, no nuts" : "What sounds good? e.g. Thai green curry, crispy tofu, birthday cake",

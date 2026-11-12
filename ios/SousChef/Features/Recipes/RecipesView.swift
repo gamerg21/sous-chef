@@ -9,6 +9,8 @@ struct RecipesView: View {
     @Query private var meals: [PlannedMeal]
     @AppStorage(ExpiringFood.windowDaysKey, store: ExpiringFood.settings) private var windowDays = ExpiringFood.defaultWindowDays
     @State private var period = RecipeStats.Period.month
+    /// Cards get fewer columns as text grows, so titles and badges keep room.
+    @ScaledMetric(relativeTo: .subheadline) private var cardWidth: CGFloat = 160
     @State private var search = ""
     @State private var filter: Filter = .all
     @State private var creating: RecipeDraftSession?
@@ -148,7 +150,7 @@ struct RecipesView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 16) {
                         filterBar
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 14)], spacing: 14) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: cardWidth), spacing: 14)], spacing: 14) {
                             ForEach(shown) { recipe in
                                 PaneLink(value: recipe) {
                                     RecipeCard(recipe: recipe, plan: plans[recipe.uuid])
@@ -327,7 +329,7 @@ struct RecipeCard: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2, reservesSpace: true)
                     .foregroundStyle(.primary)
-                HStack(spacing: 6) {
+                AdaptiveStack(spacing: 6, verticalSpacing: 4) {
                     if let minutes = recipe.totalTimeMinutes {
                         Label("\(minutes) min", systemImage: "timer").font(.caption2).foregroundStyle(.secondary)
                     }

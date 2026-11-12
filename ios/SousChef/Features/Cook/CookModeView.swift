@@ -214,14 +214,16 @@ struct CookModeView: View {
                     .font(.title2)
                     .foregroundStyle(gathered.contains(ingredient.id) ? Color.brand : .secondary)
                     .contentTransition(.symbolEffect(.replace))
-                VStack(alignment: .leading) {
-                    Text(ingredient.name).font(.title3.weight(inStep ? .semibold : .regular)).strikethrough(gathered.contains(ingredient.id))
-                    if let note = ingredient.note { Text(note).font(.callout).foregroundStyle(.secondary) }
+                TrailingDetailRow {
+                    VStack(alignment: .leading) {
+                        Text(ingredient.name).font(.title3.weight(inStep ? .semibold : .regular)).strikethrough(gathered.contains(ingredient.id))
+                        if let note = ingredient.note { Text(note).font(.callout).foregroundStyle(.secondary) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(Units.amount(ingredient.quantity.map { $0 * scale }, ingredient.unit))
+                        .font(.title3.monospacedDigit())
+                        .foregroundStyle(inStep ? Color.brand : .secondary)
                 }
-                Spacer()
-                Text(Units.amount(ingredient.quantity.map { $0 * scale }, ingredient.unit))
-                    .font(.title3.monospacedDigit())
-                    .foregroundStyle(inStep ? Color.brand : .secondary)
             }
             .padding(.vertical, 6)
             .padding(.horizontal, ingredientsBeside ? 12 : 0)
@@ -359,9 +361,9 @@ struct CookModeView: View {
                             Text("Nothing in your pantry matches this recipe.").foregroundStyle(.secondary)
                         }
                         ForEach(plan.deductions, id: \.self) { deduction in
-                            HStack {
+                            TrailingDetailRow {
                                 Text(deduction.name)
-                                Spacer()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 Text("−\(Units.amount(deduction.quantity, deduction.unit))").monospacedDigit().foregroundStyle(.secondary)
                             }
                         }

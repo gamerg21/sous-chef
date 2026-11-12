@@ -135,15 +135,17 @@ struct CookView: View {
                     RecipeImage(data: recipe.photo)
                         .frame(width: 52, height: 52)
                         .clipShape(.rect(cornerRadius: 12, style: .continuous))
-                    VStack(alignment: .leading, spacing: 3) {
-                        Eyebrow("Planned · \(meal.slot.title)", systemImage: meal.slot.symbol)
-                        Text(recipe.title).font(.body.weight(.semibold)).lineLimit(2)
+                    TrailingDetailRow(minimumLeadingWidth: 140) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Eyebrow("Planned · \(meal.slot.title)", systemImage: meal.slot.symbol)
+                            Text(recipe.title).font(.body.weight(.semibold)).lineLimit(3)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Button("Cook", systemImage: "flame") { cookingMeal = meal }
+                            .buttonStyle(.glassProminent)
+                            .labelStyle(.titleAndIcon)
+                            .fixedSize()
                     }
-                    Spacer()
-                    Button("Cook", systemImage: "flame") { cookingMeal = meal }
-                        .buttonStyle(.glassProminent)
-                        .labelStyle(.titleAndIcon)
-                        .fixedSize()
                 }
             }
             if !twoPane {
@@ -202,7 +204,7 @@ struct CookView: View {
                                     Text("Need " + item.plan.missingIngredients.prefix(3).map(\.name).joined(separator: ", ") + (item.missing > 3 ? "…" : ""))
                                         .font(.caption)
                                         .foregroundStyle(.orange)
-                                        .lineLimit(1)
+                                        .lineLimit(2)
                                 } else if let minutes = item.recipe.totalTimeMinutes {
                                     Label("\(minutes) min", systemImage: "timer").font(.caption).foregroundStyle(.secondary)
                                 }

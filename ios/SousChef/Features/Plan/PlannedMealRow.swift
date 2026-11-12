@@ -68,7 +68,7 @@ struct PlannedMealRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(meal.isCooked ? .secondary : .primary)
                     .lineLimit(2)
-                HStack(spacing: 8) {
+                AdaptiveStack(spacing: 8, verticalSpacing: 2) {
                     if meal.isCooked {
                         Label("Cooked", systemImage: "checkmark.circle.fill")
                             .font(.caption2.weight(.semibold))
@@ -81,7 +81,7 @@ struct PlannedMealRow: View {
                     }
                 }
                 if let note = meal.note {
-                    Text(note).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(note).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
         }

@@ -5,6 +5,8 @@ struct CommunityView: View {
     @Environment(Kitchen.self) private var kitchen
     @Environment(CommunityModeration.self) private var moderation
     @State private var recipes: [DTO.CommunityRecipe] = []
+    /// Cards get fewer columns as text grows, so titles keep room.
+    @ScaledMetric(relativeTo: .subheadline) private var cardWidth: CGFloat = 160
     @State private var search = ""
     @State private var loading = false
     @State private var error: String?
@@ -39,7 +41,7 @@ struct CommunityView: View {
                                            description: Text(search.isEmpty ? "Be the first to publish a recipe from its page." : "Try another search."))
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 14)], spacing: 14) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: cardWidth), spacing: 14)], spacing: 14) {
                             ForEach(visible) { recipe in
                                 NavigationLink(value: recipe) { CommunityCard(recipe: recipe) }
                                     .buttonStyle(.plain)
@@ -149,9 +151,9 @@ struct CommunityRecipeView: View {
                 Card {
                     Eyebrow("Ingredients", systemImage: "list.bullet")
                     ForEach(Array(recipe.ingredients.enumerated()), id: \.offset) { _, ingredient in
-                        HStack {
+                        TrailingDetailRow {
                             Text(ingredient.name)
-                            Spacer()
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             Text(Units.amount(ingredient.quantity, ingredient.unit)).foregroundStyle(.secondary).monospacedDigit()
                         }
                     }
@@ -419,6 +421,7 @@ struct PublishRecipeSheet: View {
             .buttonStyle(.glassProminent)
         }
         .padding(28)
+        .scrollsWhenTall()
         .sensoryFeedback(.success, trigger: outcome)
     }
 

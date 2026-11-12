@@ -198,14 +198,15 @@ private struct WeekSummaryCard: View {
         let missing = shortages.missingIngredients.count
         let total = days.count * slots.count
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 16) {
+            // The dots move below once large text needs the width.
+            TrailingDetailRow(minimumLeadingWidth: 130, spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(range(days))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    AdaptiveStack(alignment: .firstTextBaseline, spacing: 4, verticalSpacing: 0) {
                         Text("\(planned.count)")
-                            .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                            .statNumber(size: 34)
                             .contentTransition(.numericText(value: Double(planned.count)))
                         Text("of \(total) meals")
                             .font(.subheadline.weight(.medium))
@@ -213,7 +214,7 @@ private struct WeekSummaryCard: View {
                     }
                 }
                 .accessibilityElement(children: .combine)
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 // A dot per meal: days across, breakfast to dinner down.
                 HStack(spacing: 4) {
                     ForEach(days, id: \.self) { day in
@@ -238,10 +239,10 @@ private struct WeekSummaryCard: View {
                     .font(.callout.weight(.medium))
                     .foregroundStyle(Color.brand)
             } else {
-                HStack(spacing: 12) {
+                AdaptiveStack(spacing: 12, verticalSpacing: 8) {
                     Label("\(missing) item\(missing == 1 ? "" : "s") short", systemImage: "cart")
                         .font(.callout.weight(.medium))
-                    Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Button("Add to list", systemImage: "cart.badge.plus", action: onAddShortages)
                         .font(.callout.weight(.semibold))
                         .buttonStyle(.glassProminent)

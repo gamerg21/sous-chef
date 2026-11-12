@@ -14,6 +14,15 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.2.1
+
+### App Store
+Sous Chef now works better with larger text sizes. Lists, cards and At a Glance rearrange to fit bigger text instead of squeezing words, on iPhone and iPhone Duo, and setup scrolls so every button stays in reach.
+
+### Fixed
+- **Larger text**: With a bigger text size, lists, cards and At a Glance rearrange to fit instead of breaking words across lines.
+- **Setup with larger text**: The welcome screens scroll at the largest text sizes, so you can always reach Start cooking.
+
 ## 1.2.0
 
 ### App Store

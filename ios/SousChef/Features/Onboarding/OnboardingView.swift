@@ -21,6 +21,7 @@ struct OnboardingView: View {
             }
         }
         .padding(28)
+        .scrollsWhenTall()
         .animation(.snappy, value: page)
         .sheet(isPresented: $connecting, onDismiss: {
             if kitchen.server.isConnected { page = 1 }
