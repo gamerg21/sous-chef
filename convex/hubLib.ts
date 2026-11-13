@@ -3,7 +3,7 @@
 // module; everything here runs inside the calling query or mutation.
 import type { Doc, Id } from './_generated/dataModel';
 import type { MutationCtx, QueryCtx } from './_generated/server';
-import type { Author, Listing, RecipeSnapshot } from '../src/lib/community-contract';
+import { saneNumbers, type Author, type Listing, type RecipeSnapshot } from '../src/lib/community-contract';
 import { DEFAULT_DISPLAY_NAME } from './appleAuth';
 
 export type Recipe = Doc<'hubRecipes'>;
@@ -265,7 +265,7 @@ export async function isLiked(ctx: QueryCtx, recipeId: Id<'hubRecipes'>, userId:
 export async function toListing(ctx: QueryCtx, recipe: Recipe, viewer: Id<'users'> | null, cache?: AuthorCache): Promise<Listing | null> {
   const author = await authorOf(ctx, recipe.userId, cache);
   if (!author) return null;
-  const { snapshot } = recipe;
+  const snapshot = saneNumbers(recipe.snapshot);
   const listing: Listing = {
     id: recipe._id,
     revision: recipe.revision,

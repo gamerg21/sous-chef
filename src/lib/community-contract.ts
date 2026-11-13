@@ -9,8 +9,21 @@ export const snapshotValidator=v.object({
   steps:v.array(v.object({text:v.string()})),
 });
 export type RecipeSnapshot=Infer<typeof snapshotValidator>;
+const inRange=(value:number|undefined,min:number,max:number)=>typeof value==='number' && Number.isFinite(value) && value>=min && value<=max?value:undefined;
+/**
+ * A copy whose numbers are safe to show and convert: servings and time that
+ * aren't sensible positive amounts, and quantities that aren't finite and
+ * non-negative, are left out. Older apps convert these to integers unchecked.
+ */
+export function saneNumbers(snapshot:RecipeSnapshot):RecipeSnapshot {
+  const {servings,totalTimeMinutes,...rest}=snapshot;const result:RecipeSnapshot={...rest,ingredients:snapshot.ingredients.map(({quantity,...ingredient})=>{const amount=inRange(quantity,0,1e9);return amount===undefined?ingredient:{...ingredient,quantity:amount};})};
+  const people=inRange(servings,0.01,100000),minutes=inRange(totalTimeMinutes,0.01,1000000);
+  if(people!==undefined)result.servings=people;if(minutes!==undefined)result.totalTimeMinutes=minutes;
+  return result;
+}
+/** Checks a snapshot's shape and limits and returns it with `saneNumbers` applied. */
 export function parseSnapshot(value:unknown):RecipeSnapshot {
-  validate(descriptor(snapshotValidator),value);const snapshot=value as RecipeSnapshot;
+  validate(descriptor(snapshotValidator),value);const snapshot=saneNumbers(value as RecipeSnapshot);
   if(!snapshot.title.trim() || snapshot.title.length>200 || snapshot.ingredients.length>200 || snapshot.steps.length>200 || snapshot.tags.length>30 || JSON.stringify(snapshot).length>750000)throw new Error('Recipe exceeds community limits');
   if(snapshot.photoDataUrl && !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(snapshot.photoDataUrl))throw new Error('Invalid recipe photo');
   if(snapshot.sourceUrl && !/^https?:\/\//.test(snapshot.sourceUrl))throw new Error('Invalid source URL');

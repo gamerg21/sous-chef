@@ -177,5 +177,11 @@ type LocalDetail = Detail & { saved: boolean; savedRecipeId?: string; pantry?: L
 - Lists and details leave out recipes and cooks the caller hid or blocked and
   anything the word filter catches.
 - `community:saveRecipe` also reports the save to `/api/v2/save`.
+- `feed`, `followingFeed`, `recipe`, `updates`, `applyUpdate`, `dismissUpdate` and
+  `saveRecipe` take an optional `householdId`: the kitchen whose pantry and
+  saved copies to use, which the caller must belong to. Without it they use
+  the caller's current kitchen. The iOS app sends the kitchen it is showing.
+- A community service without API v2 makes `community:feed` answer
+  `available: false`; update the community service before its web servers.
 - A server older than 1.3.0 answers these with `Unknown operation`; clients
   fall back to the pre-1.3.0 operations.

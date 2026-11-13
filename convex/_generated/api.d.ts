@@ -14,6 +14,7 @@ import type * as appleHttp from "../appleHttp.js";
 import type * as auth from "../auth.js";
 import type * as community from "../community.js";
 import type * as communityHttp from "../communityHttp.js";
+import type * as crons from "../crons.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as httpUtil from "../httpUtil.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   community: typeof community;
   communityHttp: typeof communityHttp;
+  crons: typeof crons;
   helpers: typeof helpers;
   http: typeof http;
   httpUtil: typeof httpUtil;

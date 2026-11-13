@@ -3,7 +3,7 @@ import { action, internalMutation, internalQuery, mutation, query, type Mutation
 import type { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 import { getAuthUserId } from './helpers';
-import { snapshotValidator, parseSnapshot, type RecipeSnapshot } from '../src/lib/community-contract';
+import { snapshotValidator, parseSnapshot, saneNumbers, type RecipeSnapshot } from '../src/lib/community-contract';
 import { FILTER_MESSAGE, isObjectionable, snapshotTexts } from '../src/lib/community-filter';
 import { checkAndRecordRateLimit } from './rateLimit';
 import { deletePhoto, isViewable, syncRecipe, withoutPhoto, type Recipe } from './hubLib';
@@ -41,7 +41,7 @@ type StoredPhoto={id:Id<'_storage'>;type:string;size:number};
 type V1Recipe={id:Id<'hubRecipes'>;revision:number;createdAt:string;author:{id:Id<'users'>;name:string};snapshot:RecipeSnapshot;photo?:StoredPhoto};
 
 async function v1Recipe(ctx:QueryCtx,recipe:Recipe):Promise<V1Recipe>{
-  const row:V1Recipe={id:recipe._id,revision:recipe.revision,createdAt:new Date(recipe._creationTime).toISOString(),author:{id:recipe.userId,name:(await ctx.db.get(recipe.userId))?.name||'Community cook'},snapshot:recipe.snapshot};
+  const row:V1Recipe={id:recipe._id,revision:recipe.revision,createdAt:new Date(recipe._creationTime).toISOString(),author:{id:recipe.userId,name:(await ctx.db.get(recipe.userId))?.name||'Community cook'},snapshot:saneNumbers(recipe.snapshot)};
   if(recipe.photoId){
     const file=await ctx.db.system.get(recipe.photoId);
     if(file)row.photo={id:recipe.photoId,type:recipe.photoType||file.contentType||'image/jpeg',size:file.size};
@@ -116,5 +116,8 @@ export const publish=internalMutation({args:{userId:v.id('users'),id:v.optional(
   await syncRecipe(ctx,id);
   return {id,revision:1};
 }});
-export const unpublish=internalMutation({args:{userId:v.id('users'),id:v.id('hubRecipes')},returns:v.null(),handler:async(ctx,{userId,id})=>{const recipe=await ctx.db.get(id);if(!recipe || recipe.userId!==userId)throw new Error('Permission denied');await ctx.db.patch(id,{visibility:'private'});await syncRecipe(ctx,id);return null;}});
+export const unpublish=internalMutation({args:{userId:v.id('users'),id:v.id('hubRecipes')},returns:v.null(),handler:async(ctx,{userId,id})=>{const recipe=await ctx.db.get(id);if(!recipe || recipe.userId!==userId)throw new Error('Permission denied');
+  // The photo's direct link was public; taking the recipe down takes the photo down too. Publishing again uploads it again.
+  await deletePhoto(ctx,recipe.photoId);
+  await ctx.db.patch(id,{visibility:'private',photoId:undefined,photoType:undefined});await syncRecipe(ctx,id);return null;}});
 export { hash as hashCommunityToken };

@@ -26,7 +26,7 @@ function setup() {
     if (moderator) await t.mutation(internal.moderation.setModerator, { userId: id, moderator: true });
     return { id, token };
   };
-  const headers = (token?: string, address?: string) => ({ 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(address ? { 'x-forwarded-for': address } : {}) });
+  const headers = (token?: string, address?: string) => ({ 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(address ? { 'cf-connecting-ip': address } : {}) });
   const get = (path: string, token?: string) => t.fetch(path, { headers: headers(token) });
   const post = (path: string, body: unknown, token?: string, address?: string) => t.fetch(path, { method: 'POST', headers: headers(token, address), body: JSON.stringify(body) });
   const getJson = async <T>(path: string, token?: string) => {
@@ -211,11 +211,14 @@ describe('reporting', () => {
     expect(dismissed[0]).toMatchObject({ status: 'dismissed', resolution: 'Dismissed: Looks fine', resolvedAt: expect.any(String), reportCount: 0, recipe: { underReview: false } });
     expect((await reportRows()).every((row) => row.resolvedBy === mod.id)).toBe(true);
 
-    // The same people can report again, and three new reports hide it again.
+    // The reporters a moderator overruled can report again but no longer count; three others hide it again.
     await report(1);
     await report(2);
-    expect(await titles()).toEqual(['Fine', 'Reported, edited']);
+    await report(3);
     await report(4);
+    await report(5);
+    expect(await titles()).toEqual(['Fine', 'Reported, edited']);
+    await report(6);
     expect(await titles()).toEqual(['Fine']);
   });
 
@@ -271,6 +274,23 @@ describe('reporting', () => {
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(await reportRows()).toHaveLength(3);
+  });
+
+  test('unpublishing takes the photo down, and out-of-range numbers are never served', async () => {
+    const { t, cook, publish, postJson, getJson } = setup();
+    const alice = await cook('Alice');
+    const id = await publish(alice, { title: 'Huge', servings: 1e100, totalTimeMinutes: -5, ingredients: [{ name: 'Rice', quantity: 1e300 }, { name: 'Beans', quantity: 2 }], photoDataUrl: 'data:image/png;base64,iVBORw0KGgo=' } as never);
+    const detail = await getJson<Detail>(`/api/v2/recipes/${id}`);
+    expect(detail.servings).toBeUndefined();
+    expect(detail.snapshot.servings).toBeUndefined();
+    expect(detail.snapshot.totalTimeMinutes).toBeUndefined();
+    expect(detail.snapshot.ingredients).toEqual([{ name: 'Rice' }, { name: 'Beans', quantity: 2 }]);
+    const v1 = await getJson<{ snapshot: Detail['snapshot'] }>(`/api/v1/recipes/${id}`);
+    expect(v1.snapshot.servings).toBeUndefined();
+    const before = await t.run((ctx) => ctx.db.system.query('_storage').collect());
+    expect(before).toHaveLength(1);
+    await postJson('/api/v1/unpublish', { id }, alice.token);
+    expect(await t.run((ctx) => ctx.db.system.query('_storage').collect())).toHaveLength(0);
   });
 
   test('one address cannot hide a recipe with made-up client keys, but signed-in cooks each count', async () => {

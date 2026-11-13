@@ -21,8 +21,14 @@ export async function bearerUser(ctx:ActionCtx,request:Request):Promise<Id<'user
   return ctx.runQuery(internal.hub.identify,{hash:await hashCommunityToken(token)});
 }
 
+/**
+ * The caller's network address as the hosting edge reports it. Headers a
+ * client can set itself (`x-forwarded-for`, `x-real-ip`) are not trusted:
+ * without the edge's header every caller shares one "unknown" address, so
+ * per-address limits get stricter instead of forgeable.
+ */
 export function clientAddress(request:Request) {
-  return request.headers.get('cf-connecting-ip')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||request.headers.get('x-real-ip')||'unknown';
+  return request.headers.get('cf-connecting-ip')?.trim()||'unknown';
 }
 
 /** Decodes a `data:image/…;base64,` URL, or returns null when it isn't one. */

@@ -356,7 +356,7 @@ describe('likes and saves', () => {
   test('saves are rate limited per address', async () => {
     const { cook, publish, post } = setup();
     const id = await publish(await cook('Alice'));
-    const from = (address: string, n: number) => post('/api/v2/save', { id, clientKey: key(n) }, undefined, { 'x-forwarded-for': address });
+    const from = (address: string, n: number) => post('/api/v2/save', { id, clientKey: key(n) }, undefined, { 'cf-connecting-ip': address });
     for (let n = 0; n < 120; n++) expect((await from('203.0.113.9', n)).status).toBe(200);
     expect((await from('203.0.113.9', 500)).status).toBe(429);
     expect((await from('203.0.113.10', 501)).status).toBe(200);

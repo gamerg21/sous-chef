@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { v } from 'convex/values';
 import { action, query, mutation, internalQuery, internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
-import { getAuthUserId, getHouseholdMembership, ensureUserHasHousehold, decodeIngredientMapping } from './helpers';
+import { getAuthUserId, getHouseholdMembership, ensureUserHasHousehold, resolveHouseholdId, decodeIngredientMapping } from './helpers';
 import { encryptSecret, decryptSecret } from './secrets';
 import { communityRecipe, parseSnapshot, COMMUNITY_LIMITS, REPORT_REASONS, type Publication, type RecipeSnapshot, type Cook, type Listing, type LocalDetail, type LocalListing, type Me, type OwnListing, type Report, type Tip } from '../../lib/community-contract';
 import { isObjectionable, snapshotTexts, FILTER_MESSAGE } from '../../lib/community-filter';
@@ -49,8 +49,9 @@ export const publishRecipe=action({args:{recipeId:v.id('recipes'),visibility:v.o
 }});
 export const markUnpublished=internalMutation({args:{recipeId:v.id('recipes')},handler:async(ctx,{recipeId})=>{const userId=await getAuthUserId(ctx);const recipe=await ctx.db.get(recipeId);if(!recipe || !await getHouseholdMembership(ctx,userId,recipe.householdId))throw new Error('Permission denied');const publication=await ctx.db.query('publications').withIndex('by_recipeId',q=>q.eq('recipeId',recipeId)).unique();if(publication)await ctx.db.patch(publication._id,{visibility:'private'});return {success:true};}});
 export const unpublishRecipe=action({args:{recipeId:v.id('recipes')},handler:async(ctx,args):Promise<{success:boolean}>=>{const prepared=await ctx.runQuery(internal.community.preparePublication,{...args,includePhoto:false});if(prepared.remoteId)await remote('unpublish',{id:prepared.remoteId},await decryptSecret(prepared.token));return ctx.runMutation(internal.community.markUnpublished,args);}});
-export const importPublication=internalMutation({args:{publication:v.any()},handler:async(ctx,{publication}:{publication:Publication})=>{
-  const s=parseSnapshot(publication.snapshot);const userId=await getAuthUserId(ctx);const householdId=await ensureUserHasHousehold(ctx,userId);
+export const importPublication=internalMutation({args:{publication:v.any(),householdId:v.optional(v.id('households'))},handler:async(ctx,{publication,householdId:requested}:{publication:Publication;householdId?:Id<'households'>})=>{
+  // A named kitchen must be one the caller belongs to; otherwise the copy goes to their current one.
+  const s=parseSnapshot(publication.snapshot);const userId=await getAuthUserId(ctx);const householdId=requested?(await resolveHouseholdId(ctx,userId,requested))!:await ensureUserHasHousehold(ctx,userId);
   const recipeId=await ctx.db.insert('recipes',{householdId,title:s.title,description:s.description,tags:s.tags,servings:s.servings,totalTimeMinutes:s.totalTimeMinutes,sourceUrl:s.sourceUrl,visibility:'private',favorited:false});
   // A remote note must not pose as a legacy "MAPPING:" marker.
   for(const [order,ingredient]of s.ingredients.entries())await ctx.db.insert('recipeIngredients',{recipeId,order,...ingredient,note:ingredient.note?.replace(/^(\s*MAPPING:)+/i,'').trim() || undefined});
@@ -58,9 +59,9 @@ export const importPublication=internalMutation({args:{publication:v.any()},hand
   if(s.photoDataUrl){const match=/^data:([^;]+);base64,(.*)$/.exec(s.photoDataUrl)!;const id=ctx.files.store(match[1],Buffer.from(match[2],'base64'));const url=`/api/files/${id}`;await ctx.db.patch(recipeId,{photoUrl:url});await ctx.db.insert('mediaAssets',{url,recipeId});}
   await ctx.db.insert('recipeOrigins',{recipeId,remoteId:publication.id,revision:publication.revision,origin:communityOrigin()!,author:publication.author.name});return {savedRecipeId:recipeId};
 }});
-export const saveRecipe=action({args:{recipeId:v.string()},handler:async(ctx,{recipeId}):Promise<{savedRecipeId:string}>=>{
+export const saveRecipe=action({args:{recipeId:v.string(),householdId:v.optional(v.id('households'))},handler:async(ctx,{recipeId,householdId}):Promise<{savedRecipeId:string}>=>{
   const publication=await remote<Publication>(`recipes/${encodeURIComponent(recipeId)}`);parseSnapshot(publication.snapshot);
-  const saved=await ctx.runMutation(internal.community.importPublication,{publication});
+  const saved=await ctx.runMutation(internal.community.importPublication,{publication,...(householdId?{householdId}:{})});
   // Counted once per local account by the community; the copy is saved whether or not this arrives.
   try {const key=clientKey('save',ctx.userId);if(key)await remoteV2('save',{body:{id:recipeId,clientKey:key},timeoutMs:5000});} catch {}
   return saved;
@@ -108,8 +109,8 @@ async function savedCopyOf(ctx:QueryCtx,householdId:Id<'households'>,remoteId:st
   return null;
 }
 /** What this kitchen knows about some community recipes: saved copies, and in-stock names when asked. Stays on this server. */
-export const localMatches=internalQuery({args:{ids:v.array(v.string()),pantry:v.optional(v.boolean())},handler:async(ctx,{ids,pantry})=>{
-  const userId=await getAuthUserId(ctx);const householdId=await getCurrentHouseholdId(ctx,userId);
+export const localMatches=internalQuery({args:{ids:v.array(v.string()),pantry:v.optional(v.boolean()),householdId:v.optional(v.id('households'))},handler:async(ctx,{ids,pantry,householdId:requested})=>{
+  const userId=await getAuthUserId(ctx);const householdId=await resolveHouseholdId(ctx,userId,requested);
   const saved:[string,string][]=[];
   if(householdId)for(const id of new Set(ids)){const recipe=await savedCopyOf(ctx,householdId,id);if(recipe)saved.push([id,recipe._id]);}
   const stock=pantry && householdId?(await pantryFor(ctx,householdId)).filter(item=>item.quantity>0).map(item=>item.name):[];
@@ -118,9 +119,9 @@ export const localMatches=internalQuery({args:{ids:v.array(v.string()),pantry:v.
 
 const shown=(me:Session,listing:Listing)=>!me.recipes.has(listing.id) && !me.authors.has(listing.author.id) && !isObjectionable(listing.title,listing.description,...listing.tags,listing.author.name);
 const shownTip=(me:Session,tip:Tip)=>!me.tips.has(tip.id) && !me.authors.has(tip.author.id) && !isObjectionable(tip.tip,tip.author.name);
-async function localListings(ctx:ActionCtx,me:Session,listings:Listing[],pantry:boolean):Promise<LocalListing[]> {
+async function localListings(ctx:ActionCtx,me:Session,listings:Listing[],pantry:boolean,householdId?:Id<'households'>):Promise<LocalListing[]> {
   const visible=listings.filter(listing=>shown(me,listing));
-  const local=await ctx.runQuery(internal.community.localMatches,{ids:visible.map(l=>l.id),pantry});
+  const local=await ctx.runQuery(internal.community.localMatches,{ids:visible.map(l=>l.id),pantry,...(householdId?{householdId}:{})});
   const saved=new Map(local.saved);const stock=pantryKeys(local.stock);
   return visible.map(listing=>({...listing,saved:saved.has(listing.id),...(pantry?{pantry:matchPantry(listing.ingredientNames,stock)}:{})}));
 }
@@ -128,7 +129,7 @@ type Feed={recipes:LocalListing[];cursor:string|null;available:boolean};
 const NO_FEED:Feed={recipes:[],cursor:null,available:false};
 const pageSize=(limit?:number)=>Math.min(Math.max(Math.trunc(limit??20) || 20,1),50);
 
-export const feed=action({args:{sort:v.optional(v.union(v.literal('new'),v.literal('hot'),v.literal('top'))),tag:v.optional(v.string()),search:v.optional(v.string()),author:v.optional(v.string()),cursor:v.optional(v.string()),limit:v.optional(v.number()),pantry:v.optional(v.boolean())},handler:async(ctx,args):Promise<Feed>=>{
+export const feed=action({args:{sort:v.optional(v.union(v.literal('new'),v.literal('hot'),v.literal('top'))),tag:v.optional(v.string()),search:v.optional(v.string()),author:v.optional(v.string()),cursor:v.optional(v.string()),limit:v.optional(v.number()),pantry:v.optional(v.boolean()),householdId:v.optional(v.id('households'))},handler:async(ctx,args):Promise<Feed>=>{
   const me=await session(ctx);if(!configured())return NO_FEED;
   shortText(args.tag,'Tag');shortText(args.search,'Search');shortText(args.author,'Cook');cursorText(args.cursor,'Cursor');
   const page=async(cursor:string|undefined,limit:number)=>{
@@ -138,26 +139,26 @@ export const feed=action({args:{sort:v.optional(v.union(v.literal('new'),v.liter
     return parseListings(await remoteV2(`recipes?${query}`,{token:me.token,tokenOptional:true}));
   };
   try {
-    if(!args.pantry){const result=await page(args.cursor,pageSize(args.limit));return {recipes:await localListings(ctx,me,result.recipes,false),cursor:result.cursor,available:true};}
+    if(!args.pantry){const result=await page(args.cursor,pageSize(args.limit));return {recipes:await localListings(ctx,me,result.recipes,false,args.householdId),cursor:result.cursor,available:true};}
     // Pantry order needs the whole candidate set at once: up to 100 listings, at most four pages.
     const listings:Listing[]=[];let cursor=args.cursor;
     for(let pages=0;pages<4 && listings.length<100;pages++){const result=await page(cursor,50);listings.push(...result.recipes);if(!result.cursor)break;cursor=result.cursor;}
     const unique=[...new Map(listings.map(l=>[l.id,l])).values()].slice(0,100);
-    const recipes=await localListings(ctx,me,unique,true);
+    const recipes=await localListings(ctx,me,unique,true,args.householdId);
     return {recipes:recipes.sort((a,b)=>comparePantry(a.pantry!,b.pantry!)),cursor:null,available:true};
-  } catch(error){if(unreachable(error))return NO_FEED;throw error;}
+  } catch(error){if(unreachable(error) || (error instanceof CommunityError && error.code==='not_found'))return NO_FEED;throw error;}
 }});
-export const followingFeed=action({args:{cursor:v.optional(v.string()),limit:v.optional(v.number())},handler:async(ctx,args):Promise<Feed>=>{
+export const followingFeed=action({args:{cursor:v.optional(v.string()),limit:v.optional(v.number()),householdId:v.optional(v.id('households'))},handler:async(ctx,args):Promise<Feed>=>{
   const me=await session(ctx);if(!configured())return NO_FEED;if(!me.token)throw new Error(NOT_CONNECTED);
   cursorText(args.cursor,'Cursor');
-  try {const result=parseListings(await remoteV2('feed/following',{body:{...(args.cursor?{cursor:args.cursor}:{}),limit:pageSize(args.limit)},token:me.token}));return {recipes:await localListings(ctx,me,result.recipes,false),cursor:result.cursor,available:true};}
+  try {const result=parseListings(await remoteV2('feed/following',{body:{...(args.cursor?{cursor:args.cursor}:{}),limit:pageSize(args.limit)},token:me.token}));return {recipes:await localListings(ctx,me,result.recipes,false,args.householdId),cursor:result.cursor,available:true};}
   catch(error){if(unreachable(error))return NO_FEED;throw error;}
 }});
-export const recipe=action({args:{id:v.string()},handler:async(ctx,{id}):Promise<LocalDetail>=>{
+export const recipe=action({args:{id:v.string(),householdId:v.optional(v.id('households'))},handler:async(ctx,{id,householdId}):Promise<LocalDetail>=>{
   const me=await session(ctx);
   const detail=parseDetail(await remoteV2(`recipes/${pathId(id)}`,{token:me.token,tokenOptional:true}));
   if(detail.id!==id || !shown(me,detail) || isObjectionable(...snapshotTexts(detail.snapshot)))throw new Error("This recipe isn't available");
-  const local=await ctx.runQuery(internal.community.localMatches,{ids:[detail.id],pantry:true});
+  const local=await ctx.runQuery(internal.community.localMatches,{ids:[detail.id],pantry:true,...(householdId?{householdId}:{})});
   const savedRecipeId=new Map(local.saved).get(detail.id);
   const names=detail.ingredientNames.length?detail.ingredientNames:detail.snapshot.ingredients.map(i=>i.name);
   return {...detail,tips:detail.tips.filter(tip=>shownTip(me,tip)),saved:!!savedRecipeId,...(savedRecipeId?{savedRecipeId}:{}),pantry:matchPantry(names,pantryKeys(local.stock))};
@@ -256,8 +257,8 @@ export const report=action({args:{recipeId:v.string(),tipId:v.optional(v.string(
 
 // ── Updates to saved copies ─────────────────────────────────────────────
 /** The current household's copies saved from this community. */
-export const savedCopies=internalQuery({args:{},handler:async ctx=>{
-  const userId=await getAuthUserId(ctx);const householdId=await getCurrentHouseholdId(ctx,userId);
+export const savedCopies=internalQuery({args:{householdId:v.optional(v.id('households'))},handler:async(ctx,{householdId:requested})=>{
+  const userId=await getAuthUserId(ctx);const householdId=await resolveHouseholdId(ctx,userId,requested);
   const copies:{recipeId:Id<'recipes'>;title:string;remoteId:string;savedRevision:number;dismissedRevision?:number}[]=[];
   if(!householdId || !configured())return copies;
   for(const recipe of await ctx.db.query('recipes').withIndex('by_householdId',q=>q.eq('householdId',householdId)).collect()) {
@@ -276,8 +277,8 @@ async function latestRevisions(remoteIds:string[]):Promise<Map<string,number|nul
   return latest;
 }
 type Update={recipeId:string;title:string;remoteId:string;savedRevision:number;latestRevision:number};
-export const updates=action({args:{},handler:async(ctx):Promise<{updates:Update[]}>=>{
-  const copies=(await ctx.runQuery(internal.community.savedCopies,{})).slice(0,1000);
+export const updates=action({args:{householdId:v.optional(v.id('households'))},handler:async(ctx,{householdId}):Promise<{updates:Update[]}>=>{
+  const copies=(await ctx.runQuery(internal.community.savedCopies,householdId?{householdId}:{})).slice(0,1000);
   if(!copies.length)return {updates:[]};
   let latest:Map<string,number|null>;
   try {latest=await latestRevisions(copies.map(copy=>copy.remoteId));} catch(error){if(unreachable(error))return {updates:[]};throw error;}
@@ -294,6 +295,10 @@ async function ownedCopy(ctx:QueryCtx,recipeId:Id<'recipes'>) {
   if(!origin || !isCurrentOrigin(origin.origin))throw new Error("This recipe wasn't saved from this community");
   return {recipe,origin};
 }
+/** Refuses a saved copy that isn't in the kitchen the caller says they are looking at. */
+export const copyInHousehold=internalQuery({args:{recipeId:v.id('recipes'),householdId:v.id('households')},handler:async(ctx,{recipeId,householdId})=>{
+  const {recipe}=await ownedCopy(ctx,recipeId);if(recipe.householdId!==householdId)throw new Error('This recipe is in another kitchen');return null;
+}});
 export const savedCopy=internalQuery({args:{recipeId:v.id('recipes')},handler:async(ctx,{recipeId})=>{
   const {origin}=await ownedCopy(ctx,recipeId);return {remoteId:origin.remoteId,revision:origin.revision};
 }});
@@ -324,7 +329,8 @@ async function dropPhoto(ctx:MutationCtx,recipeId:Id<'recipes'>,url?:string) {
   if(url.startsWith('/api/files/'))ctx.files.remove(url.split('/').pop()!);
   for(const asset of await ctx.db.query('mediaAssets').withIndex('by_recipeId',q=>q.eq('recipeId',recipeId)).collect())if(asset.url===url)await ctx.db.delete(asset._id);
 }
-export const applyUpdate=action({args:{recipeId:v.id('recipes')},handler:async(ctx,{recipeId}):Promise<{success:true}>=>{
+export const applyUpdate=action({args:{recipeId:v.id('recipes'),householdId:v.optional(v.id('households'))},handler:async(ctx,{recipeId,householdId}):Promise<{success:true}>=>{
+  if(householdId)await ctx.runQuery(internal.community.copyInHousehold,{recipeId,householdId});
   const copy=await ctx.runQuery(internal.community.savedCopy,{recipeId});
   const detail=parseDetail(await remoteV2(`recipes/${pathId(copy.remoteId)}?photo=inline`));
   if(detail.id!==copy.remoteId)throw new CommunityError('The community service sent a response this server could not read','invalid');
@@ -337,7 +343,8 @@ export const recordDismissal=internalMutation({args:{recipeId:v.id('recipes'),re
   if(revision>origin.revision && revision>(origin.dismissedRevision??0))await ctx.db.patch(origin._id,{dismissedRevision:revision});
   return {success:true as const};
 }});
-export const dismissUpdate=action({args:{recipeId:v.id('recipes')},handler:async(ctx,{recipeId}):Promise<{success:true}>=>{
+export const dismissUpdate=action({args:{recipeId:v.id('recipes'),householdId:v.optional(v.id('households'))},handler:async(ctx,{recipeId,householdId}):Promise<{success:true}>=>{
+  if(householdId)await ctx.runQuery(internal.community.copyInHousehold,{recipeId,householdId});
   const copy=await ctx.runQuery(internal.community.savedCopy,{recipeId});
   const revision=(await latestRevisions([copy.remoteId])).get(copy.remoteId);
   if(typeof revision!=='number')return {success:true};

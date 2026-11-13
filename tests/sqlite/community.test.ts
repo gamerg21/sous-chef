@@ -203,6 +203,40 @@ describe('feeds', () => {
     expect(JSON.stringify(calls)).not.toMatch(/tomato|basil|flour/i);
   });
 
+  test('a named kitchen decides pantry matches, saved copies and updates, and must be one the caller belongs to', async () => {
+    const k = await setup();
+    // A second kitchen of the same person, with its own pantry; the first stays their current one.
+    const second = await k.t.run(async ctx => {
+      const householdId = await ctx.db.insert('households', { name: 'Cabin' });
+      await ctx.db.insert('householdMembers', { userId: k.userId, householdId, role: 'owner' });
+      const locationId = await ctx.db.insert('kitchenLocations', { householdId, name: 'Pantry' });
+      const foodItemId = await ctx.db.insert('foodItems', { name: 'Saffron' });
+      await ctx.db.insert('inventoryItems', { householdId, foodItemId, locationId, quantity: 1, unit: 'each' });
+      return householdId;
+    });
+    await k.stock('Eggs');
+    mockRemote({ 'GET /api/v2/recipes': () => ({ recipes: [listing('r1', { ingredientNames: ['Saffron'] })], cursor: null }), 'GET /api/v1/recipes/r1': () => ({ id: 'r1', revision: 1, author: { id: 'a', name: 'Ann' }, createdAt: '2026-01-01T00:00:00.000Z', snapshot: snapshot() }), 'POST /api/v2/save': () => ({ saveCount: 1 }), 'GET /api/v2/revisions': () => ({ revisions: { r1: 2 } }) });
+    const have = async (householdId?: string) => (await k.call('community:feed', { pantry: true, ...(householdId ? { householdId } : {}) })).recipes[0].pantry.have;
+    expect(await have()).toBe(0);
+    expect(await have(second)).toBe(1);
+    const { savedRecipeId } = await k.call('community:saveRecipe', { recipeId: 'r1', householdId: second });
+    expect((await k.t.run(ctx => ctx.db.get(savedRecipeId as Id<'recipes'>)))?.householdId).toBe(second);
+    expect((await k.call('community:feed', {})).recipes[0].saved).toBe(false);
+    expect((await k.call('community:feed', { householdId: second })).recipes[0].saved).toBe(true);
+    expect((await k.call('community:updates', {})).updates).toEqual([]);
+    expect((await k.call('community:updates', { householdId: second })).updates).toHaveLength(1);
+    await expect(k.call('community:dismissUpdate', { recipeId: savedRecipeId, householdId: k.householdId })).rejects.toThrow('another kitchen');
+    const stranger = await k.otherUser();
+    for (const [path, args] of [['community:feed', { householdId: second }], ['community:updates', { householdId: second }], ['community:saveRecipe', { recipeId: 'r1', householdId: second }]] as const)
+      await expect(k.call(path, args, stranger)).rejects.toThrow('Permission denied');
+  });
+
+  test('a community without API v2 makes the feed unavailable instead of failing', async () => {
+    const k = await setup();
+    mockRemote({});
+    expect(await k.call('community:feed', {})).toEqual({ recipes: [], cursor: null, available: false });
+  });
+
   test('pantry reading stops at 100 listings', async () => {
     const k = await setup();
     let served = 0;

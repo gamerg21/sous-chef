@@ -6,7 +6,7 @@ import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel';
-import { COMMUNITY_LIMITS, type Cook, type Detail, type Listing, type Me, type OwnListing, type Tip } from '../src/lib/community-contract';
+import { COMMUNITY_LIMITS, saneNumbers, type Cook, type Detail, type Listing, type Me, type OwnListing, type Tip } from '../src/lib/community-contract';
 import { FILTER_MESSAGE, isObjectionable } from '../src/lib/community-filter';
 import { cleanDisplayName, DEFAULT_DISPLAY_NAME } from './appleAuth';
 import { isBanned } from './hub';
@@ -190,7 +190,7 @@ export const recipeDetail = internalQuery({
     const detail: Detail = {
       ...listing,
       visibility: recipe.visibility === 'unlisted' ? 'unlisted' : 'public',
-      snapshot: recipe.snapshot,
+      snapshot: saneNumbers(recipe.snapshot),
       tips: await toTips(ctx, await visibleTips(ctx, recipe._id).take(20)),
     };
     if (viewer) {

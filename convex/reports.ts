@@ -65,7 +65,10 @@ export const report = internalMutation({
 
     const reportId = await ctx.db.insert('hubReports', { recipeId: recipe._id, tipId, reporter: args.reporter, reporterGroup: args.reporterGroup, reason: args.reason, note, status: 'open' });
     if (!tipId && !recipe.underReview) {
-      const reporters = new Set((await openReportsOn(ctx, { recipeId: recipe._id, tipId: undefined })).map((open) => open.reporterGroup ?? open.reporter));
+      // Reporters a moderator already overruled on this recipe don't count toward holding it again.
+      const dismissed = await ctx.db.query('hubReports').withIndex('by_recipeId_and_status', (q) => q.eq('recipeId', recipe._id).eq('status', 'dismissed')).take(500);
+      const overruled = new Set(dismissed.filter((old) => !old.tipId).map((old) => old.reporterGroup ?? old.reporter));
+      const reporters = new Set((await openReportsOn(ctx, { recipeId: recipe._id, tipId: undefined })).map((open) => open.reporterGroup ?? open.reporter).filter((group) => !overruled.has(group)));
       if (reporters.size >= COMMUNITY_LIMITS.autoHideReports) {
         await ctx.db.patch(recipe._id, { underReview: true });
         await syncRecipe(ctx, recipe._id);
