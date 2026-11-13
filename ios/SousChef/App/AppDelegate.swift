@@ -31,14 +31,15 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
         for activity in connectionOptions.userActivities { openInviteLink(in: activity) }
     }
 
-    /// A souschefkitchen.app/join invitation tapped while the app was running.
+    /// A souschefkitchen.app link (a kitchen invitation or a community recipe) tapped while the app was running.
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         openInviteLink(in: userActivity)
     }
 
     private func openInviteLink(in activity: NSUserActivity) {
         guard activity.activityType == NSUserActivityTypeBrowsingWeb, let url = activity.webpageURL else { return }
-        HouseholdSharing.shared.open(inviteLink: url)
+        if HouseholdSharing.shared.open(inviteLink: url) { return }
+        AppNavigator.shared.open(communityLink: url)
     }
 
     func windowScene(_ windowScene: UIWindowScene, userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {

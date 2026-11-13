@@ -243,6 +243,10 @@ final class CommunityAccount {
     /// Signs out when the Apple ID credential was revoked or removed.
     func checkCredentialState() async {
         guard let appleUserID = session?.appleUserID else { return }
+        #if DEBUG
+        // A test sign-in has no Apple credential to check.
+        if appleUserID == CommunityTestSession.marker { return }
+        #endif
         do {
             let state = try await ASAuthorizationAppleIDProvider().credentialState(forUserID: appleUserID)
             if state == .revoked || state == .notFound { signOut() }

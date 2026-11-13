@@ -242,6 +242,7 @@ struct RecipeDetailView: View {
             }
             .scrollIndicators(.hidden)
             .scrollClipDisabled()
+            CommunityUpdateNotice(recipe: recipe)
         }
     }
 

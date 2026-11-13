@@ -52,6 +52,7 @@ struct IntelligenceSettingsView: View {
 struct CommunitySettingsView: View {
     @Environment(CommunityModeration.self) private var moderation
     @Environment(CommunityAccount.self) private var account
+    @Environment(CommunityClient.self) private var client
     @State private var communityURL = CommunityService.directURL
 
     var body: some View {
@@ -70,7 +71,7 @@ struct CommunitySettingsView: View {
             } header: {
                 Eyebrow("Safety")
             } footer: {
-                Text("Report a recipe or block a cook from the recipe's menu. Reports are reviewed within 24 hours, and offending recipes and cooks are removed.")
+                Text("Report a recipe or a tip, or block a cook, from its menu. Reports are reviewed within 24 hours, and offending recipes and cooks are removed.")
             }
 
             Section {
@@ -89,6 +90,8 @@ struct CommunitySettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         // Leaving the page counts as finishing the address, like pressing return.
         .onDisappear(perform: saveCommunityURL)
+        // Settings can open before any community screen: find out what this community offers.
+        .task { try? await client.resolveCapabilities() }
     }
 
     private func saveCommunityURL() {
@@ -97,5 +100,7 @@ struct CommunitySettingsView: View {
         CommunityService.directURL = address
         // A community account belongs to one community.
         if let session = account.session, session.origin != CommunityService.communityURL?.absoluteString { account.signOut() }
+        client.reset()
+        Task { try? await client.resolveCapabilities() }
     }
 }

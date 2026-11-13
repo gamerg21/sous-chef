@@ -17,12 +17,24 @@ final class CommunityModeration {
     private(set) var hiddenRecipes: [String: String]
     /// Author key → display name.
     private(set) var blockedAuthors: [String: String]
+    /// IDs of tips the person reported, oldest first; they stay hidden on this device.
+    private(set) var reportedTips: [String]
+    /// The newest reported tips are remembered, up to this many.
+    static let reportedTipsLimit = 500
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         acceptedGuidelinesVersion = defaults.integer(forKey: Keys.guidelines)
         hiddenRecipes = defaults.dictionary(forKey: Keys.hidden) as? [String: String] ?? [:]
         blockedAuthors = defaults.dictionary(forKey: Keys.blocked) as? [String: String] ?? [:]
+        reportedTips = Array((defaults.stringArray(forKey: Keys.reportedTips) ?? []).suffix(Self.reportedTipsLimit))
+    }
+
+    /// Remembers a reported tip so it stays hidden after the recipe is opened again.
+    func markReported(tipID: String) {
+        guard !tipID.isEmpty, !reportedTips.contains(tipID) else { return }
+        reportedTips = Array((reportedTips + [tipID]).suffix(Self.reportedTipsLimit))
+        defaults.set(reportedTips, forKey: Keys.reportedTips)
     }
 
     var hasAcceptedGuidelines: Bool { acceptedGuidelinesVersion >= Self.guidelinesVersion }
@@ -76,6 +88,7 @@ final class CommunityModeration {
         static let guidelines = "community.guidelinesAccepted"
         static let hidden = "community.hiddenRecipes"
         static let blocked = "community.blockedAuthors"
+        static let reportedTips = "community.reportedTips"
     }
 }
 

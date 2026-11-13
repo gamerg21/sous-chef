@@ -58,14 +58,23 @@ struct CommunitySignInButton: View {
     }
 }
 
-/// Settings rows for the community account.
+/// Settings rows for the community account: who's signed in, their public
+/// profile, what they've shared, and signing out or deleting the account.
+/// With a connected server the profile belongs to the account connected there.
 struct CommunityAccountSection: View {
     @Environment(CommunityAccount.self) private var account
+    @Environment(CommunityClient.self) private var client
     @State private var error: String?
     @State private var confirmDelete = false
     @State private var deleting = false
+    @State private var status: Community.AccountStatus?
+
+    private var viaServer: Bool { client.isAvailable && client.mode == .companion }
+    /// Profiles and "my recipes" need a community with API v2; assume so until it says otherwise.
+    private var hasProfiles: Bool { client.capabilities.social || !client.capabilities.isKnown }
 
     var body: some View {
+        if viaServer { serverSection }
         Section {
             if let session = account.session {
                 LabeledContent {
@@ -73,7 +82,14 @@ struct CommunityAccountSection: View {
                 } label: {
                     Label("Signed in with Apple", systemImage: "person.crop.circle.badge.checkmark")
                 }
-                NavigationLink { DisplayNameEditor() } label: { Label("Display name", systemImage: "character.cursor.ibeam") }
+                if !viaServer, client.isSignedIn, hasProfiles {
+                    NavigationLink { CommunityProfileEditor() } label: { Label("Profile", systemImage: "person.text.rectangle") }
+                        .accessibilityIdentifier("communityProfile")
+                    NavigationLink { MySharedRecipesView() } label: { Label("My shared recipes", systemImage: "book.pages") }
+                        .accessibilityIdentifier("communityMyRecipes")
+                } else {
+                    NavigationLink { DisplayNameEditor() } label: { Label("Display name", systemImage: "character.cursor.ibeam") }
+                }
                 Button { account.signOut() } label: { Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right") }
                 Button(role: .destructive) { confirmDelete = true } label: {
                     HStack {
@@ -81,6 +97,7 @@ struct CommunityAccountSection: View {
                         if deleting { Spacer(); ProgressView() }
                     }
                 }
+                .tint(.red)
                 .disabled(deleting)
             } else {
                 CommunitySignInButton(error: $error)
@@ -91,16 +108,45 @@ struct CommunityAccountSection: View {
             Eyebrow("Community account")
         } footer: {
             Text(account.isSignedIn
-                 ? "Recipes you publish show this name. Deleting your account removes it and everything you've published from the community, and disconnects Sous Chef from your Apple Account."
-                 : "Sign in to publish recipes. Browsing doesn't need an account.")
+                 ? "Recipes, ratings and tips you share show your name. Deleting your account removes it and everything you've shared from the community, and disconnects Sous Chef from your Apple Account."
+                 : "Sign in to like recipes, follow cooks, rate what you make and publish your own. Browsing and saving don't need an account.")
         }
         .sheet(isPresented: $confirmDelete) {
             ConfirmSheet(systemImage: "person.crop.circle.badge.xmark", title: "Delete your community account?",
-                         message: "Your community account and every recipe you've published will be removed from the community. Recipes in your kitchen stay on this device. This can't be undone.",
+                         message: "Your community account and everything you've shared, including recipes, ratings and tips, will be removed from the community. Recipes in your kitchen stay on this device. This can't be undone.",
                          action: "Delete account and recipes", actionIdentifier: "confirmDeleteAccount") {
                 Task { await delete() }
             }
         }
+    }
+
+    /// The community account connected to the person's Sous Chef server.
+    private var serverSection: some View {
+        Section {
+            if let status {
+                if let me = status.me {
+                    LabeledContent {
+                        Text(me.cook.name)
+                    } label: {
+                        Label("Connected on your server", systemImage: "server.rack")
+                    }
+                    NavigationLink { CommunityProfileEditor() } label: { Label("Profile", systemImage: "person.text.rectangle") }
+                    NavigationLink { MySharedRecipesView() } label: { Label("My shared recipes", systemImage: "book.pages") }
+                } else if status.connected {
+                    Label("Connected on your server", systemImage: "server.rack")
+                } else if status.configured {
+                    Text("Connect your community account on your server's web app (Community → Connect) to like, follow, rate and publish.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Your Sous Chef server isn't linked to a recipe community.").foregroundStyle(.secondary)
+                }
+            } else {
+                ProgressView()
+            }
+        } header: {
+            Eyebrow("Through your server")
+        }
+        .task { status = try? await client.accountStatus() }
     }
 
     private func delete() async {
@@ -115,7 +161,8 @@ struct CommunityAccountSection: View {
     }
 }
 
-/// Optional; Sign in with Apple already supplies the name.
+/// Optional; Sign in with Apple already supplies the name. For communities
+/// without profiles; otherwise `CommunityProfileEditor` edits the name.
 struct DisplayNameEditor: View {
     @Environment(CommunityAccount.self) private var account
     @Environment(\.dismiss) private var dismiss

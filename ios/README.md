@@ -12,7 +12,7 @@ companion to a self-hosted Sous Chef server.
 | Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
 | Cook | Cooking, Plan | Recipes ranked by what you have, cook mode with timers, and pantry deduction. "This week's plan" plans recipes by day and meal, shows their readiness, and adds the week's combined shortages to the shopping list. |
 | Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
-| Community | Community | Browse and save community recipes; publish with Sign in with Apple or through a server. |
+| Community | Community | Browse new, trending, top and pantry-matched recipes, like, rate, leave tips and follow cooks; save recipes and take their updates; publish with Sign in with Apple or through a server. |
 
 Settings (the toolbar button on every tab) covers iCloud, the companion server,
 Apple Intelligence, Open Food Facts, expiry reminders, and recipe import/export
@@ -412,10 +412,82 @@ With iCloud on and several devices connected to the same server, each device
 syncs with both. Brief duplicates are possible if two devices create the same
 item before either syncs.
 
+## Community
+
+The Community tab talks to the recipe community through `Server/CommunityClient.swift`
+([API v2](../docs/COMMUNITY_API.md)): directly, or through a connected Sous
+Chef server. Screens live in `Features/Community`.
+
+- **Feed** (`CommunityFeedView`, `CommunityFeedModel`): New, Trending, Top,
+  From your pantry (best pantry match first, "You have 5 of 7" and what's
+  missing) and Following, tag chips, search as you type, pull to refresh, and
+  paging through `CommunityFeedPager`. Photos load through `CommunityPhoto`.
+- **Recipe** (`CommunityRecipeView`, `CommunityRecipeModel`): cook and Follow,
+  like, rating summary, pantry match, ingredients and steps, Share (when the
+  community gives the recipe a share link), Save to my recipes, "I made this"
+  (stars and a tip of up to 280 characters) and tips from other cooks.
+- **Cook profile** (`CookProfileView`): bio, counts, Follow, Block and recipes.
+- **Likes, follows and saves** are kept by `CommunitySocial`, so every screen
+  agrees. Changes show at once and roll back if the community refuses them.
+  Without an account they open `CommunityAccountPromptSheet`: Sign in with
+  Apple, or with a server connected, a note that the account is connected on
+  the server's web app.
+- **Updates to saved recipes**: `CommunityUpdateChecker` asks when Community
+  appears and when the app comes to the foreground, at most every 15 minutes.
+  Community shows a banner, `CommunityUpdatesView` lists the recipes with
+  Update and Not now, and `CommunityUpdateNotice` sits on the saved recipe's
+  page. Updating replaces the copy's title, description, photo, ingredients
+  and steps; notes, favorites and cooking history stay.
+- **Share links**: `https://souschefkitchen.app/r/<id>` opens the recipe
+  (`CommunityLink`, `AppNavigator.open(communityLink:)`), after the guidelines
+  if they haven't been agreed to, with "Recipe not found" when it's gone. The
+  link reaches the app through `applinks:souschefkitchen.app`; the website's
+  `/.well-known/apple-app-site-association` must list `/r/*` beside `/join`.
+- **Older communities and servers** (no API v2, `client.capabilities`): the tab
+  lists and searches, recipes can be saved, reports go by email, and nothing
+  social is shown.
+
+`CommunityTests` (UI tests) run against a development community, never
+production. They skip unless the test runner gets its address, and the
+signed-in ones a throwaway publisher token:
+
+```sh
+TEST_RUNNER_COMMUNITY_TEST_URL=https://<deployment>.convex.site \
+TEST_RUNNER_COMMUNITY_TEST_TOKEN=<token> \
+xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -parallel-testing-enabled NO -only-testing:SousChefUITests/CommunityTests test
+```
+
+Debug builds take a few launch arguments for this (`App/CommunityTestSession.swift`,
+compiled out of Release): `-community.url <address>` picks the community,
+`-communityTestToken <token>` signs in without Sign in with Apple (which the
+simulator can't run), `-resetCommunityState` forgets the guidelines agreement,
+hidden recipes, blocked cooks and saved copies, `-communityStaleSaves` makes a
+recipe saved in that launch offer an update, and `-whatsNewVersion 1.3.0`
+previews a release's What's New.
+
+`CompanionCommunityTests` cover the same screens through a connected server.
+They need a running Sous Chef 1.3.0 server linked to a development community,
+and an account on it whose community account is connected and whose kitchen
+has something in stock; without all three variables they skip:
+
+```sh
+TEST_RUNNER_COMPANION_TEST_URL=http://localhost:3000 \
+TEST_RUNNER_COMPANION_TEST_EMAIL=<email> \
+TEST_RUNNER_COMPANION_TEST_PASSWORD=<password> \
+xcodebuild -scheme SousChef -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -parallel-testing-enabled NO -only-testing:SousChefUITests/CompanionCommunityTests test
+```
+
+They connect in Settings as a person would and leave the simulator's app
+connected to that server; delete the app from the simulator before running
+`CommunityTests` there.
+
 ## Community account
 
-Browsing, saving and reporting community recipes need no account. Publishing
-without a connected server uses a community account from Sign in with Apple
+Browsing, saving and reporting community recipes need no account. Liking,
+following, rating and publishing without a connected server use a community
+account from Sign in with Apple
 (`Server/CommunityAccount.swift`, `Features/Community/CommunityAccountViews.swift`).
 
 - The community address defaults to `SousChefCommunityURL` in
@@ -428,9 +500,12 @@ without a connected server uses a community account from Sign in with Apple
 - The app checks the Apple ID credential state at launch and when it becomes
   active, and listens for credential revocation; a revoked or missing credential
   signs out locally.
-- Settings → Community account shows the name, an optional display name editor,
-  Sign out, and Delete community account, which removes the account and its
-  recipes on the server and revokes the Apple sign-in.
+- Settings → Community account shows the name, Profile (display name and bio,
+  `CommunityProfileEditor`), My shared recipes (public, unlisted, not shared,
+  under review or removed by a moderator), Sign out, and Delete community
+  account, which removes the account and what it shared on the server and
+  revokes the Apple sign-in. With a server connected, the profile and shared
+  recipes are those of the account connected on the server.
 - Unsigned simulator builds lack the entitlement: sign-in shows an error
   instead of crashing.
 
@@ -446,20 +521,25 @@ without a connected server uses a community account from Sign in with Apple
   warns before sending a password over HTTP to a public host.
 - **User-generated content (1.2):** community recipes are hidden until the person
   agrees to the community guidelines (zero tolerance for objectionable content and
-  abusive users; versioned, stored on the device). Every community recipe has
-  **Report recipe** (reason plus optional note, emailed to community@souschefkitchen.app
-  through Mail, a `mailto:` link, or copyable text) and **Block <cook>** in its
-  detail menu and long-press menu. Reported recipes and blocked cooks disappear
-  at once and can be restored in Settings → Blocked cooks and hidden recipes. A
-  built-in whole-word profanity and slur filter hides matching recipes. Publishing
+  abusive users; versioned, stored on the device), including a recipe opened
+  from a share link. Every community recipe has **Report recipe**, **Hide
+  recipe** and **Block <cook>** in its detail menu and long-press menu, and
+  every tip has **Report tip** and **Block <cook>** in its own menu. Reports
+  (reason plus optional note) go to the community's moderators from inside the
+  app; a community that can't take them gets the report by email to
+  community@souschefkitchen.app through Mail, a `mailto:` link, or copyable text.
+  Reported and hidden recipes, reported tips and blocked cooks (their recipes
+  and tips) disappear at once and can be restored in Settings → Blocked cooks
+  and hidden recipes. A built-in whole-word profanity and slur filter hides
+  matching recipes and tips, and the community refuses such text when it's posted. Publishing
   also requires accepting the guidelines. Reports are reviewed within 24 hours;
   Settings links the guidelines and the contact address. Code:
   `Domain/CommunityModeration.swift`, `Features/Community/CommunitySafety.swift`.
-- **Sign in with Apple (4.8, 5.1.1(v)):** sign-in is only needed to publish
-  recipes; browsing, saving and reporting work without an account. The app uses
+- **Sign in with Apple (4.8, 5.1.1(v)):** sign-in is only needed to like, follow,
+  rate and publish; browsing, saving and reporting work without an account. The app uses
   the system Sign in with Apple button, requests only the name, and never asks for
   a name or email afterwards (the name comes from Apple, or "Community cook"). A
-  display name can optionally be changed in Settings. Settings → Community account
+  display name and bio can optionally be changed in Settings. Settings → Community account
   → **Delete community account** deletes the account and everything it published
   on the server and revokes the Apple tokens through Apple's REST API.
 - **Privacy:** barcode lookups send only the barcode to Open Food Facts. Kitchen

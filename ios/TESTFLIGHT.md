@@ -20,6 +20,17 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.0 (31)
+
+### What to Test
+
+What to test (please focus here)
+- Community feed: browse New, Trending, Top and From your pantry, filter by a tag, search, and keep scrolling for more.
+- Likes, ratings and follows: sign in, like a recipe, tap I made this to rate it and leave a tip, then follow its cook and check Following.
+- Saved recipes: save a community recipe, find it in Recipes, and watch for an update notice when its cook changes it.
+- Reporting: report a recipe or a tip from its menu; it should disappear for you without opening Mail.
+- Your profile: in Settings > Community, add a bio and open My shared recipes.
+
 ## 1.2.1 (30)
 
 ### What to Test
