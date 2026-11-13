@@ -16,7 +16,7 @@ export function cleanupExpiredDemos(sql,now=Date.now()) {
    sql.prepare('DELETE FROM households WHERE id=?').run(householdId);
    for(const food of foods){const refs=['inventoryItems','recipeIngredients','barcodes'].some(table=>sql.prepare(`SELECT 1 FROM "${table}" WHERE json_extract(data,'$.foodItemId')=? LIMIT 1`).get(food.id));if(!refs)sql.prepare('DELETE FROM foodItems WHERE id=?').run(food.id);}
   }
-  for(const table of ['householdMembers','userPreferences','userUnitUsage','userIngredientUnitPreferences','communityConnections','communityRecipeLikes','communityRecipeSaves','appAdmins'])sql.prepare(`DELETE FROM "${table}" WHERE json_extract(data,'$.userId')=?`).run(user.id);
+  for(const table of ['householdMembers','userPreferences','userUnitUsage','userIngredientUnitPreferences','communityConnections','communityHidden','communityRecipeLikes','communityRecipeSaves','appAdmins'])sql.prepare(`DELETE FROM "${table}" WHERE json_extract(data,'$.userId')=?`).run(user.id);
   sql.prepare('DELETE FROM users WHERE id=?').run(user.id);
  }
  return users.length;

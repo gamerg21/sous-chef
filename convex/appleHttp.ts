@@ -1,5 +1,6 @@
 import { httpAction } from './_generated/server';
 import { internal } from './_generated/api';
+import { FILTER_MESSAGE, isObjectionable } from '../src/lib/community-filter';
 import { hashCommunityToken, newPublisherToken } from './hub';
 import { AppleTokenError, appleConfig, exchangeAuthorizationCode, revokeAppleToken, verifyIdentityToken } from './appleAuth';
 import { BodyTooLarge, bearerUser, clientAddress, json, readBoundedJson } from './httpUtil';
@@ -94,6 +95,7 @@ export const updateName = httpAction(async (ctx, request) => {
     const body = (await readBoundedJson(request, 4_000)) as { name?: unknown } | null;
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     if (!name || Array.from(name).length > 40) return json({ error: 'Names are 1–40 characters' }, 400);
+    if (isObjectionable(name)) return json({ error: FILTER_MESSAGE }, 400);
     return json(await ctx.runMutation(internal.apple.setName, { userId, name }));
   } catch {
     return json({ error: 'Invalid request' }, 400);

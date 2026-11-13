@@ -5,6 +5,7 @@ import schema from './schema';
 import { api, internal } from './_generated/api';
 import { type AppleJwk, APPLE_ISSUER, appleClientSecret, base64UrlDecode, base64UrlEncode, cleanDisplayName, sha256Hex, verifyIdentityToken } from './appleAuth';
 import { hashCommunityToken } from './hub';
+import { FILTER_MESSAGE, FILTER_TERMS } from '../src/lib/community-filter';
 const modules = import.meta.glob('./**/*.ts');
 
 const encoder = new TextEncoder();
@@ -106,6 +107,11 @@ describe('Apple community accounts', () => {
     expect(accounts).toEqual([expect.objectContaining({ provider: 'apple', providerAccountId: 'apple-1', userId: first!.userId })]);
   });
 
+  test('a name the word filter refuses is replaced by the default', async () => {
+    const t = convexTest(schema, modules);
+    expect(await t.mutation(internal.apple.signIn, { sub: 'apple-9', fullName: `${[...FILTER_TERMS][0]} Smith`, refreshToken: 'r', tokenHash: 'h9' })).toMatchObject({ name: 'Community cook' });
+  });
+
   test('defaults the name and refuses a first sign-in without a refresh token', async () => {
     const t = convexTest(schema, modules);
     expect(await t.mutation(internal.apple.signIn, { sub: 'apple-2', tokenHash: 'h' })).toBeNull();
@@ -157,6 +163,9 @@ describe('Apple community accounts', () => {
     expect((await post('/api/v1/me/name', { name: '   ' }, token)).status).toBe(400);
     expect((await post('/api/v1/me/name', { name: 'x'.repeat(41) }, token)).status).toBe(400);
     expect(await (await post('/api/v1/me/name', { name: ' Chef Ada ' }, token)).json()).toEqual({ name: 'Chef Ada' });
+    const filtered = await post('/api/v1/me/name', { name: `Chef ${[...FILTER_TERMS][0]}` }, token);
+    expect(filtered.status).toBe(400);
+    expect(await filtered.json()).toEqual({ error: FILTER_MESSAGE });
     expect((await t.run((ctx) => ctx.db.get(user.userId)))?.name).toBe('Chef Ada');
   });
 });

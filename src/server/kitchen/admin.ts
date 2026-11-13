@@ -163,6 +163,12 @@ export const deleteUser = mutation({
       .collect();
     for (const save of saves) await ctx.db.delete(save._id);
 
+    const hidden = await ctx.db
+      .query("communityHidden")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+    for (const entry of hidden) await ctx.db.delete(entry._id);
+
     const unitUsage = await ctx.db
       .query("userUnitUsage")
       .withIndex("by_userId_and_unitId", (q) => q.eq("userId", args.userId))

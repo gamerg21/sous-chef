@@ -13,7 +13,7 @@ export interface MutationCtx {
   db: GenericDatabaseWriter<DataModel>;
   userId: Id<'users'> | null;
   auth: { getUserIdentity(): Promise<{ subject: string; tokenIdentifier: string } | null> };
-  files: { read(id:string): {mime:string;bytes:Uint8Array}|null; store(mime:string,bytes:Uint8Array): string };
+  files: { read(id:string): {mime:string;bytes:Uint8Array}|null; store(mime:string,bytes:Uint8Array): string; remove(id:string): boolean };
   storage: { generateUploadUrl(): Promise<string>; getUrl(id: Id<'_storage'>): Promise<string | null> };
   runQuery<A, R>(ref: Ref<A, R>, args: A): Promise<R>;
   runMutation<A, R>(ref: Ref<A, R>, args: A): Promise<R>;

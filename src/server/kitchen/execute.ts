@@ -23,7 +23,11 @@ export function context(database:KitchenDatabase,userId:Id<'users'>|null,db?:Mut
   };
   return {db:db ?? new Proxy({} as MutationCtx['db'],{get(){throw new Error('Actions must use a transaction');}}),userId,
     auth:{getUserIdentity:async()=>userId?{subject:userId,tokenIdentifier:userId}:null},
-    files:{read:(id)=>readAuthorizedFile(database.sql,id,userId),store:(mime,bytes)=>{if(!db || !userId)throw new Error('File storage requires authenticated transaction');const id=randomUUID();database.sql.prepare('INSERT INTO files VALUES(?,?,?,?)').run(id,userId,mime,bytes);return id;}},
+    files:{read:(id)=>readAuthorizedFile(database.sql,id,userId),store:(mime,bytes)=>{if(!db || !userId)throw new Error('File storage requires authenticated transaction');const id=randomUUID();database.sql.prepare('INSERT INTO files VALUES(?,?,?,?)').run(id,userId,mime,bytes);return id;},
+      // Deletes a stored file the caller may read, unless a recipe or pantry item still shows it.
+      remove:(id)=>{if(!db || !userId)throw new Error('File storage requires authenticated transaction');if(!readAuthorizedFile(database.sql,id,userId))return false;const url=`/api/files/${id}`;
+        for(const table of ['recipes','inventoryItems'])if(database.sql.prepare(`SELECT 1 FROM ${table} WHERE json_extract(data,'$.photoUrl')=? LIMIT 1`).get(url))return false;
+        database.sql.prepare('DELETE FROM files WHERE id=?').run(id);return true;}},
     storage:{generateUploadUrl:async()=>'/api/files',getUrl:async(id)=>{
       const row=database.sql.prepare('SELECT user_id FROM files WHERE id=?').get(id);
       if(!row || row.user_id!==userId)throw new Error('Permission denied');return `/api/files/${id}`;

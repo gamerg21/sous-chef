@@ -8,6 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { RecipeDetailView } from "@/components/recipes";
 import type { Recipe } from "@/components/recipes";
 import { AlertModal } from "@/components/ui/alert-modal";
+import { CommunityUpdateNotice } from "@/components/community/CommunityUpdates";
 import { PageLoader } from "@/components/ui/page-loader";
 import { formatDay, slotLabels, type PlanEntryValues } from "@/components/plan";
 
@@ -165,6 +166,7 @@ export default function RecipeDetailPage() {
 
   return (
     <>
+      <CommunityUpdateNotice recipeId={recipeId} />
       <RecipeDetailView
         recipe={recipe as Recipe}
         pantrySnapshot={pantrySnapshot}
