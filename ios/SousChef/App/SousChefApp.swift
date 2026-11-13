@@ -7,8 +7,16 @@ struct SousChefApp: App {
     @State private var kitchen = Kitchen.shared
     @State private var account = CommunityAccount.shared
     @Environment(\.scenePhase) private var scenePhase
+    #if DEBUG
+    /// False while a test sign-in (`-communityTestToken`) is being set up.
+    @State private var testSessionReady = !CommunityTestSession.isRequested
+    #endif
 
     init() {
+        #if DEBUG
+        CommunityTestSession.resetIfRequested()
+        CommunityTestSession.removeLeftoverSession()
+        #endif
         // Sample data in an in-memory kitchen skips onboarding without saving
         // that, so a test run never hides onboarding from the real app.
         let arguments = ProcessInfo.processInfo.arguments
@@ -20,7 +28,7 @@ struct SousChefApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            content
                 .kitchenEnvironment(kitchen)
                 .tint(.brand)
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
@@ -29,6 +37,7 @@ struct SousChefApp: App {
                 .task { CookTimerAlerts.shared.endLeftoverActivities() }
                 .onOpenURL { url in
                     if HouseholdSharing.shared.open(inviteLink: url) { return }
+                    if AppNavigator.shared.open(communityLink: url) { return }
                     AppNavigator.shared.open(url)
                     AppNavigator.shared.receiveSharedRecipes()
                 }
@@ -42,12 +51,31 @@ struct SousChefApp: App {
                     WidgetSnapshotWriter.refresh(kitchen)
                 }
                 Task { await account.checkCredentialState() }
+                // Newer versions of saved community recipes; spaced out by the checker.
+                Task { await CommunityUpdateChecker.shared.checkIfDue() }
             }
             // Reminders reflect whatever synced or changed while the app was open.
             if phase != .inactive { ExpiryReminders.shared.reschedule(kitchen) }
             if phase == .background { WidgetSnapshotWriter.refresh(kitchen) }
             if phase != .inactive { Task { await KitchenIndex.refresh(kitchen) } }
         }
+    }
+}
+
+extension SousChefApp {
+    @ViewBuilder private var content: some View {
+        #if DEBUG
+        if testSessionReady {
+            RootView()
+        } else {
+            ProgressView().task {
+                await CommunityTestSession.installIfRequested()
+                testSessionReady = true
+            }
+        }
+        #else
+        RootView()
+        #endif
     }
 }
 
@@ -87,6 +115,11 @@ final class AppNavigator {
     /// A recipe to open straight into Cook mode, taken by its `RecipeDetailView`.
     var recipeToCook: UUID?
 
+    /// A community recipe to show on the Community tab, from a share link; `CommunityView` takes it.
+    var communityRecipeToOpen: String?
+    /// iOS can deliver the same link to the scene and to SwiftUI.
+    @ObservationIgnored private var lastCommunityLink: (id: String, at: Date)?
+
     /// Links and text shared from other apps, imported one at a time by `RecipesView`.
     var sharedRecipes: [SharedRecipeInbox.Item] = []
 
@@ -109,6 +142,18 @@ final class AppNavigator {
         tab = .recipes
         recipeToCook = cooking ? id : nil
         recipeToOpen = id
+    }
+
+    /// Opens a community recipe's share link (`https://souschefkitchen.app/r/<id>`)
+    /// on the Community tab. Returns false for any other link.
+    @discardableResult
+    func open(communityLink url: URL, now: Date = .now) -> Bool {
+        guard let id = CommunityLink.recipeID(from: url) else { return false }
+        if let last = lastCommunityLink, last.id == id, abs(now.timeIntervalSince(last.at)) < 2 { return true }
+        lastCommunityLink = (id, now)
+        tab = .community
+        communityRecipeToOpen = id
+        return true
     }
 
     /// Opens a `souschef://` link from a widget; other links are ignored.
@@ -269,6 +314,8 @@ extension View {
         environment(kitchen)
             .environment(CommunityModeration.shared)
             .environment(CommunityAccount.shared)
+            .environment(CommunityClient.shared)
+            .environment(CommunitySocial.shared)
             .modelContainer(kitchen.container)
     }
 }

@@ -14,6 +14,38 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.3.0
+
+### App Store
+Community just got a lot more fun. Browse what's new, trending and most liked, see recipes you can cook from what's already in your pantry, and follow the cooks you like.
+
+New in 1.3:
+• Cook from your pantry: community recipes sorted by how much you already have, with what's missing.
+• Like recipes, and after you cook one, give it stars and leave a tip for the next cook.
+• Follow cooks and see their newest recipes in Following. Every cook has a profile.
+• Photos, ratings and likes on every recipe, with tags and search to narrow things down.
+• Updates to saved recipes: when a cook improves a recipe you saved, choose whether to update your copy.
+• Share a recipe with a link that opens right in Sous Chef.
+• Report a recipe or a tip without leaving the app.
+
+### New
+- **Cook from your pantry**: Community's From your pantry list sorts recipes by how many ingredients you already have, and shows what's missing.
+- **New, Trending and Top**: Browse the newest recipes, what's popular right now and the most liked of all time, narrow by tag, and keep scrolling for more.
+- **Likes**: Tap the heart on a recipe to like it. Every recipe shows how many cooks did.
+- **I made this**: After cooking a community recipe, rate it from one to five stars and add a tip for other cooks. You can change or remove yours any time.
+- **Tips from cooks**: Read what others learned making a recipe, right under its steps.
+- **Follow cooks**: Open a cook's profile to see their bio and recipes, and follow them to see their newest in Following.
+- **Your profile**: Add a short bio and change your display name in Settings > Community.
+- **My shared recipes**: Settings > Community lists everything you've published and whether each is public, unlisted, not shared, under review or removed.
+- **Updates to saved recipes**: When a cook changes a recipe you saved, Community and the recipe's page offer the new version. Update your copy or keep it as it is.
+- **Recipe links**: Share a community recipe as a link. Tapping one opens the recipe in Sous Chef.
+
+### Improved
+- **Recipe photos**: Community recipes load faster and show their photos as you scroll.
+- **Reporting**: Reports on recipes and tips now go straight to the community's moderators from inside the app, and you can hide a recipe without reporting it.
+- **Blocked cooks**: Blocking a cook also hides their tips.
+- **Community search**: Results appear as you type.
+
 ## 1.2.1
 
 ### App Store

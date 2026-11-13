@@ -16,6 +16,14 @@ struct WhatsNewTests {
         #expect(WhatsNew.features(version: "9.9.0", seen: "1.1", onboarded: true) == nil)
     }
 
+    @Test func communityReleaseHasAnEntry() throws {
+        let features = try #require(WhatsNew.features(version: "1.3.0", seen: "1.2", onboarded: true))
+        #expect(features.count >= 4)
+        // Titles are the list's identity, so they can't repeat.
+        #expect(Set(features.map(\.title)).count == features.count)
+        #expect(WhatsNew.features(version: "1.3.1", seen: "1.3", onboarded: true) == nil)
+    }
+
     @Test func releaseIsMajorAndMinor() {
         #expect(WhatsNew.release(of: "1.1.0") == "1.1")
         #expect(WhatsNew.release(of: "2.0") == "2.0")

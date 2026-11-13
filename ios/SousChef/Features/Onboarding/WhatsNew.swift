@@ -17,6 +17,20 @@ enum WhatsNew {
     /// The features each release introduces, keyed by "major.minor". A release
     /// without an entry shows nothing.
     static let releases: [String: [Feature]] = [
+        "1.3": [
+            Feature(systemImage: "person.2.fill", color: .brand, title: "A livelier Community",
+                    detail: "Browse what's new, trending and most liked, filter by tag, and see every recipe's photo, rating and likes."),
+            Feature(systemImage: "cabinet.fill", color: .orange, title: "Cook from your pantry",
+                    detail: "Community recipes sorted by how much you already have, with what's missing."),
+            Feature(systemImage: "heart.fill", color: .pink, title: "Like, rate and leave a tip",
+                    detail: "Like recipes, and after cooking one, give it stars and a tip for the next cook."),
+            Feature(systemImage: "person.crop.circle.badge.plus", color: .blue, title: "Follow cooks",
+                    detail: "See a cook's profile and recipes, and follow them to get their newest in Following."),
+            Feature(systemImage: "arrow.triangle.2.circlepath", color: .teal, title: "Updates to saved recipes",
+                    detail: "When a cook improves a recipe you saved, choose whether to update your copy."),
+            Feature(systemImage: "square.and.arrow.up", color: .purple, title: "Share a recipe link",
+                    detail: "Send a community recipe to anyone. The link opens right in Sous Chef."),
+        ],
         "1.2": [
             Feature(systemImage: "sparkles", color: .purple, title: "iPhone Duo is here",
                     detail: "Sous Chef now supports iPhone Duo. Unfold it and your kitchen spreads across both screens."),
@@ -57,7 +71,11 @@ enum WhatsNew {
     }
 
     static var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        #if DEBUG
+        // `-whatsNewVersion 1.3.0` previews a release's screen before the version changes.
+        if let preview = UserDefaults.standard.string(forKey: "whatsNewVersion")?.nilIfEmpty { return preview }
+        #endif
+        return Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     }
 }
 
