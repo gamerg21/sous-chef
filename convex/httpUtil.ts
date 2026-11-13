@@ -21,6 +21,32 @@ export async function bearerUser(ctx:ActionCtx,request:Request):Promise<Id<'user
   return ctx.runQuery(internal.hub.identify,{hash:await hashCommunityToken(token)});
 }
 
+/**
+ * The caller's network address as the hosting edge reports it. Headers a
+ * client can set itself (`x-forwarded-for`, `x-real-ip`) are not trusted:
+ * without the edge's header every caller shares one "unknown" address, so
+ * per-address limits get stricter instead of forgeable.
+ */
 export function clientAddress(request:Request) {
-  return request.headers.get('cf-connecting-ip')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||request.headers.get('x-real-ip')||'unknown';
+  return request.headers.get('cf-connecting-ip')?.trim()||'unknown';
 }
+
+/** Decodes a `data:image/…;base64,` URL, or returns null when it isn't one. */
+export function decodeDataUrl(dataUrl:string):{type:string;bytes:Uint8Array<ArrayBuffer>}|null {
+  const match=/^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+  if(!match)return null;
+  try{
+    const binary=atob(match[2]);const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    return {type:match[1],bytes};
+  }catch{return null;}
+}
+
+export async function toDataUrl(blob:Blob,type:string):Promise<string> {
+  const bytes=new Uint8Array(await blob.arrayBuffer());let binary='';
+  for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+  return `data:${type};base64,${btoa(binary)}`;
+}
+
+/** Length of the data URL `toDataUrl` makes for a file of `size` bytes. */
+export const dataUrlLength=(size:number,type:string)=>`data:${type};base64,`.length+Math.ceil(size/3)*4;

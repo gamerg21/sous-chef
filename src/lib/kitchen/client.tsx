@@ -24,12 +24,17 @@ export function useQuery<A, R>(ref:Ref<A,R>, args: A | 'skip' = {} as A): R | un
 }
 export function useMutation<A,R>(ref:Ref<A,R>): (args:A) => Promise<R> {
   const client = useQueryClient(); const path = ref.path;
-  return useCallback(async (args:A) => { const result = await request<A,R>({path},args); await client.invalidateQueries({queryKey:['kitchen']}); return result; },[client,path]);
+  return useCallback(async (args:A) => { const result = await request<A,R>({path},args);
+    // Saved copies, pantry matches and update notices belong to the kitchen that was just left:
+    // drop them (mounted screens show their loading state and fetch again) before anything re-renders.
+    if(path==='households:select')void client.resetQueries({queryKey:['community']});
+    await client.invalidateQueries({queryKey:['kitchen']});
+    return result; },[client,path]);
 }
 export const useAction = useMutation;
 export function useKitchen() { return useMemo(() => ({query:request, mutation:request, action:request}),[]); }
 export function useAuthActions() {
   const client=useQueryClient();
-  const perform = useCallback(async (body:Record<string,unknown>) => { const res=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await res.json();if(!res.ok)throw new Error(result.error || 'Authentication failed');client.removeQueries({queryKey:['kitchen']});await client.invalidateQueries({queryKey:['session']});return result as {signingIn:boolean}; },[client]);
+  const perform = useCallback(async (body:Record<string,unknown>) => { const res=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await res.json();if(!res.ok)throw new Error(result.error || 'Authentication failed');client.removeQueries({queryKey:['kitchen']});client.removeQueries({queryKey:['community']});await client.invalidateQueries({queryKey:['session']});return result as {signingIn:boolean}; },[client]);
   return useMemo(() => ({signIn:(_provider:string, args:FormData|Record<string,unknown>) => perform(args instanceof FormData ? Object.fromEntries(args.entries()):args),signOut:() => perform({flow:'signOut'})}),[perform]);
 }

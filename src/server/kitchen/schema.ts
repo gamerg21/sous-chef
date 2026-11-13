@@ -71,7 +71,10 @@ export default defineSchema({
 
   communityConnections: defineTable({userId:v.id("users"), token:v.string()}).index("by_userId",["userId"]),
   publications: defineTable({recipeId:v.id("recipes"), userId:v.id("users"), remoteId:v.string(), revision:v.number(), origin:v.string(), visibility:v.optional(v.string())}).index("by_recipeId",["recipeId"]),
-  recipeOrigins: defineTable({recipeId:v.id("recipes"), remoteId:v.string(), revision:v.number(), origin:v.string(), author:v.string()}).index("by_recipeId",["recipeId"]),
+  // `dismissedRevision`: the newest community revision the kitchen chose not to apply.
+  recipeOrigins: defineTable({recipeId:v.id("recipes"), remoteId:v.string(), revision:v.number(), origin:v.string(), author:v.string(), dismissedRevision:v.optional(v.number())}).index("by_recipeId",["recipeId"]).index("by_remoteId",["remoteId"]),
+  // Community recipes a person hid and cooks they blocked; never sent to the community.
+  communityHidden: defineTable({userId:v.id("users"), kind:v.union(v.literal("recipe"),v.literal("author"),v.literal("tip")), key:v.string(), label:v.string()}).index("by_userId",["userId"]).index("by_userId_and_kind_and_key",["userId","kind","key"]),
   // ── Household ──────────────────────────────────────────────────────────
   households: defineTable({
     name: v.string(),

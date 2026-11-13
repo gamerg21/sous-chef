@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 /**
  * Deterministic 64-bit FNV-1a hash. Convex mutations run in a deterministic
@@ -106,5 +107,21 @@ export const checkAndRecord = internalMutation({
   handler: async (ctx, args) => {
     const allowed = await checkAndRecordRateLimit(ctx, args);
     return { allowed };
+  },
+});
+
+/**
+ * Deletes rate-limit windows that ended more than a day ago, a batch at a
+ * time, and continues in a new transaction while there are more.
+ */
+export const cleanup = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const stale = await ctx.db.query("authRateLimitEvents").withIndex("by_windowStart", (q) => q.lt("windowStart", cutoff)).take(500);
+    for (const row of stale) await ctx.db.delete(row._id);
+    if (stale.length === 500) await ctx.scheduler.runAfter(0, internal.rateLimit.cleanup, {});
+    return null;
   },
 });
