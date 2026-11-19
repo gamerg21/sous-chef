@@ -46,6 +46,7 @@ New in 1.3:
 - **Reporting**: Reports on recipes and tips now go straight to the community's moderators from inside the app, and you can hide a recipe without reporting it. Report is in a recipe's menu and at the end of its page.
 - **Blocked cooks**: Blocking a cook also hides their tips.
 - **Community search**: Results appear as you type.
+- **Recipe ideas**: Stop a suggestion from the Drafting button, or cancel the one you got, and your prompt is still there to tweak and try again.
 
 ## 1.2.1
 

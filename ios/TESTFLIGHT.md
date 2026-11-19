@@ -20,6 +20,15 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.0 (33)
+
+### What to Test
+
+What to test (please focus here)
+- Recipe ideas: type a prompt and tap Suggest a recipe. While it's drafting, tap Stop on the Drafting button; you should stay on the prompt with your text still there.
+- Let a draft finish, then tap Cancel in the editor and discard it. You should land back on your prompt, not the recipe list. Pasting text and importing a link work the same way.
+- The top-left Cancel on these screens is now an X that closes the sheet.
+
 ## 1.3.0 (32)
 
 ### What to Test
