@@ -20,7 +20,7 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
-## 1.3.0 (33)
+## 1.3.0 (34)
 
 ### What to Test
 
