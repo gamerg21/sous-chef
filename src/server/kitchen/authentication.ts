@@ -27,6 +27,13 @@ export function limit(database:KitchenDatabase,subject:string,max=10) {
   if(row && Number(row.count)>=max)throw new Error('Too many attempts. Try again later.');
   database.sql.prepare('INSERT INTO login_limits VALUES(?,1,?) ON CONFLICT(subject) DO UPDATE SET count=count+1').run(subject,now+15*60*1000);
 }
+/** Returns a one-hour reset code for a known account, or null. Callers must answer the same either way. */
+export async function createResetCode(email:string,database=getDatabase()):Promise<string|null> {
+  const code=randomBytes(32).toString('base64url');
+  return database.transaction(async db=>{limit(database,'reset:instance',50);limit(database,`reset:${digest(email)}`,5);
+    const user=await db.query('users').withIndex('email',q=>q.eq('email',email)).first();if(!user)return null;
+    database.sql.prepare('DELETE FROM reset_tokens WHERE user_id=?').run(user._id);database.sql.prepare('INSERT INTO reset_tokens VALUES(?,?,?)').run(digest(code),user._id,Date.now()+3600000);return code;});
+}
 export async function authenticate(body:Record<string,unknown>,database=getDatabase()):Promise<{token?:string;signingIn:boolean}> {
   const flow=String(body.flow||'');const email=normalizeEmail(String(body.email||''));const password=String(body.password||'');
   if(!['signUp','signIn','demo','reset-verification'].includes(flow))throw new Error('Invalid authentication request');
@@ -49,7 +56,9 @@ export async function authenticate(body:Record<string,unknown>,database=getDatab
       const householdId=await createDefaultHousehold(context(database,userId,db),userId);
       if(flow==='demo') await seedDemoKitchen(context(database,userId,db),householdId);
     } else {
-      if(!user) {scryptSync(password.slice(0,128),'dummy-salt',64);throw new Error('Invalid email or password');}
+      // A reset link for an unknown email fails like a wrong or expired code, at the same speed (the new password was
+      // already hashed above), so it can't confirm an account.
+      if(!user) {if(flow!=='reset-verification')scryptSync(password.slice(0,128),'dummy-salt',64);throw new Error(flow==='reset-verification'?'Invalid or expired reset link':'Invalid email or password');}
       userId=user._id;
       if(flow==='reset-verification') {
         const row=database.sql.prepare('SELECT * FROM reset_tokens WHERE token_hash=? AND user_id=? AND expires>?').get(digest(String(body.code||'')),userId,Date.now());

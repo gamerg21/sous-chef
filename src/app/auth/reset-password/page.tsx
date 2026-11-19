@@ -28,13 +28,14 @@ function ResetPasswordContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
+  const hasCode = code.length > 0;
+
+  // A reset link must work even in a browser that's already signed in, maybe to another account.
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && !hasCode) {
       router.replace("/inventory");
     }
-  }, [authLoading, isAuthenticated, router]);
-
-  const hasCode = code.length > 0;
+  }, [authLoading, isAuthenticated, hasCode, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,9 +140,16 @@ function ResetPasswordContent() {
       title="Reset your password"
       description="Enter your email and choose a new password."
       footer={
-        <Link href="/auth/signin" className={authLinkClassName}>
-          Back to sign in
-        </Link>
+        <p>
+          Link expired?{" "}
+          <Link href="/auth/forgot-password" className={authLinkClassName}>
+            Request a new reset link
+          </Link>
+          {" · "}
+          <Link href="/auth/signin" className={authLinkClassName}>
+            Back to sign in
+          </Link>
+        </p>
       }
     >
       <form className="space-y-5" onSubmit={handleSubmit}>

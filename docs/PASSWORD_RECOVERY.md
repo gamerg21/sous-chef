@@ -90,8 +90,9 @@ For a direct source installation, replace the command after `|` with
 
 ### If it does not work
 
-- **Account not found:** check your sign-in email and that the command targets
-  the same installation you use in your browser.
+- **No account uses that email** (older releases say **Account not found**):
+  check your sign-in email and that the command targets the same installation
+  you use in your browser.
 - **No kitchen database found:** for a source install, set `SOUS_CHEF_DATA_DIR`
   to the directory used by the running app. For Docker, use the existing app
   container, which already has the right storage attached.

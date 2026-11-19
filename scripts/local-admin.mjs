@@ -5,6 +5,9 @@ import { resolve, join } from 'node:path';
 import { mkdirSync, existsSync, readFileSync, writeFileSync, copyFileSync, chmodSync } from 'node:fs';
 import { randomBytes, scryptSync } from 'node:crypto';
 for(const file of ['.env.local','.env'])if(existsSync(file))process.loadEnvFile(file);
+// Show plain messages instead of stack traces; Ctrl+C at the prompt cancels cleanly.
+const fail=error=>{console.error(error?.name==='AbortError'?'Cancelled. Nothing was changed.':error instanceof Error?error.message:String(error));process.exitCode=1;};
+process.on('uncaughtException',fail);process.on('unhandledRejection',fail);
 const command=process.argv[2];const directory=resolve(process.env.SOUS_CHEF_DATA_DIR||'./data');const filename=join(directory,'kitchen.sqlite');
 if(!existsSync(filename))throw new Error('No kitchen database found. Start the app first, or set SOUS_CHEF_DATA_DIR.');
 const sql=new DatabaseSync(filename);sql.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
@@ -19,8 +22,8 @@ try {
   console.log(`Backup saved to ${destination}. Keep it private; it contains credentials and personal data.`);
  }else if(command==='reset-password') {
   const email=(process.argv[3]||'').trim().toLowerCase();if(!email)throw new Error('Usage: reset-password email (hidden prompt, or new password on stdin)');
-  const password=await readNewPassword();if(password.length<8 || password.length>128)throw new Error('Password must be 8–128 characters');
-  const user=sql.prepare("SELECT id FROM users WHERE json_extract(data,'$.email')=?").get(email);if(!user)throw new Error('Account not found');
+  const user=sql.prepare("SELECT id FROM users WHERE json_extract(data,'$.email')=?").get(email);if(!user)throw new Error(`No account uses ${email}. Nothing was changed.`);
+  const password=await readNewPassword();if(password.length<8 || password.length>128)throw new Error('Password must be 8–128 characters. Nothing was changed.');
   const salt=randomBytes(16).toString('hex');const hash=`scrypt:${salt}:${scryptSync(password,salt,64).toString('hex')}`;
   sql.exec('BEGIN IMMEDIATE');try{sql.prepare('INSERT INTO credentials VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET hash=excluded.hash').run(user.id,hash);sql.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);sql.prepare('DELETE FROM reset_tokens WHERE user_id=?').run(user.id);sql.exec('COMMIT');}catch(e){sql.exec('ROLLBACK');throw e;}console.log('Password updated; existing local sessions revoked.');
  }else if(command==='restore-copy') {

@@ -29,7 +29,7 @@ export default function RecoveryInstructions() {
           ))}
         </div>
         <p>Your recipes, pantry, and household stay intact. Existing sign-ins are ended, so sign in again on your other devices. This changes only your local kitchen password, not a separate recipe community password.</p>
-        <p className="text-sm">If you see “Account not found,” check your sign-in email and that you are using the correct installation. If you see “No kitchen database found,” use the same data directory as the running app. Do not delete data or reinstall to recover a password.</p>
+        <p className="text-sm">If you see “No account uses” that email (or “Account not found” on older releases), check your sign-in email and that you are using the correct installation. If you see “No kitchen database found,” use the same data directory as the running app. Do not delete data or reinstall to recover a password.</p>
         <p className="text-sm">Using an older release with no password prompt? See the <a className="underline" href="https://github.com/gamerg21/sous-chef/blob/main/docs/PASSWORD_RECOVERY.md">recovery guide</a> for the hidden-input method and custom installation settings.</p>
         <Link href="/auth/signin" className="inline-block font-medium text-emerald-700 dark:text-emerald-400 underline">Back to sign in</Link>
       </article>
