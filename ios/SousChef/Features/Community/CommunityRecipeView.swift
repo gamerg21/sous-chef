@@ -82,9 +82,9 @@ struct CommunityRecipeView: View {
                 .kitchenEnvironment(kitchen)
         }
         .sheet(isPresented: $confirmingRemoval) {
-            ConfirmSheet(systemImage: "eye.slash", title: "Remove from the community?",
+            ConfirmSheet(systemImage: "eye.slash", title: "Unpublish this recipe?",
                          message: "\(model.listing?.title ?? "This recipe") will no longer appear in Community, and its link stops working. Copies people already saved stay with them. You can share it again later.",
-                         action: "Remove from community", actionIdentifier: "confirmRemoveFromCommunity") {
+                         action: "Unpublish", actionIdentifier: "confirmRemoveFromCommunity") {
                 Task { await remove() }
             }
         }
@@ -151,7 +151,7 @@ struct CommunityRecipeView: View {
                                 Button("Edit sharing", systemImage: "slider.horizontal.3") { editingSharing = recipe }
                                     .accessibilityIdentifier("communityEditSharing")
                             }
-                            Button("Remove from community", systemImage: "eye.slash", role: .destructive) { confirmingRemoval = true }
+                            Button("Unpublish", systemImage: "eye.slash", role: .destructive) { confirmingRemoval = true }
                                 .tint(.red)
                                 .accessibilityIdentifier("communityRemoveRecipe")
                         } label: {

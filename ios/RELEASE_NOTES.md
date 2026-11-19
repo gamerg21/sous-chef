@@ -36,7 +36,7 @@ New in 1.3:
 - **Tips from cooks**: Read what others learned making a recipe, right under its steps.
 - **Follow cooks**: Open a cook's profile to see their bio and recipes, and follow them to see their newest in Following.
 - **Your profile**: Add a short bio and change your display name in Settings > Community.
-- **My shared recipes**: Settings > Community lists everything you've published and whether each is public, unlisted, not shared, under review or removed. Swipe one, or open its page, to remove it from the community.
+- **My shared recipes**: Settings > Community lists everything you've published and whether each is public, unlisted, not shared, under review or removed. Swipe one, or open its page, to unpublish it.
 - **Community account button**: Tap the person icon in Community to go straight to your profile, shared recipes and community settings.
 - **Updates to saved recipes**: When a cook changes a recipe you saved, Community and the recipe's page offer the new version. Update your copy or keep it as it is.
 - **Recipe links**: Share a community recipe as a link. Tapping one opens the recipe in Sous Chef.
