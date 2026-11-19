@@ -7,12 +7,16 @@ struct RecipeEditorView: View {
     private let original: RecipeDraft
     let recipe: Recipe?
     var onSave: (Recipe) -> Void
+    /// Replaces closing the sheet on Cancel, such as going back to the
+    /// prompt an imported or suggested draft came from.
+    var onCancel: (() -> Void)?
 
-    init(draft: RecipeDraft, recipe: Recipe?, onSave: @escaping (Recipe) -> Void = { _ in }) {
+    init(draft: RecipeDraft, recipe: Recipe?, onSave: @escaping (Recipe) -> Void = { _ in }, onCancel: (() -> Void)? = nil) {
         _draft = State(initialValue: draft)
         original = draft
         self.recipe = recipe
         self.onSave = onSave
+        self.onCancel = onCancel
     }
 
     @Environment(Kitchen.self) private var kitchen
@@ -232,7 +236,7 @@ struct RecipeEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) {
-                        if hasUnsavedWork { confirmDiscard = true } else { dismiss() }
+                        if hasUnsavedWork { confirmDiscard = true } else { cancel() }
                     }
                     .sheet(isPresented: $confirmDiscard) {
                         ConfirmSheet(systemImage: "trash", title: recipe == nil ? "Discard this recipe?" : "Discard your changes?",
@@ -242,7 +246,7 @@ struct RecipeEditorView: View {
                             // Close the editor once the confirmation is gone.
                             Task {
                                 try? await Task.sleep(for: .milliseconds(350))
-                                dismiss()
+                                cancel()
                             }
                         }
                     }
@@ -300,6 +304,10 @@ struct RecipeEditorView: View {
         let saved = kitchen.save(draft, into: recipe)
         dismiss()
         onSave(saved)
+    }
+
+    private func cancel() {
+        if let onCancel { onCancel() } else { dismiss() }
     }
 }
 

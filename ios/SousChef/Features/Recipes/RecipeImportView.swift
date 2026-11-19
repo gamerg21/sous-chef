@@ -10,20 +10,26 @@ struct RecipeImportView: View {
         var id: String { rawValue }
     }
 
+    /// What's been typed, pasted or photographed. It belongs to the flow, so
+    /// backing out of the review editor returns to the same prompt.
+    struct Input {
+        var link = ""
+        var text = ""
+        var preferences = ""
+        var pages: [UIImage] = []
+    }
+
     let mode: Mode
-    /// A link or recipe text shared from another app; the import starts
-    /// as soon as the sheet appears.
-    var shared: String?
+    @Binding var input: Input
+    /// A link or recipe text shared from another app: the import starts as
+    /// soon as the sheet appears.
+    var startsImmediately = false
     let onDraft: (RecipeDraft) -> Void
 
     @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
     @Query private var pantry: [PantryItem]
-    @State private var link = ""
-    @State private var text = ""
-    @State private var preferences = ""
     @AppStorage("ideas.usePantry") private var usePantry = true
-    @State private var pages: [UIImage] = []
     @State private var working = false
     @State private var error: String?
     @State private var partial: RecipeDraft?
@@ -31,6 +37,8 @@ struct RecipeImportView: View {
     /// bottom button offers Cancel until the link changes.
     @State private var deadLink: String?
     @State private var task: Task<Void, Never>?
+    /// Counts runs, so a stopped run finishing late can't end a newer one.
+    @State private var run = 0
 
     var body: some View {
         NavigationStack {
@@ -62,10 +70,11 @@ struct RecipeImportView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) {
+                    Button(role: .close) {
                         task?.cancel()
                         dismiss()
                     }
+                    .accessibilityIdentifier("closeImport")
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -77,34 +86,48 @@ struct RecipeImportView: View {
                                 .padding(.vertical, 6)
                         }
                         .buttonStyle(.glass)
-                    } else {
-                        Button(action: start) {
-                            Group {
-                                if working {
-                                    Label { Text(workingTitle) } icon: { ProgressView() }
-                                        .font(.headline)
-                                } else {
-                                    Text(actionTitle).font(.headline)
-                                }
+                    } else if working {
+                        // Stopping lives on the button that's showing progress,
+                        // and keeps the prompt so it can be tweaked and retried.
+                        Button(action: stop) {
+                            HStack(spacing: 10) {
+                                ProgressView()
+                                    .accessibilityHidden(true)
+                                Text(workingTitle)
+                                Spacer(minLength: 8)
+                                Label("Stop", systemImage: "stop.fill")
+                                    .foregroundStyle(.red)
                             }
+                            .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
                         }
+                        .buttonStyle(.glass)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Stop")
+                        .accessibilityValue(workingTitle)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityIdentifier("stopImport")
+                    } else {
+                        Button(action: start) {
+                            Text(actionTitle).font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                        }
                         .buttonStyle(.glassProminent)
-                        .disabled(!canStart || working)
+                        .disabled(!canStart)
+                        .accessibilityIdentifier("importAction")
                     }
                 }
                 .padding()
-                .accessibilityIdentifier("importAction")
             }
         }
         .interactiveDismissDisabled(working)
         .onAppear {
-            if let shared {
-                if mode == .link { link = shared } else { text = shared }
+            if startsImmediately {
                 start()
-            } else if mode == .link, let pasted = UIPasteboard.general.string, pasted.hasPrefix("http") {
-                link = pasted
+            } else if mode == .link, input.link.isEmpty, let pasted = UIPasteboard.general.string, pasted.hasPrefix("http") {
+                input.link = pasted
             }
         }
     }
@@ -136,14 +159,14 @@ struct RecipeImportView: View {
     }
 
     private var showsCancel: Bool {
-        mode == .link && !working && deadLink != nil && deadLink == link
+        mode == .link && !working && deadLink != nil && deadLink == input.link
     }
 
     private var canStart: Bool {
         switch mode {
-        case .link: link.nilIfEmpty != nil
-        case .text: text.count > 20
-        case .photo: !pages.isEmpty
+        case .link: input.link.nilIfEmpty != nil
+        case .text: input.text.count > 20
+        case .photo: !input.pages.isEmpty
         case .ideas: kitchen.ai.canGenerateRecipes
         }
     }
@@ -151,7 +174,7 @@ struct RecipeImportView: View {
     private var linkForm: some View {
         VStack(alignment: .leading, spacing: 12) {
             Eyebrow("Recipe page")
-            TextField("https://", text: $link)
+            TextField("https://", text: $input.link)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -168,13 +191,13 @@ struct RecipeImportView: View {
     private var textForm: some View {
         VStack(alignment: .leading, spacing: 12) {
             Eyebrow("Recipe text")
-            TextEditor(text: $text)
+            TextEditor(text: $input.text)
                 .frame(minHeight: 280)
                 .padding(8)
                 .scrollContentBackground(.hidden)
                 .background(.background.secondary, in: .rect(cornerRadius: 16, style: .continuous))
             AdaptiveStack(verticalSpacing: 8) {
-                Button { if let pasted = UIPasteboard.general.string { text = pasted } } label: { Label("Paste", systemImage: "doc.on.clipboard") }
+                Button { if let pasted = UIPasteboard.general.string { input.text = pasted } } label: { Label("Paste", systemImage: "doc.on.clipboard") }
                     .buttonStyle(.glass)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 AIEngineBadge()
@@ -189,7 +212,7 @@ struct RecipeImportView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 AIEngineBadge()
             }
-            PhotoStrip(photos: $pages, maxCount: 6, openCameraFirst: true)
+            PhotoStrip(photos: $input.pages, maxCount: 6, openCameraFirst: true)
             Text("Photograph a cookbook page, or choose photos and screenshots. Add a page for each part if the recipe continues. Sous Chef reads the text on this device\(kitchen.ai.isAvailable ? " with Apple Intelligence" : ""), and you'll review everything before saving.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -216,14 +239,14 @@ struct RecipeImportView: View {
                 AIEngineBadge()
             }
             TextField(usePantry ? "Anything in mind? e.g. quick vegetarian dinner, no nuts" : "What sounds good? e.g. Thai green curry, crispy tofu, birthday cake",
-                      text: $preferences, axis: .vertical)
+                      text: $input.preferences, axis: .vertical)
                 .lineLimit(2...4)
                 .padding(14)
                 .background(.background.secondary, in: .rect(cornerRadius: 16, style: .continuous))
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(ideaChips, id: \.self) { idea in
-                        Button { preferences = preferences.isEmpty ? idea : "\(preferences), \(idea.lowercased())" } label: { Chip(text: idea, systemImage: "plus") }
+                        Button { input.preferences = input.preferences.isEmpty ? idea : "\(input.preferences), \(idea.lowercased())" } label: { Chip(text: idea, systemImage: "plus") }
                             .buttonStyle(.plain)
                     }
                 }
@@ -244,21 +267,30 @@ struct RecipeImportView: View {
             : ["Weeknight dinner", "Date night", "Meal prep", "Vegetarian", "Dessert", "Something new"]
     }
 
+    private func stop() {
+        task?.cancel()
+        task = nil
+        run += 1
+        withAnimation(.smooth) { working = false }
+    }
+
     private func start() {
         error = nil
         deadLink = nil
         working = true
+        run += 1
+        let thisRun = run
         task = Task {
-            defer { working = false }
+            defer { if run == thisRun { working = false } }
             do {
                 let draft: RecipeDraft
                 switch mode {
                 case .link:
-                    draft = try await RecipeImporter.importRecipe(from: link, ai: kitchen.ai)
+                    draft = try await RecipeImporter.importRecipe(from: input.link, ai: kitchen.ai)
                 case .text:
-                    draft = await RecipeTextReader.read(text, ai: kitchen.ai)
+                    draft = await RecipeTextReader.read(input.text, ai: kitchen.ai)
                 case .photo:
-                    let read = await TextRecognition.recipeText(in: pages)
+                    let read = await TextRecognition.recipeText(in: input.pages)
                     guard read.contains(where: \.isLetter) else {
                         throw KitchenAI.AIError.failed("Sous Chef couldn't find any text. Try a closer, well-lit photo of the page.")
                     }
@@ -266,7 +298,7 @@ struct RecipeImportView: View {
                 case .ideas:
                     partial = nil
                     draft = try await kitchen.ai.generateRecipe(pantry: pantry, usePantry: usePantry || !kitchen.ai.isAvailable,
-                                                                preferences: preferences) { partial = $0 }
+                                                                preferences: input.preferences) { partial = $0 }
                 }
                 guard !Task.isCancelled else { return }
                 onDraft(draft)
@@ -274,7 +306,7 @@ struct RecipeImportView: View {
                 guard !Task.isCancelled else { return }
                 self.error = error.localizedDescription
                 switch error as? RecipeImporter.ImportError {
-                case .noRecipe, .badURL: deadLink = link
+                case .noRecipe, .badURL: deadLink = input.link
                 default: break
                 }
             }
@@ -357,17 +389,37 @@ struct PartialRecipePreview: View {
 /// sliding away and another sliding up.
 struct RecipeImportFlow: View {
     let mode: RecipeImportView.Mode
-    var shared: String?
-    var onSave: (Recipe) -> Void = { _ in }
+    var onSave: (Recipe) -> Void
     @State private var draft: RecipeDraft?
+    @State private var input: RecipeImportView.Input
+    /// A shared link or text imports once; coming back from the editor
+    /// shows it in the form instead of importing it again.
+    @State private var startsImmediately: Bool
+
+    /// - Parameter shared: a link or recipe text shared from another app.
+    init(mode: RecipeImportView.Mode, shared: String? = nil, onSave: @escaping (Recipe) -> Void = { _ in }) {
+        self.mode = mode
+        self.onSave = onSave
+        var input = RecipeImportView.Input()
+        if let shared {
+            if mode == .link { input.link = shared } else { input.text = shared }
+        }
+        _input = State(initialValue: input)
+        _startsImmediately = State(initialValue: shared != nil)
+    }
 
     var body: some View {
         ZStack {
             if let draft {
-                RecipeEditorView(draft: draft, recipe: nil, onSave: onSave)
-                    .transition(.blurReplace)
+                // Cancel goes back to the prompt, link or text that made
+                // this draft rather than closing the sheet.
+                RecipeEditorView(draft: draft, recipe: nil, onSave: onSave) {
+                    withAnimation(.smooth(duration: 0.45)) { self.draft = nil }
+                }
+                .transition(.blurReplace)
             } else {
-                RecipeImportView(mode: mode, shared: shared) { draft in
+                RecipeImportView(mode: mode, input: $input, startsImmediately: startsImmediately) { draft in
+                    startsImmediately = false
                     withAnimation(.smooth(duration: 0.45)) { self.draft = draft }
                 }
                 .transition(.blurReplace)
