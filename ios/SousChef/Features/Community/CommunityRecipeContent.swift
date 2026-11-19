@@ -58,6 +58,19 @@ struct CommunityRecipeContent: View {
                 } else {
                     CommunityRecipeSkeleton()
                 }
+                if model.canReport {
+                    // Also in the "…" menu; here for people who look for it at the end of the recipe.
+                    Button { report(CommunityReportTarget(listing: listing)) } label: {
+                        Label("Report this recipe", systemImage: "flag")
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHint("Tells the community's moderators about a problem with it.")
+                    .accessibilityIdentifier("communityReportRecipe")
+                }
             }
             .frame(maxWidth: Self.readableWidth, alignment: .leading)
             // Rows can round a fraction of a point wider than the screen, which

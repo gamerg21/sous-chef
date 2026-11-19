@@ -444,6 +444,37 @@ private func listing(_ id: String = "r1", author: String = "u2", liked: Bool? = 
         #expect(model.made == nil)
     }
 
+    @Test func reportingIsOfferedOnOtherCooksRecipesOnceLoadedEvenSignedOut() async throws {
+        let model = model(CommunityHarness(stub: CommunityStub()), preview: try listing())
+        // Whose it is isn't known until it loads.
+        #expect(!model.canReport)
+        await model.load()
+        #expect(model.canReport)
+        #expect(!model.canRemove)
+        #expect(model.sharedFrom == nil)
+    }
+
+    @Test func theCooksOwnRecipeOffersRemovalNotReporting() async throws {
+        let stub = CommunityStub { request in
+            switch request.path {
+            case "/api/v2/recipes/r1": .json(Fixture.detail(extra: ["viewer": ["liked": false, "following": false, "own": true]]))
+            case "/api/v1/unpublish": .json(["success": true])
+            default: Fixture.route(request)
+            }
+        }
+        let harness = CommunityHarness(stub: stub, signedIn: true)
+        let social = CommunitySocial(client: harness.client)
+        let model = CommunityRecipeModel(id: "r1", preview: nil, client: harness.client, social: social)
+        await model.load()
+        #expect(model.isOwn)
+        #expect(!model.canReport)
+        #expect(model.canRemove)
+
+        try await model.remove()
+        #expect(stub.last("POST", "/api/v1/unpublish")?.json["id"] as? String == "r1")
+        #expect(social.removed == ["r1"])
+    }
+
     @Test func showsAFewTipsThenTheRestThenMoreFromTheCommunity() async {
         let first = tips(0..<20)
         let more = tips(18..<25) + tips(25..<27, text: false)

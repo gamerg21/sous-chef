@@ -211,9 +211,10 @@ final class CompanionCommunityTests: XCTestCase {
             return try launch(reset: reset)
         }
         goBack()
-        let done = app.buttons["Done"]
-        XCTAssertTrue(done.waitForExistence(timeout: 10))
-        done.tap()
+        // Closes Settings.
+        let close = app.buttons["Close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10))
+        close.tap()
 
         app.tabBars.buttons["Community"].tap()
         if reset {
@@ -639,7 +640,7 @@ final class CompanionCommunityTests: XCTestCase {
         XCTAssertFalse(try isHidden(target))
         goBack()
         goBack()
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap() // Closes Settings.
         scrollToTop()
         // Pull to refresh: the feed on screen was loaded while the recipe was hidden.
         feed.swipeDown(velocity: .slow)

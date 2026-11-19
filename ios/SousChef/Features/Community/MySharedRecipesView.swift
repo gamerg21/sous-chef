@@ -4,14 +4,32 @@ import SwiftUI
 /// unlisted, not shared, under review or removed by a moderator.
 struct MySharedRecipesView: View {
     @Environment(CommunityClient.self) private var client
+    @Environment(CommunitySocial.self) private var social
     @State private var pager: CommunityFeedPager?
+    @State private var removing: Community.Listing?
+    @State private var removeError: String?
 
     var body: some View {
         List {
+            if let removeError {
+                ErrorBanner(message: removeError).listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+            }
             if let pager {
                 ForEach(pager.listings) { listing in
                     MySharedRecipeRow(listing: listing)
                         .task { await pager.loadMoreIfNeeded(after: listing) }
+                        .swipeActions(edge: .trailing) {
+                            if CommunityShareStatus.canRemove(listing) {
+                                Button("Remove from community", systemImage: "eye.slash", role: .destructive) { removing = listing }
+                                    .tint(.red)
+                            }
+                        }
+                        .contextMenu {
+                            if CommunityShareStatus.canRemove(listing) {
+                                Button("Remove from community", systemImage: "eye.slash", role: .destructive) { removing = listing }
+                                    .tint(.red)
+                            }
+                        }
                 }
                 if pager.isLoadingMore {
                     ProgressView().frame(maxWidth: .infinity)
@@ -40,6 +58,24 @@ struct MySharedRecipesView: View {
             let pager = pager ?? CommunityFeedPager(client: client, source: .mine)
             self.pager = pager
             await pager.loadFirstPage()
+        }
+        .sheet(item: $removing) { listing in
+            ConfirmSheet(systemImage: "eye.slash", title: "Remove from the community?",
+                         message: "\(listing.title) will no longer appear in Community, and its link stops working. Copies people already saved stay with them. You can share it again later.",
+                         action: "Remove from community", actionIdentifier: "confirmRemoveFromCommunity") {
+                Task { await remove(listing) }
+            }
+        }
+    }
+
+    private func remove(_ listing: Community.Listing) async {
+        do {
+            try await social.unpublish(listing)
+            removeError = nil
+            // The community keeps listing it here as not shared, so it stays, changed.
+            withAnimation { pager?.update(id: listing.id) { $0.visibility = "private" } }
+        } catch {
+            removeError = error.localizedDescription
         }
     }
 }

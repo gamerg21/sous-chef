@@ -38,7 +38,10 @@ struct CommunityView: View {
             .communityDestinations()
             .searchable(text: $model.search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search community recipes")
             .onSubmit(of: .search) { model.submitSearch(model.search) }
-            .toolbar { SettingsToolbarButton(showSettings: $showSettings) }
+            .toolbar {
+                SettingsToolbarButton(showSettings: $showSettings)
+                ToolbarItem(placement: .topBarTrailing) { accountButton }
+            }
         }
         .task(id: UpdatesKey(ready: ready, household: client.householdID)) { await checkForUpdates() }
         .onChange(of: scenePhase) { _, phase in
@@ -50,6 +53,23 @@ struct CommunityView: View {
             CommunityAccountPromptSheet(prompt: prompt).kitchenEnvironment(kitchen)
         }
         .overlay(alignment: .top) { CommunityNoticeBar() }
+    }
+
+    /// Whether a community account is in use: the Apple one, or the one connected on the server.
+    private var hasAccount: Bool {
+        client.mode == .direct ? client.isSignedIn : social.status?.me != nil
+    }
+
+    /// Straight to the community account, profile and shared recipes, which
+    /// otherwise wait in Settings. Signed out, that's where to sign in.
+    private var accountButton: some View {
+        Button {
+            if path.last != .account { path.append(.account) }
+        } label: {
+            Label("Community account", systemImage: hasAccount ? "person.crop.circle.fill" : "person.crop.circle")
+        }
+        .accessibilityHint(hasAccount ? "Your profile, shared recipes and community settings." : "Sign in, or change community settings.")
+        .accessibilityIdentifier("communityAccountButton")
     }
 
     /// Switching the server kitchen looks for that kitchen's updates.

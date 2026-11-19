@@ -129,12 +129,14 @@ struct CommunityGrid<Menu: View>: View {
     let pager: CommunityFeedPager
     var showsPantry = false
     @ViewBuilder var menu: (Community.Listing) -> Menu
+    @Environment(CommunitySocial.self) private var social
     /// Cards get fewer columns as text grows, so titles keep room.
     @ScaledMetric(relativeTo: .subheadline) private var cardWidth: CGFloat = 160
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: cardWidth), spacing: 14, alignment: .top)], spacing: 14) {
-            ForEach(pager.listings) { listing in
+            // Recipes the person just took out of the community go at once.
+            ForEach(social.visible(pager.listings)) { listing in
                 CommunityCard(listing: listing, showsPantry: showsPantry)
                     .contextMenu { menu(listing) }
                     .task { await pager.loadMoreIfNeeded(after: listing) }

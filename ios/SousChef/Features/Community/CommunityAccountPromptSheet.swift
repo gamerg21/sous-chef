@@ -49,7 +49,10 @@ struct CommunityAccountPromptSheet: View {
             .scrollBounceBehavior(.basedOnSize)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Not now", role: .cancel) { dismiss() } }
+                // An X like the app's other sheets; VoiceOver and the UI tests still know it as "Not now".
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Not now", systemImage: "xmark", role: .close) { dismiss() }
+                }
             }
         }
         .presentationDetents([.medium, .large])

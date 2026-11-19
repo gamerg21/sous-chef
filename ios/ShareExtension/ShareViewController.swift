@@ -75,8 +75,8 @@ struct ShareView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if case .failed = phase {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done", action: done)
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close", systemImage: "xmark", role: .close, action: done)
                     }
                 }
             }

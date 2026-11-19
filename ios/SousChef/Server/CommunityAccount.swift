@@ -273,6 +273,17 @@ final class CommunityAccount {
 
     func publicationID(for recipe: Recipe) -> String? { publications[recipe.uuid.uuidString] }
 
+    /// The recipe on this device that was published as `publicationID`, when it was published from here.
+    func recipeID(forPublication publicationID: String) -> UUID? {
+        publications.first { $0.value == publicationID }.flatMap { UUID(uuidString: $0.key) }
+    }
+
+    /// Forgets that a recipe here is published as `publicationID`, once it's been taken down.
+    func forgetPublication(_ publicationID: String) {
+        let kept = publications.filter { $0.value != publicationID }
+        if kept.count != publications.count { setPublications(kept) }
+    }
+
     func publish(_ recipe: Recipe, visibility: String) async throws {
         struct Result: Decodable { let id: String; let revision: Double }
         let payload = PublishPayload(id: publicationID(for: recipe), sourceKey: PublishPayload.sourceKey(for: recipe.uuid),
@@ -288,9 +299,7 @@ final class CommunityAccount {
         struct Body: Encodable { let id: String }
         struct Result: Decodable { let success: Bool }
         _ = try await call("api/v1/unpublish", body: Body(id: id), as: Result.self)
-        var updated = publications
-        updated[recipe.uuid.uuidString] = nil
-        setPublications(updated)
+        forgetPublication(id)
     }
 
     private func call<T: Decodable>(_ path: String, body: some Encodable, as type: T.Type) async throws -> T {

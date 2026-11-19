@@ -365,6 +365,60 @@ final class CommunityTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No hidden recipes."].waitForExistence(timeout: 10))
     }
 
+    func testReportLinkAtTheEndOfARecipeOpensTheReportSheet() throws {
+        let target = try XCTUnwrap(try recipes().first)
+        try launch()
+        open(target)
+        let link = app.buttons["communityReportRecipe"]
+        for _ in 0..<12 where !(link.exists && link.isHittable) { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(link.exists, "A signed-out reader should find Report at the end of the recipe")
+        attach("Report link")
+        link.tap()
+        XCTAssertTrue(app.buttons["Spam or scam"].waitForExistence(timeout: 10))
+        // Backing out reports nothing.
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["communityRecipeTitle"].waitForExistence(timeout: 10))
+    }
+
+    func testAccountButtonOpensCommunitySettings() throws {
+        try launch()
+        let account = app.buttons["communityAccountButton"]
+        XCTAssertTrue(account.waitForExistence(timeout: 10))
+        attach("Community toolbar")
+        account.tap()
+        XCTAssertTrue(app.staticTexts["Blocked cooks and hidden recipes"].waitForExistence(timeout: 10))
+        attach("Community settings")
+    }
+
+    func testRemovesMyOwnRecipeFromTheCommunity() throws {
+        guard token != nil, communityURL != nil else { throw XCTSkip("Needs TEST_RUNNER_COMMUNITY_TEST_URL and TEST_RUNNER_COMMUNITY_TEST_TOKEN.") }
+        let title = "Removal test stew"
+        let published = try post("/api/v1/publish", [
+            "sourceKey": String(repeating: "ab", count: 32), "visibility": "public",
+            "snapshot": ["version": 1, "title": title, "tags": [String](), "ingredients": [["name": "Carrots"]], "steps": [["text": "Simmer."]]],
+        ])
+        let id = try XCTUnwrap(published["id"] as? String)
+        cleanups.append(("/api/v1/unpublish", ["id": id]))
+        let mine = try XCTUnwrap(try recipes(signedIn: true).first { $0.id == id }, "The published recipe should be in the feed")
+
+        try launch(signedIn: true)
+        open(mine)
+        // My own recipe: nothing to report, and a way to take it down.
+        XCTAssertFalse(app.buttons["communityRecipeMenu"].exists)
+        app.buttons["communityOwnRecipeMenu"].tap()
+        attach("Own recipe menu")
+        app.buttons["communityRemoveRecipe"].tap()
+        let confirm = app.buttons["confirmRemoveFromCommunity"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+        attach("Confirm removal")
+        confirm.tap()
+
+        // Back in the feed without it, and gone from the community.
+        XCTAssertTrue(feed.waitForExistence(timeout: 20))
+        XCTAssertFalse(card(title).exists)
+        XCTAssertNil(try recipes().first { $0.id == id })
+    }
+
     func testSavesARecipeToMyRecipes() throws {
         let newest = try recipes()
         let recipe = try XCTUnwrap(newest.first)

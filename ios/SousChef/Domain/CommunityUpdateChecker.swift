@@ -96,4 +96,10 @@ nonisolated enum CommunityShareStatus: Equatable, Sendable {
 
     /// Whether other people can open the recipe.
     var isVisible: Bool { self == .isPublic || self == .unlisted }
+
+    /// Whether the cook can still take the recipe out of the community: it's
+    /// shared (under review counts), and a moderator hasn't removed it already.
+    static func canRemove(_ listing: Community.Listing) -> Bool {
+        listing.removed != true && listing.visibility != "private"
+    }
 }

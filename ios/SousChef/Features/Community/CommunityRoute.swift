@@ -9,6 +9,8 @@ enum CommunityRoute: Hashable {
     case cook(Community.Author)
     /// Saved recipes with a newer version in the community.
     case updates
+    /// The community account, profile, shared recipes and safety settings, as in Settings.
+    case account
 }
 
 extension View {
@@ -19,6 +21,7 @@ extension View {
             case .recipeID(let id): CommunityRecipeView(id: id, preview: nil)
             case .cook(let author): CookProfileView(author: author)
             case .updates: CommunityUpdatesView()
+            case .account: CommunitySettingsView()
             }
         }
     }

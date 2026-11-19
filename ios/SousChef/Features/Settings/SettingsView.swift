@@ -106,7 +106,11 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark", role: .close) { dismiss() }
+                }
+            }
             // Also refreshed on return from a subpage or the Settings app.
             .onAppear { Task { alerts = await AlertPermissions.current() } }
             .onChange(of: scenePhase) { _, phase in

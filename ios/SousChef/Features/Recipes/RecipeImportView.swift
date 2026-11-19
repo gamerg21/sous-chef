@@ -462,7 +462,9 @@ struct RecipeChatView: View {
             .navigationTitle("Ask Sous Chef")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark", role: .close) { dismiss() }
+                }
             }
             .onAppear { session = kitchen.ai.makeRecipeChat(for: recipe) }
         }
