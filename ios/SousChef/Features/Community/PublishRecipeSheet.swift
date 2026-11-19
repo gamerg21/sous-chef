@@ -161,7 +161,7 @@ struct PublishRecipeSheet: View {
         if isPublished {
             Section {
                 Button(role: .destructive) { Task { await unpublish() } } label: {
-                    Label("Remove from the community", systemImage: "eye.slash")
+                    Label("Unpublish", systemImage: "eye.slash")
                 }
                 .disabled(working)
             }

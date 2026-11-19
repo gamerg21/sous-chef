@@ -20,13 +20,13 @@ struct MySharedRecipesView: View {
                         .task { await pager.loadMoreIfNeeded(after: listing) }
                         .swipeActions(edge: .trailing) {
                             if CommunityShareStatus.canRemove(listing) {
-                                Button("Remove from community", systemImage: "eye.slash", role: .destructive) { removing = listing }
+                                Button("Unpublish", systemImage: "eye.slash", role: .destructive) { removing = listing }
                                     .tint(.red)
                             }
                         }
                         .contextMenu {
                             if CommunityShareStatus.canRemove(listing) {
-                                Button("Remove from community", systemImage: "eye.slash", role: .destructive) { removing = listing }
+                                Button("Unpublish", systemImage: "eye.slash", role: .destructive) { removing = listing }
                                     .tint(.red)
                             }
                         }
@@ -60,9 +60,9 @@ struct MySharedRecipesView: View {
             await pager.loadFirstPage()
         }
         .sheet(item: $removing) { listing in
-            ConfirmSheet(systemImage: "eye.slash", title: "Remove from the community?",
+            ConfirmSheet(systemImage: "eye.slash", title: "Unpublish this recipe?",
                          message: "\(listing.title) will no longer appear in Community, and its link stops working. Copies people already saved stay with them. You can share it again later.",
-                         action: "Remove from community", actionIdentifier: "confirmRemoveFromCommunity") {
+                         action: "Unpublish", actionIdentifier: "confirmRemoveFromCommunity") {
                 Task { await remove(listing) }
             }
         }
