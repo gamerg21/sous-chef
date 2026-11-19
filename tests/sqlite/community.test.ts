@@ -100,6 +100,21 @@ describe('operations from before 1.3.0', () => {
     await expect(k.call('community:publishRecipe', { recipeId }, stranger)).rejects.toThrow('Permission denied');
   });
 
+  test('unpublish takes a recipe down by its community ID and marks a local publication private', async () => {
+    const k = await setup();
+    const recipeId = await k.t.run(ctx => ctx.db.insert('recipes', { householdId: k.householdId, title: 'Mine', visibility: 'private', favorited: false }));
+    const calls = mockRemote({ 'POST /api/v1/publish': () => ({ id: 'pub-1', revision: 1 }), 'POST /api/v1/unpublish': () => ({ success: true }) });
+    await k.call('community:publishRecipe', { recipeId });
+    expect(await k.call('community:unpublish', { id: 'pub-1' })).toEqual({ success: true });
+    expect(calls.at(-1)).toMatchObject({ path: '/api/v1/unpublish', auth: 'Bearer community-token', body: { id: 'pub-1' } });
+    expect((await k.t.run(ctx => ctx.db.query('publications').collect())).map(p => p.visibility)).toEqual(['private']);
+    // One shared from another kitchen or device has no local record, and still goes down.
+    expect(await k.call('community:unpublish', { id: 'pub-elsewhere' })).toEqual({ success: true });
+    expect(calls.at(-1)).toMatchObject({ body: { id: 'pub-elsewhere' } });
+    const disconnected = await setup({ connected: false });
+    await expect(disconnected.call('community:unpublish', { id: 'pub-1' })).rejects.toThrow('Connect your community account first');
+  });
+
   test('saveRecipe keeps its result and reports the save with a hashed client key', async () => {
     const k = await setup();
     const calls = mockRemote({ 'GET /api/v1/recipes/r1': () => publication('r1', 3), 'POST /api/v2/save': () => ({ saveCount: 5 }) });

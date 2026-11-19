@@ -149,6 +149,7 @@ the token when there is one, so `liked` and `viewer` are filled in.
 | `community:me` | `{}` | `{configured, connected, me: Me \| null}` |
 | `community:updateProfile` | `{name?, bio?}` | `Me` |
 | `community:myRecipes` | `{cursor?}` | as `/api/v2/me/recipes` |
+| `community:unpublish` | `{id}` | `{success: true}`: takes down one of the caller's recipes by its community ID, whichever kitchen or device shared it (1.3.1) |
 | `community:like` | `{id, liked}` | `{liked, likeCount}` |
 | `community:made` | `{id, rating, tip?}` | `{madeCount, rating}` |
 | `community:removeMade` | `{id}` | `{madeCount, rating?}` |

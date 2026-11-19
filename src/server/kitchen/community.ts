@@ -200,6 +200,17 @@ export const myRecipes=action({args:{cursor:v.optional(v.string())},handler:asyn
   const me=await account(ctx);cursorText(cursor,'Cursor');
   return parseOwnListings(await remoteV2('me/recipes',{body:cursor?{cursor}:{},token:me.token}));
 }});
+export const markUnpublishedByRemoteId=internalMutation({args:{remoteId:v.string()},handler:async(ctx,{remoteId})=>{
+  const userId=await getAuthUserId(ctx);
+  for(const publication of await ctx.db.query('publications').collect())if(publication.remoteId===remoteId && publication.userId===userId && publication.origin===communityOrigin())await ctx.db.patch(publication._id,{visibility:'private'});
+  return {success:true as const};
+}});
+/** Takes down one of the caller's publications by its community ID, whichever kitchen or device shared it. */
+export const unpublish=action({args:{id:v.string()},handler:async(ctx,{id}):Promise<{success:true}>=>{
+  const me=await account(ctx);shortText(id,'ID');
+  await remote('unpublish',{id},me.token);
+  return ctx.runMutation(internal.community.markUnpublishedByRemoteId,{remoteId:id});
+}});
 export const like=action({args:{id:v.string(),liked:v.boolean()},handler:async(ctx,{id,liked}):Promise<{liked:boolean;likeCount:number}>=>{
   const me=await account(ctx);shortText(id,'ID');
   return parseLike(await remoteV2('like',{body:{id,liked},token:me.token}));
