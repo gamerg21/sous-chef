@@ -20,6 +20,16 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.0 (32)
+
+### What to Test
+
+What to test (please focus here)
+- Community account button: tap the person icon at the top of Community; it should open your community profile and settings.
+- Remove a shared recipe: open one of your own recipes in Community and use the menu, or swipe it in My shared recipes, then confirm it's gone from the feed.
+- Report: scroll to the end of someone else's recipe and tap Report this recipe. Your own recipes shouldn't offer it.
+- Close buttons: Settings, Ask Sous Chef and the share-to-community sheet now close with an X instead of Done.
+
 ## 1.3.0 (31)
 
 ### What to Test

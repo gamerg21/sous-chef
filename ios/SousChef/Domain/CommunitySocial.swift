@@ -37,6 +37,9 @@ final class CommunitySocial {
     /// Companion mode: community recipes saved since their listing was loaded,
     /// until the server answers for them again (`reconcileSaved`).
     private(set) var saved: Set<String> = []
+    /// The person's recipes they took out of the community this session.
+    /// Feeds loaded before then leave them out without waiting for a refresh.
+    private(set) var removed: Set<String> = []
     /// Companion mode: whether the server has a community account connected, once asked.
     private(set) var status: Community.AccountStatus?
 
@@ -197,5 +200,29 @@ final class CommunitySocial {
 
     func markSaved(_ recipeID: String) {
         saved.insert(recipeID)
+    }
+
+    // MARK: Removing the person's own recipes
+
+    /// Takes one of the person's recipes out of the community and out of the
+    /// feeds on screen. Throws `CommunityError`.
+    func unpublish(_ listing: Community.Listing) async throws {
+        try await client.unpublish(listing)
+        markRemoved(listing.id)
+    }
+
+    /// The person took a recipe out of the community some other way, such as from the recipe it was shared from.
+    func markRemoved(_ recipeID: String) {
+        removed.insert(recipeID)
+    }
+
+    /// Publishing again can bring back a recipe taken down earlier, under the same ID.
+    func didPublish() {
+        removed = []
+    }
+
+    /// Leaves out the recipes the person took out of the community this session.
+    func visible(_ listings: [Community.Listing]) -> [Community.Listing] {
+        removed.isEmpty ? listings : listings.filter { !removed.contains($0.id) }
     }
 }

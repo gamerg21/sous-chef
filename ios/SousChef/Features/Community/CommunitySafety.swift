@@ -32,7 +32,7 @@ struct CommunityGuidelinesCard: View {
                 Label { Text(text) } icon: { Image(systemName: symbol).foregroundStyle(Color.brand).frame(width: 24) }
                     .font(.callout)
             }
-            Text("You can report a recipe or block its cook from the recipe's menu.")
+            Text("You can report a recipe or block its cook from the recipe's page.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Link(destination: CommunityModeration.guidelinesURL) {
@@ -214,7 +214,9 @@ struct CommunityReportSheet: View {
                             }
                         }
                     } else {
-                        ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } }
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close", systemImage: "xmark", role: .close) { dismiss() }
+                        }
                     }
                 }
             }

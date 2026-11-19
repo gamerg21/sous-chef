@@ -21,6 +21,10 @@ nonisolated enum CommunityError: LocalizedError, Equatable {
     case unavailable
     /// Anything else the companion server reported, in its words.
     case server(String)
+    /// Companion mode: a server takes a recipe out of the community only
+    /// through the kitchen recipe it was shared from, and this kitchen has no
+    /// recipe that is clearly the one.
+    case sharedFromElsewhere
 
     static let filterMessage = "This text isn't allowed in the community"
     static let connectMessage = "Connect your community account first"
@@ -34,6 +38,9 @@ nonisolated enum CommunityError: LocalizedError, Equatable {
         case .notFound: "This isn't in the community any more."
         case .unsupported: "This needs a newer recipe community. Update your Sous Chef server to use it."
         case .unavailable: "The recipe community couldn't be reached. Try again."
+        case .sharedFromElsewhere:
+            "Your Sous Chef server can only remove a recipe through the recipe it was shared from, and it isn't in this kitchen. "
+                + "Switch to the kitchen it was shared from and try again, or remove it there from the recipe's Share with the community screen."
         }
     }
 

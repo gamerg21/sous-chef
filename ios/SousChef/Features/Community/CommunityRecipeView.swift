@@ -12,6 +12,10 @@ struct CommunityRecipeView: View {
     @State private var blocking: Community.Author?
     @State private var rating = false
     @State private var saveError: String?
+    @State private var confirmingRemoval = false
+    @State private var removeError: String?
+    /// The kitchen recipe whose sharing is being edited.
+    @State private var editingSharing: Recipe?
 
     init(id: String, preview: Community.Listing?) {
         _model = State(initialValue: CommunityRecipeModel(id: id, preview: preview))
@@ -77,6 +81,43 @@ struct CommunityRecipeView: View {
                         remove: { try await model.removeMade() })
                 .kitchenEnvironment(kitchen)
         }
+        .sheet(isPresented: $confirmingRemoval) {
+            ConfirmSheet(systemImage: "eye.slash", title: "Remove from the community?",
+                         message: "\(model.listing?.title ?? "This recipe") will no longer appear in Community, and its link stops working. Copies people already saved stay with them. You can share it again later.",
+                         action: "Remove from community", actionIdentifier: "confirmRemoveFromCommunity") {
+                Task { await remove() }
+            }
+        }
+        .sheet(item: $editingSharing, onDismiss: { Task { await sharingEdited() } }) { recipe in
+            PublishRecipeSheet(recipe: recipe).kitchenEnvironment(kitchen)
+        }
+        .alert("Couldn't remove this recipe", isPresented: Binding { removeError != nil } set: { if !$0 { removeError = nil } }) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(removeError ?? "")
+        }
+    }
+
+    private func remove() async {
+        do {
+            try await model.remove()
+            dismiss()
+        } catch {
+            removeError = error.localizedDescription
+        }
+    }
+
+    /// The publish sheet may have taken the recipe down, or changed who can see it.
+    private func sharingEdited() async {
+        do {
+            _ = try await client.detail(id: model.id)
+            await model.load()
+        } catch CommunityError.notFound {
+            social.markRemoved(model.id)
+            dismiss()
+        } catch {
+            // Offline: what's on screen stays.
+        }
     }
 
     private struct LoadKey: Hashable {
@@ -102,7 +143,23 @@ struct CommunityRecipeView: View {
                     }
                     .accessibilityIdentifier("communityShare")
                 }
-                if !model.isOwn {
+                if model.isOwn {
+                    // The person's own recipe: no reporting or blocking, but a way to take it down.
+                    if model.canRemove {
+                        Menu {
+                            if let recipe = model.sharedFrom {
+                                Button("Edit sharing", systemImage: "slider.horizontal.3") { editingSharing = recipe }
+                                    .accessibilityIdentifier("communityEditSharing")
+                            }
+                            Button("Remove from community", systemImage: "eye.slash", role: .destructive) { confirmingRemoval = true }
+                                .tint(.red)
+                                .accessibilityIdentifier("communityRemoveRecipe")
+                        } label: {
+                            Label("More", systemImage: "ellipsis")
+                        }
+                        .accessibilityIdentifier("communityOwnRecipeMenu")
+                    }
+                } else {
                     Menu {
                         CommunityRecipeMenuItems(listing: listing,
                                                  report: { reporting = CommunityReportTarget(listing: listing) },

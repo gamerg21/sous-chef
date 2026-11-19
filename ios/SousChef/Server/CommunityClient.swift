@@ -230,6 +230,14 @@ enum CommunityCalls {
         return CommunityCall(path: v2 + ["mod", "resolve"], body: body, auth: .required, operation: "community:modResolve", arguments: body)
     }
 
+    /// Takes a recipe out of the community. Still API v1 in both shapes. The
+    /// community knows it by its ID; a server only by `Recipe.serverID` of the
+    /// kitchen recipe it was shared from.
+    static func unpublish(_ id: String, serverRecipeID: String?) -> CommunityCall {
+        CommunityCall(path: ["api", "v1", "unpublish"], body: ["id": id], auth: .required,
+                      operation: "community:unpublishRecipe", arguments: CommunityCall.compact(["recipeId": serverRecipeID]))
+    }
+
     // Companion only.
 
     static func hide(kind: String, key: String, label: String, hidden: Bool) -> CommunityCall {
@@ -692,6 +700,78 @@ final class CommunityClient {
     func myRecipes(cursor: String? = nil) async throws -> Community.Page<Community.Listing> {
         let result = try await send(CommunityCalls.myRecipes(cursor: cursor), as: FeedResult.self)
         return Community.Page(items: result.recipes, cursor: result.cursor)
+    }
+
+    // MARK: Publishing
+
+    /// The recipe in this kitchen that `listing`, one of the person's own, was
+    /// shared from, when the app can tell. Without a server this device's
+    /// record of what it published says. A server doesn't tell the app which
+    /// recipe a publication came from, so with one this is a best guess
+    /// (`source(of:among:)`) that `unpublish` checks afterwards.
+    func publishedRecipe(for listing: Community.Listing) -> Recipe? {
+        let recipes = kitchen.fetch(Recipe.self).filter { $0.modelContext != nil && !$0.isDeleted }
+        if mode == .direct {
+            guard let uuid = account.recipeID(forPublication: listing.id) else { return nil }
+            return recipes.first { $0.uuid == uuid }
+        }
+        // Saved community copies are someone's recipe, not the person's own.
+        let title = Self.titleKey(listing.title)
+        let candidates = recipes.filter { $0.serverID != nil && $0.communityAuthor == nil && Self.titleKey($0.title) == title }
+        return Self.source(of: listing, among: candidates.map { (candidate: $0, title: $0.title, ingredients: $0.ingredients.map(\.name)) })
+    }
+
+    /// Titles are trimmed and cut to 200 characters when published.
+    private static func titleKey(_ title: String) -> String {
+        String(title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200)).lowercased()
+    }
+
+    /// Which candidate a publication was shared from: the only one with its
+    /// title, or among several with it, the only one with its ingredients.
+    /// Nil when that isn't clear.
+    static func source<Candidate>(of listing: Community.Listing,
+                                  among candidates: [(candidate: Candidate, title: String, ingredients: [String])]) -> Candidate? {
+        func names(_ list: [String]) -> Set<String> { Set(list.map(normalizeName).filter { !$0.isEmpty }) }
+        let title = titleKey(listing.title)
+        guard !title.isEmpty else { return nil }
+        let titled = candidates.filter { titleKey($0.title) == title }
+        if titled.count == 1 { return titled[0].candidate }
+        let wanted = names(listing.ingredientNames)
+        let matching = titled.filter { names($0.ingredients) == wanted }
+        return matching.count == 1 ? matching[0].candidate : nil
+    }
+
+    /// Takes one of the person's recipes out of the community. Copies people
+    /// saved stay with them. Without a server it goes by the recipe's
+    /// community ID, so it works for a recipe shared from another device or
+    /// since deleted here; a server from 1.3.1 on does the same. An older server
+    /// can only take a recipe down through the kitchen recipe it was shared
+    /// from: without one that's clearly it, or when the recipe is still up
+    /// afterwards, this throws `.sharedFromElsewhere`.
+    func unpublish(_ listing: Community.Listing) async throws {
+        let transport = try transport()
+        if let direct = transport as? DirectCommunityTransport {
+            do {
+                _ = try await direct.send(CommunityCalls.unpublish(listing.id, serverRecipeID: nil))
+            } catch CommunityError.notSignedIn {
+                if let token = direct.token, account.session?.token == token { account.signOut() }
+                throw CommunityError.notSignedIn
+            }
+            account.forgetPublication(listing.id)
+            return
+        }
+        // A server from 1.3.1 on takes a recipe down by its community ID.
+        do {
+            _ = try await transport.send(CommunityCalls.local("community:unpublish", ["id": listing.id]))
+            return
+        } catch CommunityError.unsupported {
+            // An older server: go by the kitchen recipe it was shared from.
+        }
+        guard let serverID = publishedRecipe(for: listing)?.serverID else { throw CommunityError.sharedFromElsewhere }
+        _ = try await transport.send(CommunityCalls.unpublish(listing.id, serverRecipeID: serverID))
+        // A server answers success for a recipe that wasn't shared, too. Only
+        // public and unlisted recipes open, so one that still does is still up.
+        if (try? await detail(id: listing.id)) != nil { throw CommunityError.sharedFromElsewhere }
     }
 
     // MARK: Social

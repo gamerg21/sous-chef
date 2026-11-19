@@ -36,13 +36,14 @@ New in 1.3:
 - **Tips from cooks**: Read what others learned making a recipe, right under its steps.
 - **Follow cooks**: Open a cook's profile to see their bio and recipes, and follow them to see their newest in Following.
 - **Your profile**: Add a short bio and change your display name in Settings > Community.
-- **My shared recipes**: Settings > Community lists everything you've published and whether each is public, unlisted, not shared, under review or removed.
+- **My shared recipes**: Settings > Community lists everything you've published and whether each is public, unlisted, not shared, under review or removed. Swipe one, or open its page, to remove it from the community.
+- **Community account button**: Tap the person icon in Community to go straight to your profile, shared recipes and community settings.
 - **Updates to saved recipes**: When a cook changes a recipe you saved, Community and the recipe's page offer the new version. Update your copy or keep it as it is.
 - **Recipe links**: Share a community recipe as a link. Tapping one opens the recipe in Sous Chef.
 
 ### Improved
 - **Recipe photos**: Community recipes load faster and show their photos as you scroll.
-- **Reporting**: Reports on recipes and tips now go straight to the community's moderators from inside the app, and you can hide a recipe without reporting it.
+- **Reporting**: Reports on recipes and tips now go straight to the community's moderators from inside the app, and you can hide a recipe without reporting it. Report is in a recipe's menu and at the end of its page.
 - **Blocked cooks**: Blocking a cook also hides their tips.
 - **Community search**: Results appear as you type.
 

@@ -243,13 +243,22 @@ struct CommunityHarness {
     }
 
     /// - Parameter household: The server kitchen the app shows, which a test can change.
-    init(stub: CommunityStub? = nil, server: FakeKitchenServer? = nil, signedIn: Bool = false, household: Shared<String?>? = nil) {
+    /// - Parameter publications: Recipes this device published, as the account remembers them: recipe UUID → community ID.
+    init(stub: CommunityStub? = nil, server: FakeKitchenServer? = nil, signedIn: Bool = false, household: Shared<String?>? = nil,
+         publications: [UUID: String] = [:]) {
         defaults = Self.isolatedDefaults()
-        account = CommunityAccount(store: MemorySecretStore(), defaults: defaults, observeRevocation: false)
+        let store = MemorySecretStore()
+        var account = CommunityAccount(store: store, defaults: defaults, observeRevocation: false)
         moderation = CommunityModeration(defaults: defaults)
         if signedIn, let stub {
             account.save(CommunitySession(token: "tok", userID: "u1", name: "Ada", appleUserID: "apple-1", origin: stub.base.absoluteString))
         }
+        if !publications.isEmpty {
+            // Signing in starts with none, so they're read back as on the next launch.
+            defaults.set(Dictionary(uniqueKeysWithValues: publications.map { ($0.key.uuidString, $0.value) }), forKey: "community.publications")
+            account = CommunityAccount(store: store, defaults: defaults, observeRevocation: false)
+        }
+        self.account = account
         let syncs = syncs
         client = CommunityClient(kitchen: kitchen, account: account, moderation: moderation, session: stub?.session ?? .shared, defaults: defaults,
                                  communityURL: { stub?.base }, companion: { server }, sync: { syncs.value += 1 },
@@ -1478,5 +1487,227 @@ func eventually(_ condition: () -> Bool) async {
         task.cancel()
         #expect(await task.value == nil)
         #expect(loader.cached(url, maxPixel: 64) == nil)
+    }
+}
+
+// MARK: Taking the person's own recipes down
+
+@MainActor struct CommunityUnpublishTests {
+    private func listing(_ id: String = "r1", title: String = "Tomato soup", ingredients: [String] = ["Tomatoes", "Salt"],
+                         visibility: String? = nil, removed: Bool? = nil) -> Community.Listing {
+        var listing = Community.Listing(id: id, revision: 1, createdAt: "", updatedAt: "", author: .init(id: "u1", name: "Ada"), title: title, tags: [],
+                                        ingredientNames: ingredients, likeCount: 0, saveCount: 0, madeCount: 0)
+        listing.visibility = visibility
+        listing.removed = removed
+        return listing
+    }
+
+    @discardableResult
+    private func recipe(_ harness: CommunityHarness, _ title: String, serverID: String? = nil, ingredients: [String] = [], author: String? = nil) -> Recipe {
+        let recipe = Recipe(title: title)
+        recipe.serverID = serverID
+        recipe.communityAuthor = author
+        recipe.ingredients = ingredients.map { Ingredient(name: $0) }
+        harness.kitchen.context.insert(recipe)
+        return recipe
+    }
+
+    /// A community that also publishes and unpublishes.
+    private func stub() -> CommunityStub {
+        CommunityStub { request in
+            switch (request.method, request.path) {
+            case ("POST", "/api/v1/publish"): .json(["id": "r1", "revision": 1])
+            case ("POST", "/api/v1/unpublish"): .json(["success": true])
+            default: Fixture.route(request)
+            }
+        }
+    }
+
+    // Direct
+
+    @Test func directModeGoesByTheCommunityIDAndForgetsTheLocalPublication() async throws {
+        let stub = stub()
+        let soup = Recipe(title: "Something else entirely")
+        let harness = CommunityHarness(stub: stub, signedIn: true, publications: [soup.uuid: "r1"])
+        harness.kitchen.context.insert(soup)
+        #expect(harness.account.publicationID(for: soup) == "r1")
+        // Without a server the device's record says, whatever the title.
+        #expect(harness.client.publishedRecipe(for: listing())?.uuid == soup.uuid)
+
+        try await harness.client.unpublish(listing())
+        let request = try #require(stub.last("POST", "/api/v1/unpublish"))
+        #expect(request.json["id"] as? String == "r1")
+        #expect(request.authorization == "Bearer tok")
+        // The local recipe is no longer shared.
+        #expect(harness.account.publicationID(for: soup) == nil)
+        #expect(harness.client.publishedRecipe(for: listing()) == nil)
+    }
+
+    @Test func directModeTakesDownARecipeSharedFromAnotherDevice() async throws {
+        let stub = stub()
+        let harness = CommunityHarness(stub: stub, signedIn: true)
+        // Nothing here was published, and nothing has the title.
+        #expect(harness.client.publishedRecipe(for: listing("r7", title: "Elsewhere")) == nil)
+        try await harness.client.unpublish(listing("r7", title: "Elsewhere"))
+        #expect(stub.last("POST", "/api/v1/unpublish")?.json["id"] as? String == "r7")
+    }
+
+    @Test func directModeNeedsTheSignIn() async {
+        let stub = stub()
+        let harness = CommunityHarness(stub: stub)
+        await #expect(throws: CommunityError.notSignedIn) { try await harness.client.unpublish(listing()) }
+        #expect(stub.count("/api/v1/unpublish") == 0)
+    }
+
+    @Test func directModeSignsOutWhenTheCommunityRefusesTheToken() async {
+        let stub = CommunityStub { request in request.path == "/api/v1/unpublish" ? .error(401, "Unauthorized") : Fixture.route(request) }
+        let harness = CommunityHarness(stub: stub, signedIn: true)
+        await #expect(throws: CommunityError.notSignedIn) { try await harness.client.unpublish(listing()) }
+        #expect(!harness.account.isSignedIn)
+    }
+
+    @Test func aRefusalKeepsTheLocalPublication() async throws {
+        let refuse = Shared(false)
+        let stub = CommunityStub { request in
+            switch (request.method, request.path) {
+            case ("POST", "/api/v1/publish"): .json(["id": "r1", "revision": 1])
+            case ("POST", "/api/v1/unpublish"): refuse.value ? .error(403, "Permission denied") : .json(["success": true])
+            default: Fixture.route(request)
+            }
+        }
+        let soup = Recipe(title: "Tomato soup")
+        let harness = CommunityHarness(stub: stub, signedIn: true, publications: [soup.uuid: "r1"])
+        harness.kitchen.context.insert(soup)
+        refuse.value = true
+        await #expect(throws: CommunityError.notAllowed("Permission denied")) { try await harness.client.unpublish(listing()) }
+        #expect(harness.account.publicationID(for: soup) == "r1")
+    }
+
+    // Companion
+
+    private func server(stillUp: Shared<Bool> = Shared(false)) -> FakeKitchenServer {
+        FakeKitchenServer { path, _ in
+            switch path {
+            case "community:unpublishRecipe": return ["success": true]
+            case "community:recipe":
+                if stillUp.value { return Fixture.detail(inlinePhoto: false) }
+                throw ServerClient.ServerError.server("Recipe not found")
+            default: throw FakeKitchenServer.unknown
+            }
+        }
+    }
+
+    @Test func companionModeTakesItDownByCommunityIDOnANewerServer() async throws {
+        let server = FakeKitchenServer { path, _ in
+            if path == "community:unpublish" { return ["success": true] }
+            throw FakeKitchenServer.unknown
+        }
+        let harness = CommunityHarness(server: server)
+        // No recipe in this kitchen is needed, and none is guessed at.
+        try await harness.client.unpublish(listing())
+        #expect(server.last("community:unpublish")?["id"] as? String == "r1")
+        #expect(server.count("community:unpublishRecipe") == 0)
+    }
+
+    @Test func companionModeTakesItDownThroughTheKitchenRecipeItCameFrom() async throws {
+        let server = server()
+        let harness = CommunityHarness(server: server)
+        recipe(harness, "Pea soup", serverID: "srv2")
+        // Someone else's saved recipe of the same name isn't the person's own.
+        recipe(harness, "Tomato soup", serverID: "srv3", author: "Bea")
+        recipe(harness, " tomato SOUP ", serverID: "srv1")
+        #expect(harness.client.publishedRecipe(for: listing())?.serverID == "srv1")
+
+        try await harness.client.unpublish(listing())
+        #expect(server.last("community:unpublishRecipe")?["recipeId"] as? String == "srv1")
+        // It checked the recipe went down.
+        #expect(server.last("community:recipe")?["id"] as? String == "r1")
+    }
+
+    @Test func companionModeWithoutTheRecipeInThisKitchenSaysSoAndChangesNothing() async {
+        let server = server()
+        let harness = CommunityHarness(server: server)
+        // Not synced to the server, so the server can't take it down.
+        recipe(harness, "Tomato soup")
+        await #expect(throws: CommunityError.sharedFromElsewhere) { try await harness.client.unpublish(listing()) }
+        #expect(server.count("community:unpublishRecipe") == 0)
+    }
+
+    @Test func companionModeReportsAGuessThatLeftTheRecipeUp() async {
+        let server = server(stillUp: Shared(true))
+        let harness = CommunityHarness(server: server)
+        recipe(harness, "Tomato soup", serverID: "srv1")
+        await #expect(throws: CommunityError.sharedFromElsewhere) { try await harness.client.unpublish(listing()) }
+        #expect(server.count("community:unpublishRecipe") == 1)
+    }
+
+    @Test func companionModePassesOnTheServersRefusal() async {
+        let server = FakeKitchenServer { path, _ in
+            if path == "community:unpublishRecipe" { throw ServerClient.ServerError.server("Only the original publisher can update this publication") }
+            throw FakeKitchenServer.unknown
+        }
+        let harness = CommunityHarness(server: server)
+        recipe(harness, "Tomato soup", serverID: "srv1")
+        await #expect(throws: CommunityError.server("Only the original publisher can update this publication")) {
+            try await harness.client.unpublish(listing())
+        }
+        #expect(server.count("community:recipe") == 0)
+    }
+
+    // Matching a publication to the recipe it came from
+
+    @Test func aPublicationMatchesTheOnlyRecipeWithItsTitle() {
+        let candidates = [(candidate: 1, title: "Pea soup", ingredients: ["Peas"]), (candidate: 2, title: "  Tomato Soup\n", ingredients: ["Basil"])]
+        #expect(CommunityClient.source(of: listing(), among: candidates) == 2)
+        #expect(CommunityClient.source(of: listing(title: "Bread"), among: candidates) == nil)
+        #expect(CommunityClient.source(of: listing(title: "  "), among: [(candidate: 1, title: "", ingredients: [String]())]) == nil)
+        // Published titles are cut at 200 characters.
+        let long = String(repeating: "a", count: 230)
+        #expect(CommunityClient.source(of: listing(title: String(long.prefix(200))), among: [(candidate: 7, title: long, ingredients: [String]())]) == 7)
+    }
+
+    @Test func ingredientsSettleRecipesThatShareATitle() {
+        let candidates = [(candidate: 1, title: "Tomato soup", ingredients: ["Tomatoes", "Cream"]),
+                          (candidate: 2, title: "Tomato soup", ingredients: ["salt", " TOMATOES"])]
+        #expect(CommunityClient.source(of: listing(), among: candidates) == 2)
+        // Still two alike: no guess.
+        let twins = candidates + [(candidate: 3, title: "tomato soup", ingredients: ["Tomatoes", "Salt"])]
+        #expect(CommunityClient.source(of: listing(), among: twins) == nil)
+        // Neither has its ingredients: no guess.
+        #expect(CommunityClient.source(of: listing(ingredients: ["Lentils"]), among: candidates) == nil)
+    }
+
+    @Test func onlySharedRecipesCanBeTakenDown() {
+        #expect(CommunityShareStatus.canRemove(listing(visibility: "public")))
+        #expect(CommunityShareStatus.canRemove(listing(visibility: "unlisted")))
+        // Lists other than the person's own carry no visibility; those are public.
+        #expect(CommunityShareStatus.canRemove(listing()))
+        #expect(!CommunityShareStatus.canRemove(listing(visibility: "private")))
+        #expect(!CommunityShareStatus.canRemove(listing(visibility: "public", removed: true)))
+        var reported = listing(visibility: "public")
+        reported.underReview = true
+        #expect(CommunityShareStatus.canRemove(reported))
+    }
+
+    // Feeds
+
+    @Test func aRecipeTakenDownLeavesTheFeedsOnScreenAtOnce() async throws {
+        let stub = stub()
+        let harness = CommunityHarness(stub: stub, signedIn: true)
+        let social = CommunitySocial(client: harness.client)
+        let feed = [listing("r1"), listing("r2", title: "Bread")]
+        #expect(social.visible(feed).map(\.id) == ["r1", "r2"])
+        try await social.unpublish(listing("r1"))
+        #expect(social.visible(feed).map(\.id) == ["r2"])
+        // Publishing again can bring it back under the same ID.
+        social.didPublish()
+        #expect(social.visible(feed).map(\.id) == ["r1", "r2"])
+    }
+
+    @Test func aFailedRemovalLeavesTheFeedsAlone() async {
+        let harness = CommunityHarness(server: server())
+        let social = CommunitySocial(client: harness.client)
+        await #expect(throws: CommunityError.sharedFromElsewhere) { try await social.unpublish(listing()) }
+        #expect(social.visible([listing()]).count == 1)
     }
 }

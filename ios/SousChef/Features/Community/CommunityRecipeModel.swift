@@ -60,6 +60,29 @@ final class CommunityRecipeModel {
 
     var isSaved: Bool { savedRecipe != nil || listing.map(social.isSaved) == true }
 
+    // MARK: Reporting and the person's own recipe
+
+    /// The page offers "Report this recipe" once the recipe has loaded, so the
+    /// person's own recipe never shows it, even before it's known to be theirs.
+    /// Signed out counts: reports don't need an account.
+    var canReport: Bool { detail != nil && !isOwn }
+
+    /// The page offers to take the person's own recipe out of the community.
+    /// A recipe that loads is shared, so there is something to take down.
+    var canRemove: Bool { detail != nil && isOwn }
+
+    /// The kitchen recipe this one was shared from, for "Edit sharing", when the app can tell.
+    var sharedFrom: Recipe? {
+        guard isOwn, let listing else { return nil }
+        return client.publishedRecipe(for: listing)
+    }
+
+    /// Takes the person's own recipe out of the community. Throws `CommunityError`.
+    func remove() async throws {
+        guard let listing = detail?.listing ?? listing else { return }
+        try await social.unpublish(listing)
+    }
+
     // MARK: Loading
 
     func load() async {

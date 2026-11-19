@@ -8,6 +8,7 @@ struct PublishRecipeSheet: View {
     @Environment(Kitchen.self) private var kitchen
     @Environment(CommunityModeration.self) private var moderation
     @Environment(CommunityAccount.self) private var account
+    @Environment(CommunitySocial.self) private var social
     @Environment(\.dismiss) private var dismiss
     @State private var state: (configured: Bool, connected: Bool)?
     @State private var visibility = "public"
@@ -41,7 +42,9 @@ struct PublishRecipeSheet: View {
             .navigationTitle("Share with the community")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done", role: .close) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark", role: .close) { dismiss() }
+                }
             }
             .safeAreaInset(edge: .bottom) {
                 if outcome == nil && canPublish {
@@ -207,6 +210,7 @@ struct PublishRecipeSheet: View {
             } else {
                 try await account.publish(recipe, visibility: visibility)
             }
+            social.didPublish()
             outcome = .published
         } catch {
             self.error = error.localizedDescription
@@ -221,8 +225,10 @@ struct PublishRecipeSheet: View {
             if viaServer {
                 guard let id = recipe.serverID, let client = kitchen.server.client else { return }
                 _ = try await client.call("community:unpublishRecipe", ["recipeId": id])
-            } else {
+            } else if let id = account.publicationID(for: recipe) {
                 try await account.unpublish(recipe)
+                // Out of the feeds on screen too. A server doesn't say which recipe this was.
+                social.markRemoved(id)
             }
             outcome = .removed
         } catch {
