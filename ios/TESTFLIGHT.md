@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.0 (35)
+
+### What to Test
+
+Fixes to verify
+- My shared recipes: a recipe you unpublish leaves the list, and ones unpublished earlier no longer show as "Not shared".
+
 ## 1.3.0 (34)
 
 ### What to Test

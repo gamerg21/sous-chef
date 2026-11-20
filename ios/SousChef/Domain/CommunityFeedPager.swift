@@ -21,7 +21,8 @@ final class CommunityFeedPager {
         case following
         /// "Cook from your pantry": one page, best match first.
         case pantry(Community.FeedQuery)
-        /// The cook's own recipes; moderation doesn't apply to them.
+        /// The cook's own recipes; moderation doesn't apply to them. Ones they
+        /// unpublished are left out.
         case mine
     }
 
@@ -47,20 +48,25 @@ final class CommunityFeedPager {
     private(set) var isStalled = false
 
     @ObservationIgnored private let moderation: CommunityModeration?
+    @ObservationIgnored private let keep: ((Community.Listing) -> Bool)?
     @ObservationIgnored private let fetch: Fetch
     @ObservationIgnored private var seen = Set<String>()
     /// Bumped by each refresh, so an answer that arrives late is dropped.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var task: Task<Void, Never>?
 
-    /// - Parameter moderation: Pass nil to show everything, as for the cook's own recipes.
-    init(moderation: CommunityModeration?, fetch: @escaping Fetch) {
+    /// - Parameters:
+    ///   - moderation: Pass nil to skip moderation, as for the cook's own recipes.
+    ///   - keep: Leaves out the recipes it returns false for.
+    init(moderation: CommunityModeration?, keep: ((Community.Listing) -> Bool)? = nil, fetch: @escaping Fetch) {
         self.moderation = moderation
+        self.keep = keep
         self.fetch = fetch
     }
 
     convenience init(client: CommunityClient, source: Source) {
-        self.init(moderation: source == .mine ? nil : client.moderation) { cursor in
+        self.init(moderation: source == .mine ? nil : client.moderation,
+                  keep: source == .mine ? { CommunityShareStatus($0) != .notShared } : nil) { cursor in
             switch source {
             case .feed(let query): try await client.feed(query, cursor: cursor)
             case .following: try await client.followingFeed(cursor: cursor)
@@ -71,7 +77,10 @@ final class CommunityFeedPager {
     }
 
     /// What to show. Follows moderation changes right away: hiding a recipe or blocking a cook removes it.
-    var listings: [Community.Listing] { moderation?.visible(loaded) ?? loaded }
+    var listings: [Community.Listing] {
+        let visible = moderation?.visible(loaded) ?? loaded
+        return keep.map(visible.filter) ?? visible
+    }
 
     var hasMore: Bool { nextCursor != nil }
 

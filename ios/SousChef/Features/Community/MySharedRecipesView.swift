@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Everything the person published, with where each recipe stands: public,
-/// unlisted, not shared, under review or removed by a moderator.
+/// What the person has in the community, with where each recipe stands:
+/// public, unlisted, under review or removed by a moderator. Recipes they
+/// unpublished are left out.
 struct MySharedRecipesView: View {
     @Environment(CommunityClient.self) private var client
     @Environment(CommunitySocial.self) private var social
@@ -33,6 +34,9 @@ struct MySharedRecipesView: View {
                 }
                 if pager.isLoadingMore {
                     ProgressView().frame(maxWidth: .infinity)
+                } else if pager.isStalled {
+                    // The pages that followed were all unpublished, so no new row asks for the next.
+                    CommunityLoadMoreButton(pager: pager)
                 }
                 if let message = pager.errorMessage, !pager.listings.isEmpty {
                     ErrorBanner(message: message).listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
@@ -72,8 +76,7 @@ struct MySharedRecipesView: View {
         do {
             try await social.unpublish(listing)
             removeError = nil
-            // The community keeps listing it here as not shared, so it stays, changed.
-            withAnimation { pager?.update(id: listing.id) { $0.visibility = "private" } }
+            withAnimation { pager?.remove(id: listing.id) }
         } catch {
             removeError = error.localizedDescription
         }
