@@ -1060,6 +1060,26 @@ func eventually(_ condition: () -> Bool) async {
         #expect(own.listings.count == 2)
     }
 
+    @Test func leavesOutWhatKeepRejectsAndKeepsPaging() async {
+        var unpublished = listing("r1")
+        unpublished.visibility = "private"
+        var removed = listing("r3")
+        removed.removed = true
+        let pages: [String?: Community.Page<Community.Listing>] = [
+            nil: .init(items: [unpublished], cursor: "c1"),
+            "c1": .init(items: [listing("r2"), removed], cursor: nil),
+        ]
+        let pager = CommunityFeedPager(moderation: nil, keep: { CommunityShareStatus($0) != .notShared }) { pages[$0]! }
+        await pager.loadFirstPage()
+        // A first page of nothing but unpublished recipes is followed by the next.
+        #expect(pager.listings.map(\.id) == ["r2", "r3"])
+        #expect(!pager.isStalled)
+
+        // One unpublished later drops out too.
+        pager.update(id: "r2") { $0.visibility = "private" }
+        #expect(pager.listings.map(\.id) == ["r3"])
+    }
+
     @Test func neverRunsTwoLoadsAtOnce() async {
         let recorder = Recorder()
         let gate = Gate()
