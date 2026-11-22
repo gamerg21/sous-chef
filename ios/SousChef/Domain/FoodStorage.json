@@ -1,0 +1,83 @@
+{
+  "modifiers": {
+    "freezer": [
+      "frozen", "freezer"
+    ],
+    "fridge": [
+      "refrigerated", "chilled"
+    ],
+    "pantry": [
+      "canned", "tinned", "can of", "tin of", "jarred", "dried", "=dry", "dehydrated", "freeze dried", "powdered",
+      "evaporated", "condensed", "shelf stable", "uht", "long life", "instant"
+    ]
+  },
+  "foods": {
+    "freezer": [
+      "ice cream", "gelato", "sorbet", "sherbet", "froyo", "popsicle", "ice pop", "ice lolly", "freezer pop",
+      "ice cube", "ice pack", "ice cream sandwich", "ice cream bar", "ice cream cake", "fudge bar", "tater tot",
+      "hash brown", "french fries", "fries", "onion ring", "fish stick", "fish finger", "chicken nugget", "nugget",
+      "chicken tender", "corn dog", "pizza", "pizza roll", "pot pie", "tv dinner", "waffle", "eggo",
+      "toaster strudel", "edamame", "dumpling", "potsticker", "gyoza", "wonton", "egg roll", "spring roll",
+      "pierogi", "samosa", "pea", "garlic bread", "breakfast sandwich", "breakfast burrito", "burrito", "taquito",
+      "veggie burger", "acai"
+    ],
+    "fridge": [
+      "milk", "buttermilk", "cream", "creamer", "half and half", "whipped cream", "whipping cream", "sour cream",
+      "creme fraiche", "butter", "margarine", "cheese", "cheddar", "mozzarella", "parmesan", "parmigiano", "feta",
+      "brie", "camembert", "gouda", "provolone", "ricotta", "mascarpone", "halloumi", "paneer", "queso", "burrata",
+      "gruyere", "havarti", "monterey jack", "pepper jack", "colby", "manchego", "pecorino", "gorgonzola",
+      "emmental", "edam", "swiss", "yogurt", "yoghurt", "skyr", "kefir", "custard", "pudding", "cheesecake",
+      "tiramisu", "eggnog", "egg", "egg white", "tofu", "tempeh", "seitan", "hummus", "tzatziki", "guacamole",
+      "salsa", "pico de gallo", "dip", "pesto", "miso", "horseradish", "fresh pasta", "ravioli", "tortellini",
+      "dough", "pie crust", "crescent roll", "sausage roll", "quiche", "sandwich", "sushi", "sashimi", "leftover",
+      "meal prep", "deli", "lunch meat", "cold cut", "salami", "pepperoni", "prosciutto", "pancetta", "chorizo",
+      "mortadella", "bologna", "pastrami", "hot dog", "frankfurter", "bratwurst", "kielbasa", "chicken", "beef",
+      "pork", "turkey", "lamb", "veal", "duck", "goose", "venison", "bison", "bacon", "sausage", "ham", "steak",
+      "meat", "mince", "meatball", "burger", "hamburger", "patty", "brisket", "rib", "ribeye", "sirloin",
+      "tenderloin", "pork chop", "pot roast", "chuck roast", "drumstick", "wing", "thigh", "breast", "liver",
+      "fillet", "filet", "salmon", "shrimp", "prawn", "fish", "cod", "tilapia", "trout", "halibut", "haddock",
+      "sea bass", "snapper", "mahi", "catfish", "swordfish", "mackerel", "ahi tuna", "tuna steak", "crab", "lobster",
+      "scallop", "mussel", "clam", "oyster", "squid", "calamari", "octopus", "crawfish", "lox", "caviar", "lettuce",
+      "romaine", "iceberg", "spinach", "kale", "arugula", "chard", "collard", "bok choy", "pak choi", "cabbage",
+      "brussels sprout", "sprout", "salad", "slaw", "coleslaw", "=greens", "spring mix", "salad mix", "herb",
+      "cilantro", "parsley", "basil", "mint", "dill", "chive", "lemongrass", "fresh rosemary", "fresh thyme",
+      "fresh sage", "fresh oregano", "fresh ginger", "fresh yeast", "berry", "strawberry", "blueberry", "raspberry",
+      "blackberry", "cranberry", "grape", "cherry", "pomegranate", "fig", "cut fruit", "carrot", "celery",
+      "broccoli", "broccolini", "cauliflower", "cauliflower rice", "cucumber", "bell pepper", "=peppers", "jalapeno",
+      "serrano", "habanero", "poblano", "zucchini", "courgette", "eggplant", "aubergine", "mushroom", "asparagus",
+      "green bean", "snap pea", "snow pea", "scallion", "green onion", "spring onion", "leek", "radish", "beet",
+      "beetroot", "turnip", "parsnip", "fennel", "artichoke", "okra", "endive", "radicchio", "watercress", "rhubarb",
+      "kohlrabi", "celeriac", "corn on the cob", "juice", "lemonade", "cider", "kombucha", "smoothie", "cold brew",
+      "mayonnaise", "mayo", "aioli", "pickle", "kimchi", "sauerkraut"
+    ],
+    "pantry": [
+      "rice", "pasta", "spaghetti", "macaroni", "penne", "fusilli", "linguine", "fettuccine", "lasagna", "lasagne",
+      "orzo", "vermicelli", "noodle", "ramen", "udon", "soba", "couscous", "quinoa", "bulgur", "barley", "farro",
+      "polenta", "grits", "cornmeal", "semolina", "millet", "buckwheat", "macaroni and cheese", "mac and cheese",
+      "bean", "lentil", "chickpea", "garbanzo", "split pea", "black eyed pea", "flour", "sugar", "sweetener",
+      "stevia", "salt", "pepper", "peppercorn", "spice", "seasoning", "rub", "extract", "vanilla", "baking soda",
+      "powder", "yeast", "cornstarch", "starch", "gelatin", "jello", "cocoa", "chocolate", "sprinkles", "frosting",
+      "icing", "marshmallow", "cumin", "paprika", "cinnamon", "oregano", "thyme", "rosemary", "sage", "tarragon",
+      "turmeric", "nutmeg", "cayenne", "coriander", "clove", "allspice", "cardamom", "saffron", "masala", "ginger",
+      "bay leaf", "bay leaves", "flake", "msg", "oat", "oatmeal", "porridge", "muesli", "cereal", "granola", "bread",
+      "toast", "tortilla", "pita", "naan", "bagel", "english muffin", "muffin", "croissant", "bun", "roll",
+      "baguette", "loaf", "donut", "doughnut", "pastry", "cake", "cupcake", "brownie", "cookie", "biscuit", "pie",
+      "wafer", "cone", "cracker", "chip", "crisp", "pretzel", "popcorn", "puff", "snack", "bar", "candy", "gum",
+      "=mints", "peppermint", "crouton", "crumb", "breadcrumb", "panko", "stuffing", "shell", "tostada", "mix",
+      "nut", "peanut", "almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "macadamia", "seed", "chia",
+      "flax", "flaxseed", "sesame", "raisin", "date", "prune", "coconut", "coconut milk", "coconut cream",
+      "coconut water", "peanut butter", "almond butter", "cashew butter", "sunflower butter", "nut butter",
+      "seed butter", "apple butter", "cookie butter", "cocoa butter", "shea butter", "cream of tartar", "nutella",
+      "marmite", "vegemite", "tahini", "spread", "honey", "syrup", "molasses", "agave", "jam", "jelly", "preserve",
+      "marmalade", "applesauce", "oil", "vinegar", "ghee", "lard", "shortening", "spray", "sauce", "paste", "puree",
+      "ketchup", "mustard", "relish", "sriracha", "dressing", "marinade", "vinaigrette", "gravy", "broth", "stock",
+      "bouillon", "soup", "chili", "stew", "jerky", "tuna", "sardine", "anchovy", "spam", "olive", "caper", "corn",
+      "coffee", "espresso", "tea", "k cup", "soda", "cola", "water", "seltzer", "energy drink", "sports drink",
+      "gatorade", "beer", "wine", "liquor", "vodka", "whiskey", "rum", "gin", "tequila", "formula", "baby food",
+      "pet food", "dog food", "cat food", "potato", "sweet potato", "yam", "onion", "shallot", "garlic", "banana",
+      "plantain", "tomato", "squash", "pumpkin", "avocado", "apple", "orange", "clementine", "mandarin", "tangerine",
+      "lemon", "lime", "grapefruit", "pineapple", "mango", "papaya", "melon", "watermelon", "cantaloupe", "honeydew",
+      "peach", "plum", "nectarine", "pear", "apricot", "kiwi", "persimmon"
+    ]
+  }
+}

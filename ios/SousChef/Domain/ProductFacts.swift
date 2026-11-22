@@ -344,20 +344,28 @@ nonisolated enum ProductParser {
 
     /// Where the package should go, from its storage instructions and categories.
     static func storage(conditions: String?, categories: [String]?) -> StorageLocation? {
+        storageEvidence(conditions: conditions, categories: categories)?.location
+    }
+
+    /// `storage`, and whether something said so: storage instructions or a
+    /// frozen, shelf-stable or chilled category. `positive` is false for the
+    /// Pantry answer given when the categories say nothing about storage,
+    /// which is a guess that the food's name can do better than.
+    static func storageEvidence(conditions: String?, categories: [String]?) -> (location: StorageLocation, positive: Bool)? {
         let lower = conditions?.lowercased() ?? ""
         let tagWords = (categories ?? []).map(words)
-        if test(freezerText, lower) || tagWords.contains(where: { test(#"\bfrozen\b|\bsurgel|\bcongel"#, $0) }) { return .freezer }
+        if test(freezerText, lower) || tagWords.contains(where: { test(#"\bfrozen\b|\bsurgel|\bcongel"#, $0) }) { return (.freezer, true) }
         // "Refrigerate after opening" is about the opened package, not this one.
         let unopened = lower.split(whereSeparator: { ".;,\n".contains($0) })
             .filter { !test(#"\bopen|\bouvert|\bouverture"#, String($0)) }
             .joined(separator: ". ")
-        if test(notFridgeText, lower) { return .pantry }
-        if test(fridgeText, unopened) { return .fridge }
-        if test(pantryText, unopened) { return .pantry }
+        if test(notFridgeText, lower) { return (.pantry, true) }
+        if test(fridgeText, unopened) { return (.fridge, true) }
+        if test(pantryText, unopened) { return (.pantry, true) }
         if tagWords.isEmpty { return nil }
-        if tagWords.contains(where: { test(shelfTags, $0) }) { return .pantry }
-        if tagWords.contains(where: { test(fridgeTags, $0) }) { return .fridge }
-        return .pantry
+        if tagWords.contains(where: { test(shelfTags, $0) }) { return (.pantry, true) }
+        if tagWords.contains(where: { test(fridgeTags, $0) }) { return (.fridge, true) }
+        return (.pantry, false)
     }
 
     // MARK: Category
@@ -480,9 +488,16 @@ nonisolated enum ProductParser {
 
     /// What a scan fills in for one package: the way the household counted
     /// this product last time when that's still a choice, else the best choice.
-    static func defaults(_ facts: FoodFacts?, previousUnit: String? = nil) -> (choice: PackageChoice?, location: StorageLocation?) {
+    /// `locationIsEvidence` is false when the stored location is only the
+    /// Pantry guess for a product whose categories say nothing about storage.
+    static func defaults(_ facts: FoodFacts?, previousUnit: String? = nil) -> (choice: PackageChoice?, location: StorageLocation?, locationIsEvidence: Bool) {
         let choices = facts?.packaging?.choices ?? []
         let choice = choices.first { $0.unit == previousUnit } ?? choices.first
-        return (choice, facts?.storage.flatMap(StorageLocation.init(rawValue:)))
+        let location = facts?.storage.flatMap(StorageLocation.init(rawValue:))
+        // Fridge and Freezer are only ever stored on evidence. Pantry may be
+        // the guess, so check what the stored text and categories support.
+        let evidence = location != nil && (location != .pantry
+            || storageEvidence(conditions: facts?.storageText, categories: facts?.categoriesTags)?.positive == true)
+        return (choice, location, evidence)
     }
 }

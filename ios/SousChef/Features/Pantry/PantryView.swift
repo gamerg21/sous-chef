@@ -26,6 +26,11 @@ struct PantryView: View {
         case all, location(StorageLocation)
     }
 
+    /// The location the list is filtered to, where a new item starts.
+    private var scopeLocation: StorageLocation? {
+        if case .location(let location) = scope { location } else { nil }
+    }
+
     private var filtered: [PantryItem] {
         items.filter { item in
             (scope == .all || scope == .location(item.location)) &&
@@ -113,7 +118,7 @@ struct PantryView: View {
                 }
             }
             .refreshable { await kitchen.server.syncNow() }
-            .sheet(isPresented: $adding) { PantryItemEditor(item: nil).kitchenEnvironment(kitchen) }
+            .sheet(isPresented: $adding) { PantryItemEditor(item: nil, defaultLocation: scopeLocation).kitchenEnvironment(kitchen) }
             .sheet(item: $editing) { PantryItemEditor(item: $0).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $scanning) {
                 BarcodeLookupSheet { prefill in
@@ -122,7 +127,7 @@ struct PantryView: View {
                 }
                 .kitchenEnvironment(kitchen)
             }
-            .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0).kitchenEnvironment(kitchen) }
+            .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0, defaultLocation: scopeLocation).kitchenEnvironment(kitchen) }
             .pastDatePrompt(for: $askingOutcome) { item, kind in withAnimation { kitchen.settle(item, as: kind) } }
         }
     }
@@ -171,6 +176,8 @@ struct PantryView: View {
                         .background(scope == .location(location) ? Color.brand : Color.brandSoft, in: .rect(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("pantryScope-\(location.rawValue)")
+                    .accessibilityAddTraits(scope == .location(location) ? .isSelected : [])
                 }
             }
             .listRowInsets(EdgeInsets())

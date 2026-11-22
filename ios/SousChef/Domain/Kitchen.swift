@@ -292,12 +292,17 @@ final class Kitchen {
     }
 
     /// Moves bought items into the pantry. An empty placeholder of the same
-    /// food and unit is filled in place; otherwise each purchase is a batch.
+    /// food (`RefillMatch.sameFood`, so "eggs" fills "Egg") and unit is filled
+    /// in place, the newest first; otherwise each purchase is a batch.
     func stock(_ purchases: [Purchase]) {
         let pantry = fetch(PantryItem.self)
         for purchase in purchases where purchase.quantity > 0 {
             let unit = purchase.unit.trimmingCharacters(in: .whitespaces)
-            if let placeholder = pantry.first(where: { normalizeName($0.name) == normalizeName(purchase.item.name) && $0.quantity <= 0 && normalizeName($0.unit) == normalizeName(unit) }) {
+            let placeholders = pantry.filter {
+                $0.quantity <= 0 && normalizeName($0.unit) == normalizeName(unit)
+                    && RefillMatch.sameFood(purchase.item.name, as: $0.name, otherBrand: $0.brand)
+            }
+            if let placeholder = placeholders.max(by: { $0.createdAt < $1.createdAt }) {
                 placeholder.quantity = purchase.quantity
                 placeholder.unit = unit
                 placeholder.location = purchase.location

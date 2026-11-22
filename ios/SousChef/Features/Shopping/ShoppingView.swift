@@ -366,11 +366,8 @@ struct StockPurchasesView: View {
         }
     }
 
+    /// By name first ("Potatoes" keep in the pantry), then by aisle.
     static func guessLocation(_ item: ShoppingItem) -> StorageLocation {
-        switch item.category {
-        case "Dairy", "Meat & Seafood", "Produce": .fridge
-        case "Frozen": .freezer
-        default: .pantry
-        }
+        StoragePlacement.suggest(name: item.name, category: item.category) ?? .pantry
     }
 }
