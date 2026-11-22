@@ -20,6 +20,11 @@ struct StatTile: View {
     let systemImage: String
     let tint: Color
     var selected = false
+    /// Right after the number, as in "82%".
+    var unit = ""
+    /// Smaller, for a strip of tiles across the top of a list: the icon
+    /// beside the number and the title below, so four fit across.
+    var compact = false
     var action: (() -> Void)?
 
     var body: some View {
@@ -33,11 +38,49 @@ struct StatTile: View {
         }
     }
 
+    /// The compact tile's icon badge, growing with the icon.
+    @ScaledMetric(relativeTo: .subheadline) private var compactBadge: CGFloat = 28
+
     /// Narrow, as in two columns on the upright iPhone Duo's half, the icon
     /// sits above the number so the title keeps its width.
     @State private var narrow = false
 
-    private var tile: some View {
+    @ViewBuilder private var tile: some View {
+        if compact { compactTile } else { fullTile }
+    }
+
+    private var compactTile: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(selected ? .white : tint)
+                    .frame(width: compactBadge, height: compactBadge)
+                    .background(selected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.14)), in: .rect(cornerRadius: 8, style: .continuous))
+                    .symbolEffect(.bounce, value: selected)
+                Text("\(value)\(unit)")
+                    .statNumber(size: 24)
+                    .contentTransition(.numericText(value: Double(value)))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            Text(title)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(tint, lineWidth: selected ? 2 : 0)
+        }
+        .contentShape(.rect(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var fullTile: some View {
         let stack = narrow ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
         return stack {
             Image(systemName: systemImage)
@@ -47,7 +90,7 @@ struct StatTile: View {
                 .background(selected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.14)), in: .rect(cornerRadius: narrow ? 10 : 13, style: .continuous))
                 .symbolEffect(.bounce, value: selected)
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(value)")
+                Text("\(value)\(unit)")
                     .statNumber(size: 28)
                     .contentTransition(.numericText(value: Double(value)))
                 Text(title)
