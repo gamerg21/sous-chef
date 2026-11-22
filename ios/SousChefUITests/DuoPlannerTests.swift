@@ -127,6 +127,70 @@ final class DuoGlanceTests: XCTestCase {
     }
 }
 
+/// The Pantry on the unfolded iPhone Duo held upright and open flat: one
+/// screen with one title, and a glance strip whose tiles filter the list.
+/// Skipped unless the window is the upright Duo's.
+@MainActor
+final class DuoFlatPantryTests: XCTestCase {
+    private let app = XCUIApplication()
+
+    override func setUp() async throws {
+        continueAfterFailure = false
+        app.launchArguments = ["-uiTesting", "-seedSample", "-startTab", "pantry"]
+        app.launch()
+        let size = app.windows.firstMatch.frame.size
+        guard size.width >= 600, size.width < 700, size.height > size.width else {
+            throw XCTSkip("Only the unfolded iPhone Duo held upright lays the Pantry out flat.")
+        }
+    }
+
+    func testUseSoonTileFiltersTheListAndClears() throws {
+        let useSoon = app.buttons["pantryGlance-useSoon"]
+        XCTAssertTrue(useSoon.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["pantryGlanceSeeAll"].exists)
+        XCTAssertTrue(app.buttons["pantryLocation-fridge"].exists)
+
+        // One title: the at-a-glance pane has stepped aside.
+        XCTAssertTrue(app.navigationBars["Pantry"].exists)
+        let glanceBar = app.navigationBars["At a Glance"]
+        XCTAssertFalse(glanceBar.exists && glanceBar.isHittable)
+
+        // Coconut milk has no date, so it isn't one to use soon.
+        let undated = app.staticTexts["Coconut milk"]
+        let expiring = app.staticTexts["Spinach"].firstMatch
+        XCTAssertTrue(undated.exists)
+        XCTAssertFalse(useSoon.isSelected)
+
+        useSoon.tap()
+        XCTAssertTrue(app.staticTexts["pantryFilterTitle"].waitForExistence(timeout: 3))
+        XCTAssertTrue(useSoon.isSelected)
+        XCTAssertFalse(undated.exists)
+        XCTAssertTrue(expiring.exists)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Use soon"
+        shot.lifetime = .keepAlways
+        add(shot)
+
+        // Tapped again, it clears.
+        useSoon.tap()
+        XCTAssertTrue(undated.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["pantryFilterTitle"].exists)
+        XCTAssertFalse(useSoon.isSelected)
+    }
+
+    func testLocationTileFiltersAndShowAllClears() throws {
+        let freezer = app.buttons["pantryLocation-freezer"]
+        XCTAssertTrue(freezer.waitForExistence(timeout: 10))
+        freezer.tap()
+        XCTAssertTrue(app.staticTexts["pantryFilterTitle"].waitForExistence(timeout: 3))
+        XCTAssertTrue(freezer.isSelected)
+        XCTAssertFalse(app.staticTexts["Coconut milk"].exists)
+        app.buttons["pantryShowAll"].tap()
+        XCTAssertTrue(app.staticTexts["Coconut milk"].waitForExistence(timeout: 3))
+        XCTAssertFalse(freezer.isSelected)
+    }
+}
+
 extension XCUIApplication {
     /// Wide enough for panes side by side, or the unfolded iPhone Duo held
     /// upright with them stacked.

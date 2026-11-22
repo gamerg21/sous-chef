@@ -12,7 +12,11 @@ struct PantryInsightsPane: View {
     let windowDays: Int
     /// The list's location filter; the location bar sets it.
     @Binding var scope: PantryView.LocationScope
+    /// In a sheet of its own, with a button to close it.
+    var closes = false
     var onSelect: (PantryItem) -> Void
+
+    @Environment(\.dismiss) private var dismiss
 
     @Query private var recipes: [Recipe]
     @ScaledMetric(relativeTo: .subheadline) private var legendWidth: CGFloat = 120
@@ -47,6 +51,14 @@ struct PantryInsightsPane: View {
             .ignoresRailInset()
             .navigationTitle("At a Glance")
             .paneTitleDisplayMode(isStacked)
+            .toolbar {
+                if closes {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close", systemImage: "xmark", role: .close) { dismiss() }
+                            .accessibilityIdentifier("closeGlance")
+                    }
+                }
+            }
         }
     }
 
@@ -79,39 +91,7 @@ struct PantryInsightsPane: View {
             }
             .frame(height: 12)
             .accessibilityHidden(true)
-            // Three across while their names fit, else one under another.
-            TileRow(count: 3, minimumTileWidth: 90, spacing: 8) {
-                ForEach(counts, id: \.0) { location, count in
-                    let selected = scope == .location(location)
-                    Button {
-                        withAnimation(.snappy) { scope = selected ? .all : .location(location) }
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: location.symbol)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(location.tint)
-                                .frame(width: 22)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text("\(count)")
-                                    .font(.headline.monospacedDigit())
-                                    .contentTransition(.numericText(value: Double(count)))
-                                Text(location.title)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(selected ? location.tint.opacity(0.16) : Color(.systemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(selected ? location.tint : .clear, lineWidth: 1.5))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(count) in \(location.title)")
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                    .accessibilityHint("Shows only the \(location.title.lowercased()) in the list")
-                }
-            }
+            LocationTiles(counts: counts, scope: $scope)
         }
     }
 
@@ -132,7 +112,7 @@ struct PantryInsightsPane: View {
     }
 
     /// Recipes the pantry covers right now.
-    private var ready: [Recipe] {
+    static func ready(_ recipes: [Recipe], from items: [PantryItem]) -> [Recipe] {
         let stock = items.map { StockLine(id: $0.uuid, name: $0.name, quantity: $0.quantity, unit: $0.unit, expiresOn: $0.expiresOn) }
         return recipes
             .filter { !$0.ingredients.isEmpty && CookingPlanner.plan(ingredients: $0.ingredients, stock: stock).missingIngredients.isEmpty }
@@ -140,7 +120,7 @@ struct PantryInsightsPane: View {
     }
 
     private var readyTile: some View {
-        let ready = ready
+        let ready = Self.ready(recipes, from: items)
         return StatTile(
             value: ready.count,
             title: ready.count == 1 ? "recipe ready" : "recipes ready",
@@ -180,22 +160,29 @@ struct PantryInsightsPane: View {
         }
     }
 
-    private func freshness(of item: PantryItem) -> Freshness {
+    private static func freshness(of item: PantryItem, window: Int, now: Date) -> Freshness {
         guard let date = item.expiresOn else { return .undated }
-        let days = ExpiringFood.daysLeft(until: date, from: .now)
-        return days < 0 ? .expired : days <= windowDays ? .soon : .fresh
+        let days = ExpiringFood.daysLeft(until: date, from: now)
+        return days < 0 ? .expired : days <= window ? .soon : .fresh
+    }
+
+    /// How much of the dated stock is still fresh, past the cook's window,
+    /// as a whole percentage; nil with nothing in stock dated.
+    static func freshShare(of items: [PantryItem], window: Int, now: Date = .now) -> Int? {
+        let dated = items.filter { $0.quantity > 0 && $0.expiresOn != nil }
+        guard !dated.isEmpty else { return nil }
+        let fresh = dated.filter { freshness(of: $0, window: window, now: now) == .fresh }.count
+        return Int((Double(fresh) / Double(dated.count) * 100).rounded())
     }
 
     private var freshnessCard: some View {
-        let counts = Freshness.allCases.map { kind in (kind, inStock.filter { freshness(of: $0) == kind }.count) }
+        let counts = Freshness.allCases.map { kind in (kind, inStock.filter { Self.freshness(of: $0, window: windowDays, now: .now) == kind }.count) }
         let total = max(1, inStock.count)
-        let dated = inStock.filter { $0.expiresOn != nil }.count
-        let freshShare = dated == 0 ? 0 : Int((Double(counts.first { $0.0 == .fresh }?.1 ?? 0) / Double(dated) * 100).rounded())
         return InsightCard {
             AdaptiveStack(alignment: .firstTextBaseline, verticalSpacing: 4) {
                 Eyebrow("Freshness", systemImage: "leaf")
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if dated > 0 {
+                if let freshShare = Self.freshShare(of: inStock, window: windowDays) {
                     Text("\(freshShare)% fresh")
                         .font(.subheadline.weight(.semibold).monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -353,6 +340,53 @@ struct PantryInsightsPane: View {
     }
 }
 
+/// The kitchen's three places with how much is in each, three across while
+/// their names fit, else one under another. Each is a filter for the list:
+/// tapped, it shows only that place; tapped again, everything.
+struct LocationTiles: View {
+    let counts: [(StorageLocation, Int)]
+    @Binding var scope: PantryView.LocationScope
+    /// Behind a tile that isn't picked: a shade off the card or list it sits on.
+    var tileBackground = Color(.systemGroupedBackground)
+
+    var body: some View {
+        TileRow(count: 3, minimumTileWidth: 90, spacing: 8) {
+            ForEach(counts, id: \.0) { location, count in
+                let selected = scope == .location(location)
+                Button {
+                    withAnimation(.snappy) { scope = selected ? .all : .location(location) }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: location.symbol)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(location.tint)
+                            .frame(width: 22)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("\(count)")
+                                .font(.headline.monospacedDigit())
+                                .contentTransition(.numericText(value: Double(count)))
+                            Text(location.title)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(selected ? location.tint.opacity(0.16) : tileBackground, in: .rect(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(selected ? location.tint : .clear, lineWidth: 1.5))
+                    .contentShape(.rect(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(count) in \(location.title)")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityHint("Shows only the \(location.title.lowercased()) in the list")
+                .accessibilityIdentifier("pantryLocation-\(location.rawValue)")
+            }
+        }
+    }
+}
+
 extension StorageLocation {
     /// Identity colors for the at-a-glance charts, checked for color-blind
     /// separation in light and dark.
@@ -366,11 +400,13 @@ extension StorageLocation {
 }
 
 private extension Color {
-    init(light: UInt32, dark: UInt32) {
-        func color(_ hex: UInt32) -> UIColor {
+    /// Nonisolated: SwiftUI resolves the color off the main thread while it
+    /// animates, and a main-actor provider traps there.
+    nonisolated init(light: UInt32, dark: UInt32) {
+        @Sendable func color(_ hex: UInt32) -> UIColor {
             UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
         }
-        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? color(dark) : color(light) })
+        self.init(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark ? color(dark) : color(light) })
     }
 }
 

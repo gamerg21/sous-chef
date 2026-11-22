@@ -132,6 +132,15 @@ nonisolated enum PaneLayout: Equatable, Sendable {
         if size.width >= 600, foldRunsAcross == true { return .stacked }
         return .single
     }
+
+    /// For a screen that keeps to one screen on the unfolded iPhone Duo held
+    /// upright and open flat, where two halves would put a title bar in the
+    /// middle of the display: its companion pane steps aside, and comes back
+    /// on the upper half once the phone is propped like a laptop. Side by
+    /// side and on one column, nothing changes.
+    func companionStepsAside(in posture: FoldPosture) -> Bool {
+        self == .stacked && posture != .laptop
+    }
 }
 
 /// A screen's main content with a companion pane on the other half of an
@@ -149,6 +158,10 @@ struct CompanionSplit<Main: View, Companion: View>: View {
     /// Builds the main content around the path its navigation stack shows.
     @ViewBuilder var main: (Binding<NavigationPath>) -> Main
     @ViewBuilder var companion: Companion
+    /// Stacked, gives the main content the whole window as one screen, the
+    /// companion coming back when this turns off; see
+    /// `PaneLayout.companionStepsAside(in:)`.
+    var companionAside = false
     /// What the main content's navigation stack shows. Going deeper from the
     /// stacked list, it follows the path a moment later: the pane takes both
     /// halves first, since a stack keeps its old size until a push finishes.
@@ -157,8 +170,9 @@ struct CompanionSplit<Main: View, Companion: View>: View {
     /// list, so the pane only shrinks once the list is showing.
     @State private var leavingDeeper = false
 
-    init(layout: PaneLayout, @ViewBuilder main: @escaping () -> Main, @ViewBuilder companion: () -> Companion) {
+    init(layout: PaneLayout, companionAside: Bool = false, @ViewBuilder main: @escaping () -> Main, @ViewBuilder companion: () -> Companion) {
         self.layout = layout
+        self.companionAside = companionAside
         self.main = { _ in main() }
         self.companion = companion()
     }
@@ -175,7 +189,7 @@ struct CompanionSplit<Main: View, Companion: View>: View {
     /// Whether the stack waits for the pane to take both halves before
     /// showing a new path.
     private func waits(for new: NavigationPath) -> Bool {
-        layout == .stacked && shownPath.isEmpty && !new.isEmpty
+        layout == .stacked && !companionAside && shownPath.isEmpty && !new.isEmpty
     }
 
     var body: some View {
@@ -184,10 +198,21 @@ struct CompanionSplit<Main: View, Companion: View>: View {
             case .single:
                 main(path ?? .constant(NavigationPath()))
             case .sideBySide, .stacked:
-                let stacked = layout == .stacked
-                let expanded = stacked && (mainIsDeeper || leavingDeeper)
-                TwoPane(axis: stacked ? .vertical : .horizontal, expanded: expanded ? .secondary : nil) {
-                    companion.environment(\.isStackedPane, stacked)
+                // With the companion aside, the main content is one screen
+                // and opens deeper screens as on one column.
+                let stacked = layout == .stacked && !companionAside
+                let expanded = layout == .stacked && (companionAside || mainIsDeeper || leavingDeeper)
+                TwoPane(axis: layout == .stacked ? .vertical : .horizontal, expanded: expanded ? .secondary : nil) {
+                    // Aside for as long as the phone lies flat, it isn't
+                    // kept: hidden, its contents would still be found by
+                    // VoiceOver. It fades back in when the phone's propped.
+                    if companionAside {
+                        Color.clear.accessibilityHidden(true)
+                    } else {
+                        companion
+                            .environment(\.isStackedPane, layout == .stacked)
+                            .transition(.opacity)
+                    }
                 } secondary: {
                     main(Binding {
                         shownPath
@@ -199,7 +224,7 @@ struct CompanionSplit<Main: View, Companion: View>: View {
                     // The tab bar sits over the lower half, so it collapses
                     // as that half scrolls rather than the top one.
                     .background {
-                        if stacked { TabBarScrollProbe(screen: shownPath.count) }
+                        if layout == .stacked { TabBarScrollProbe(screen: shownPath.count) }
                     }
                     // Opened from the list, a screen waits for the pane to
                     // grow, which a NavigationLink can't.
@@ -307,7 +332,7 @@ extension View {
 
 /// How an iPhone Duo is being held, from its hinge and the way its fold runs
 /// across the window.
-enum FoldPosture: Equatable {
+nonisolated enum FoldPosture: Equatable, Sendable {
     /// Open flat, closed, or a device without a hinge.
     case flat
     /// Half open with the fold running top to bottom, standing like a book.
