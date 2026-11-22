@@ -90,6 +90,29 @@ struct TrailingDetailRow<Content: View>: View {
     }
 }
 
+/// How many columns fit side by side: as many as `maximum` while each keeps
+/// `minimumWidth` (scale it with `@ScaledMetric` so larger text gets fewer),
+/// and never fewer than one.
+nonisolated enum ColumnFit {
+    static func count(width: CGFloat, minimumWidth: CGFloat, spacing: CGFloat = 0, maximum: Int) -> Int {
+        guard maximum > 1, minimumWidth > 0 else { return 1 }
+        for columns in stride(from: maximum, to: 1, by: -1)
+        where (width - spacing * CGFloat(columns - 1)) / CGFloat(columns) >= minimumWidth {
+            return columns
+        }
+        return 1
+    }
+}
+
+extension Array {
+    /// The elements in rows of `columns`, left to right and then down; the
+    /// last row may be short.
+    func rows(of columns: Int) -> [[Element]] {
+        let columns = Swift.max(1, columns)
+        return stride(from: 0, to: count, by: columns).map { Array(self[$0..<Swift.min($0 + columns, count)]) }
+    }
+}
+
 /// A big rounded headline number that grows with Dynamic Type, starting from
 /// `size` at the default text size.
 private struct StatNumber: ViewModifier {
