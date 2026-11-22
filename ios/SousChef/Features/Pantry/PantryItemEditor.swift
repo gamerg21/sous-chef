@@ -24,6 +24,8 @@ struct PantryPrefill: Identifiable {
 struct PantryItemEditor: View {
     let item: PantryItem?
     var prefill: PantryPrefill?
+    /// The location the Pantry list is filtered to: where a new item starts.
+    var defaultLocation: StorageLocation?
 
     @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
@@ -32,7 +34,13 @@ struct PantryItemEditor: View {
     @State private var name = ""
     @State private var quantity: Double? = 1
     @State private var unit = "each"
-    @State private var location: StorageLocation = .pantry
+    /// The location and what chose it, so a guess never replaces the person's pick.
+    @State private var placement = LocationChoice()
+    /// An item already in the kitchen that this purchase could refill.
+    @State private var refill: RefillMatch.Result?
+    /// The refill switch as the person left it, per matched item.
+    @State private var refillChoices: [UUID: Bool] = [:]
+    @State private var askingAI: Task<Void, Never>?
     @State private var expiresOn: Date?
     @State private var brand = ""
     @State private var category: String?
@@ -53,6 +61,18 @@ struct PantryItemEditor: View {
         guard item == nil, name.count >= 2 else { return [] }
         let names = Set(existing.map(\.name)).filter { $0.localizedStandardContains(name) && normalizeName($0) != normalizeName(name) }
         return Array(names).sorted().prefix(4).map { $0 }
+    }
+
+    /// The item `refill` points at, when refilling it is on offer.
+    private var refillTarget: PantryItem? {
+        guard item == nil, let refill, refill.isOffered else { return nil }
+        return existing.first { $0.uuid == refill.id }
+    }
+
+    /// Whether saving refills `refillTarget` instead of adding an item.
+    private var refilling: Bool {
+        guard let refill, refillTarget != nil else { return false }
+        return refillChoices[refill.id] ?? refill.defaultOn
     }
 
     var body: some View {
@@ -87,6 +107,26 @@ struct PantryItemEditor: View {
                     Eyebrow(item == nil ? "New item" : "Item")
                 }
 
+                if let refill, let target = refillTarget {
+                    Section {
+                        LabeledContent {
+                            Text("\(target.quantity <= 0 ? "Out" : Units.amount(target.quantity, target.unit)) · \(target.location.title)")
+                        } label: {
+                            Text(target.name)
+                        }
+                        .accessibilityIdentifier("refillMatch")
+                        Toggle("Refill this instead of adding a new item", isOn: Binding {
+                            refilling
+                        } set: {
+                            refillChoices[refill.id] = $0
+                            refresh()
+                        })
+                        .accessibilityIdentifier("refillExisting")
+                    } header: {
+                        Eyebrow("Already in your kitchen")
+                    }
+                }
+
                 Section {
                     HStack {
                         TextField("Amount", value: $quantity, format: .number.precision(.fractionLength(0...3)))
@@ -107,10 +147,17 @@ struct PantryItemEditor: View {
                 }
 
                 Section {
-                    Picker("Location", selection: $location) {
-                        ForEach(StorageLocation.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Picker("Location", selection: Binding { placement.location } set: { placement.pick($0) }) {
+                            ForEach(StorageLocation.allCases) { Label($0.title, systemImage: $0.symbol).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("pantryLocation")
+                        if item == nil, let reason = placement.reason {
+                            Text(reason).font(.caption).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("pantryLocationReason")
+                        }
                     }
-                    .pickerStyle(.segmented)
                     ExpiryField(date: $expiresOn)
                     Picker(selection: $category) {
                         Text("None").tag(String?.none)
@@ -205,6 +252,8 @@ struct PantryItemEditor: View {
                 .kitchenEnvironment(kitchen)
             }
             .onAppear(perform: load)
+            .onChange(of: [name, brand, barcode, unit, category ?? ""]) { refresh() }
+            .onDisappear { askingAI?.cancel() }
             .pastDatePrompt(for: $askingOutcome) { _, kind in save(outcome: kind) }
             .pastDatePrompt(for: $askingRemoval) { item, kind in
                 kitchen.settle(item, as: kind)
@@ -220,7 +269,7 @@ struct PantryItemEditor: View {
             name = item.name
             quantity = item.quantity
             unit = item.unit
-            location = item.location
+            placement = LocationChoice(editing: item.location)
             // An item that's out has no date, even one saved before that rule.
             expiresOn = item.quantity > 0 ? item.expiresOn : nil
             brand = item.brand ?? ""
@@ -229,10 +278,36 @@ struct PantryItemEditor: View {
             barcode = item.barcode ?? ""
             nutrition = item.nutrition ?? Nutrition()
             facts = item.foodFacts
-        } else if let prefill {
-            apply(prefill)
         } else {
-            nameFocused = true
+            placement.offer(defaultLocation, from: .filter)
+            if let prefill { apply(prefill) } else { nameFocused = true }
+            refresh()
+        }
+    }
+
+    /// Looks again for an item to refill and for a better location, after the
+    /// name, brand, barcode, unit, category or refill switch changed.
+    private func refresh() {
+        guard item == nil, loaded else { return }
+        refill = RefillMatch.best(name: name, brand: brand, barcode: barcode, unit: Units.find(unit)?.label ?? unit,
+                                  in: existing.map(\.refillCandidate))
+        let target = refilling ? refillTarget : nil
+        placement.refresh(name: name, category: category, refill: target.map { ($0.location, $0.name) })
+        askAI()
+    }
+
+    /// Asks Apple Intelligence where the food goes once typing pauses, when
+    /// nothing else knows. Saving never waits for it, and a late answer for an
+    /// earlier name is dropped.
+    private func askAI() {
+        askingAI?.cancel()
+        askingAI = nil
+        guard placement.wantsAI(name: name), kitchen.ai.isAvailable else { return }
+        let asked = name
+        askingAI = Task {
+            try? await Task.sleep(for: .milliseconds(700))
+            guard !Task.isCancelled, let answer = try? await kitchen.ai.storageLocation(for: asked), !Task.isCancelled else { return }
+            placement.answer(answer, asked: asked, name: name)
         }
     }
 
@@ -255,13 +330,12 @@ struct PantryItemEditor: View {
             unit = stocked.unit
         }
         if let value = prefill.unit { unit = value }
-        if let value = prefill.location {
-            location = value
-        } else if let stocked {
-            location = stocked.location
-        } else if item == nil, location == .pantry, let suggested = defaults.location {
-            location = suggested
-        }
+        // A second scan replaces what the first one said about the location.
+        // The name and category rules run afterwards, in `refresh`.
+        placement.withdraw(.label, .stockedBefore, .product)
+        placement.offer(prefill.location, from: .label)
+        placement.offer(stocked?.location, from: .stockedBefore)
+        if defaults.locationIsEvidence { placement.offer(defaults.location, from: .product) }
         barcode = prefill.barcode ?? barcode
         category = stocked?.category ?? prefill.category ?? category
         facts = found ?? facts
@@ -297,11 +371,18 @@ struct PantryItemEditor: View {
                 return
             }
         }
+        if item == nil, refilling, let existing = refillTarget {
+            kitchen.refill(existing, with: PantryRefill(quantity: newQuantity, unit: unit, location: placement.location,
+                                                        locationChosen: placement.source == .user, expiresOn: expiresOn,
+                                                        brand: brand, category: category, notes: notes, barcode: barcode, facts: facts, nutrition: nutrition))
+            dismiss()
+            return
+        }
         let target = item ?? PantryItem(name: name)
         target.name = trimmed
         target.setQuantity(newQuantity)
         target.unit = unit
-        target.location = location
+        target.location = placement.location
         target.expiresOn = newQuantity > 0 ? expiresOn : nil
         target.brand = brand.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         target.category = category

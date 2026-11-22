@@ -336,21 +336,40 @@ function words(tag: string): string {
   return tag.toLowerCase().replace(/^[a-z]{2}:/, "").replace(/[-_]/g, " ");
 }
 
-/** Where the package should go, from its storage instructions and categories. */
-export function suggestStorage(conditions: string | undefined, categories: string[] | undefined): StorageSuggestion | undefined {
+/**
+ * Where the package should go and how sure that is. Storage instructions and
+ * a frozen, shelf-stable or chilled category are evidence; "pantry" only
+ * because nothing else matched is a guess that other signals may overrule.
+ */
+export function storageEvidence(conditions: string | undefined, categories: string[] | undefined): { storage: StorageSuggestion; evidence: boolean } | undefined {
   const lower = conditions?.toLowerCase() ?? "";
   const tagWords = (categories ?? []).map(words);
-  if (FREEZER_TEXT.test(lower) || tagWords.some((tag) => /\bfrozen\b|\bsurgel|\bcongel/.test(tag))) return "freezer";
+  const sure = (storage: StorageSuggestion) => ({ storage, evidence: true });
+  if (FREEZER_TEXT.test(lower) || tagWords.some((tag) => /\bfrozen\b|\bsurgel|\bcongel/.test(tag))) return sure("freezer");
   // "Refrigerate after opening" is about the opened package, not this one.
   const clauses = lower.split(/[.;,\n]/).filter((clause) => !/\bopen|\bouvert|\bouverture/.test(clause));
   const unopened = clauses.join(". ");
-  if (NOT_FRIDGE_TEXT.test(lower)) return "pantry";
-  if (FRIDGE_TEXT.test(unopened)) return "fridge";
-  if (PANTRY_TEXT.test(unopened)) return "pantry";
+  if (NOT_FRIDGE_TEXT.test(lower)) return sure("pantry");
+  if (FRIDGE_TEXT.test(unopened)) return sure("fridge");
+  if (PANTRY_TEXT.test(unopened)) return sure("pantry");
   if (!tagWords.length) return undefined;
-  if (tagWords.some((tag) => SHELF_TAGS.test(tag))) return "pantry";
-  if (tagWords.some((tag) => FRIDGE_TAGS.test(tag))) return "fridge";
-  return "pantry";
+  if (tagWords.some((tag) => SHELF_TAGS.test(tag))) return sure("pantry");
+  if (tagWords.some((tag) => FRIDGE_TAGS.test(tag))) return sure("fridge");
+  return { storage: "pantry", evidence: false };
+}
+
+/** Where the package should go, from its storage instructions and categories. */
+export function suggestStorage(conditions: string | undefined, categories: string[] | undefined): StorageSuggestion | undefined {
+  return storageEvidence(conditions, categories)?.storage;
+}
+
+/**
+ * The storage a product's own facts give evidence for, leaving out the
+ * fall-through "pantry". Read from the saved facts, so cached lookups work.
+ */
+export function evidencedStorage(facts: Pick<ProductFacts, "storageText" | "categoriesTags"> | undefined): StorageSuggestion | undefined {
+  const found = storageEvidence(facts?.storageText, facts?.categoriesTags);
+  return found?.evidence ? found.storage : undefined;
 }
 
 // ── Category ────────────────────────────────────────────────────────────

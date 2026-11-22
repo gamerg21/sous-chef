@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import {
+  evidencedStorage,
   importDefaults,
   inferCategory,
   measures,
@@ -129,6 +130,22 @@ describe('product parsing details', () => {
     expect(suggestStorage(undefined, ['en:dairies', 'en:cheeses'])).toBe('fridge');
     expect(suggestStorage(undefined, ['en:dairies', 'en:uht-milks'])).toBe('pantry');
     expect(suggestStorage(undefined, undefined)).toBeUndefined();
+  });
+
+  test('"pantry" because nothing else matched is not evidence', () => {
+    // Still what is saved with the product.
+    expect(suggestStorage(undefined, ['en:snacks'])).toBe('pantry');
+    expect(evidencedStorage({ categoriesTags: ['en:snacks'] })).toBeUndefined();
+    expect(evidencedStorage({ categoriesTags: ['en:beverages', 'en:plant-based-beverages'] })).toBeUndefined();
+    expect(evidencedStorage({ categoriesTags: ['en:dairies', 'en:uht-milks'] })).toBe('pantry');
+    expect(evidencedStorage({ categoriesTags: ['en:dairies', 'en:cheeses'] })).toBe('fridge');
+    expect(evidencedStorage({ categoriesTags: ['en:frozen-foods'] })).toBe('freezer');
+    expect(evidencedStorage({ storageText: 'Store in a cool, dry place.', categoriesTags: ['en:snacks'] })).toBe('pantry');
+    expect(evidencedStorage({ storageText: 'Keep refrigerated.' })).toBe('fridge');
+    expect(evidencedStorage({})).toBeUndefined();
+    expect(evidencedStorage(undefined)).toBeUndefined();
+    // Read back from parsed facts, as a cached lookup is.
+    expect(evidencedStorage(parseProduct(product('0894700010137'))!.facts)).toBe('fridge');
   });
 
   test('category comes from the most specific tag', () => {

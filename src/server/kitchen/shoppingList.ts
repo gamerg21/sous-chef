@@ -3,6 +3,7 @@ import { query, mutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { getAuthUserId, resolveHouseholdId } from "./helpers";
 import { unitConverter } from "../../lib/cooking-plan";
+import { ingredientKey } from "../../lib/pantry-match";
 
 function validateItem(name?: string, quantity?: number | null) {
   if (name !== undefined && (!name.trim() || name.trim().length > 200)) throw new Error("Item name must be between 1 and 200 characters");
@@ -267,10 +268,20 @@ export const stockChecked = mutation({
       const food = await ctx.db.query('foodItems').withIndex('by_name', q => q.eq('name', item.name)).first();
       const foodItemId = food?._id ?? await ctx.db.insert('foodItems', { name: item.name });
       // An empty placeholder (added from a recipe before it was bought) is filled
-      // in place. Otherwise separate batches preserve each purchase's expiry and location.
+      // in place, matched by name the way refills are: "basil" fills "Basil" and
+      // "Tomatoes" fills "tomato". Otherwise separate batches preserve each
+      // purchase's expiry and location.
       const unit = purchase.unit.trim();
-      const placeholder = (await ctx.db.query('inventoryItems').withIndex('by_foodItemId', q => q.eq('foodItemId', foodItemId)).collect())
-        .find(row => row.householdId === list.householdId && row.quantity <= 0 && row.unit.trim().toLowerCase() === unit.toLowerCase());
+      const key = ingredientKey(item.name);
+      const empties = (await ctx.db.query('inventoryItems').withIndex('by_householdId', q => q.eq('householdId', list.householdId)).collect())
+        .filter(row => row.quantity <= 0 && row.unit.trim().toLowerCase() === unit.toLowerCase());
+      let placeholder = empties.find(row => row.foodItemId === foodItemId);
+      if (!placeholder && key) {
+        for (const row of empties) {
+          const name = (await ctx.db.get(row.foodItemId))?.name;
+          if (name && ingredientKey(name) === key) { placeholder = row; break; }
+        }
+      }
       if (placeholder) await ctx.db.patch(placeholder._id, { quantity: purchase.quantity, unit, locationId: purchase.locationId, expiresOn: purchase.expiresOn, category: placeholder.category ?? item.category });
       else await ctx.db.insert('inventoryItems', { householdId: list.householdId, foodItemId, locationId: purchase.locationId, quantity: purchase.quantity, unit, expiresOn: purchase.expiresOn, category: item.category, notes: item.note });
       await ctx.db.delete(item._id);

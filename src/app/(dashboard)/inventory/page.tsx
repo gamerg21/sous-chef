@@ -2,7 +2,9 @@
 
 import { unitLabel } from "@/lib/units";
 import { NUTRIENT_FIELDS, readNutrition, type NutrientKey, type NutritionPer100g } from "@/lib/nutrition";
-import { formatTag, importDefaults, tidy } from "@/lib/food-product";
+import { evidencedStorage, formatTag, importDefaults, tidy } from "@/lib/food-product";
+import { matchPlacement } from "@/lib/storage-placement";
+import { findRefill, refillUpdate } from "@/lib/refill-match";
 import { ProductPackageCard } from "@/components/inventory/ProductPackageCard";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -63,6 +65,8 @@ function categoryToFormState(category?: string) {
 }
 
 type InventoryPrefillData = Partial<InventoryItem> & {
+  /** Why `locationId` was chosen: this barcode was stocked there before, or the product's own facts say so. */
+  locationSource?: "barcode" | "product";
   source?: "local_manual" | "open_food_facts";
   attribution?: { label: "Open Food Facts"; url: string; license: "ODbL" };
   stale?: boolean;
@@ -231,11 +235,14 @@ export default function InventoryPage() {
 
       const facts = data.found ? (data.facts as FoodFacts | undefined) : stocked?.foodFacts;
       const defaults = importDefaults(facts, stocked?.unit);
+      const evidenced = evidencedStorage(facts);
       setPrefillData({
         name: stocked?.name ?? data.prefill.name,
         barcode,
         category: stocked?.category ?? data.prefill.category,
-        locationId: stocked?.locationId ?? defaults.location,
+        // "Pantry" only because nothing else matched is left for the form to improve on.
+        locationId: stocked?.locationId ?? evidenced,
+        locationSource: stocked ? "barcode" : evidenced ? "product" : undefined,
         quantity: defaults.quantity,
         unit: defaults.unit ?? stocked?.unit,
         foodFacts: facts,
@@ -292,7 +299,7 @@ export default function InventoryPage() {
   }, []);
 
   const handleSaveItem = useCallback(
-    async (itemData: Partial<InventoryItem>) => {
+    async (itemData: Partial<InventoryItem>, refill?: { item: InventoryItem; locationChosen: boolean }) => {
       try {
         const cleanedData = {
           ...itemData,
@@ -325,6 +332,23 @@ export default function InventoryPage() {
             return;
           }
           await save(status === "none" ? undefined : "used");
+        } else if (refill) {
+          if (!itemData.locationId || !itemData.quantity || !itemData.unit) {
+            throw new Error("Location, quantity, and unit are required.");
+          }
+          // Tops up the row that is already there instead of adding a second one.
+          const { id, ...changes } = refillUpdate(refill.item, {
+            quantity: itemData.quantity,
+            unit: itemData.unit,
+            locationId: itemData.locationId,
+            locationChosen: refill.locationChosen,
+            expiresOn: cleanedData.expiresOn,
+            category: cleanedData.category,
+            notes: cleanedData.notes,
+            barcode: cleanedData.barcode,
+            nutritionPer100g: itemData.nutritionPer100g,
+          });
+          await updateItem({ id: id as Id<"inventoryItems">, ...changes });
         } else {
           if (!itemData.name || !itemData.locationId || !itemData.quantity || !itemData.unit) {
             throw new Error("Name, location, quantity, and unit are required.");
@@ -413,6 +437,8 @@ export default function InventoryPage() {
           item={editingItemId ? items.find((item) => item.id === editingItemId) : undefined}
           prefillData={prefillData}
           locations={locations}
+          items={items}
+          filterLocationId={selectedLocationId === "all" ? undefined : selectedLocationId}
           onSave={handleSaveItem}
           onClose={() => {
             setShowAddModal(false);
@@ -480,7 +506,12 @@ interface InventoryItemModalProps {
   item?: InventoryItem;
   prefillData?: InventoryPrefillData | null;
   locations: KitchenLocation[];
-  onSave: (data: Partial<InventoryItem>) => Promise<void>;
+  /** The household's inventory, to spot an item this one would refill. */
+  items: InventoryItem[];
+  /** The location the list is filtered to, where a new item should go. */
+  filterLocationId?: KitchenLocationId;
+  /** `refill` names the existing item to top up instead of adding a new one. */
+  onSave: (data: Partial<InventoryItem>, refill?: { item: InventoryItem; locationChosen: boolean }) => Promise<void>;
   onClose: () => void;
 }
 
@@ -524,6 +555,8 @@ function InventoryItemModal({
   item,
   prefillData,
   locations,
+  items,
+  filterLocationId,
   onSave,
   onClose,
 }: InventoryItemModalProps) {
@@ -532,8 +565,6 @@ function InventoryItemModal({
   );
   const [formData, setFormData] = useState({
     name: item?.name || prefillData?.name || "",
-    locationId: (item?.locationId || prefillData?.locationId ||
-      "pantry") as KitchenLocationId,
     quantity: item?.quantity || prefillData?.quantity || 1,
     unit: item?.unit || prefillData?.unit || "count",
     expiresOn: item?.expiresOn || prefillData?.expiresOn || "",
@@ -551,7 +582,6 @@ function InventoryItemModal({
   const [panel, setPanel] = useState<"unit" | "location" | "expires" | "category" | null>(null);
   const togglePanel = (next: NonNullable<typeof panel>) =>
     setPanel((current) => (current === next ? null : next));
-  const currentLocation = locations.find((location) => location.id === formData.locationId);
   const [categoryQuery, setCategoryQuery] = useState("");
   const initialNutrition =
     readNutrition(item?.nutritionPer100g) ??
@@ -574,6 +604,45 @@ function InventoryItemModal({
     variant?: "success" | "error" | "info" | "warning";
   }>({ isOpen: false, message: "", variant: "error" });
   const productFacts = scanned.foodFacts ?? item?.foodFacts;
+  const resolvedCategory =
+    selectedCategory === INVENTORY_CUSTOM_CATEGORY_VALUE ? customCategory.trim() : selectedCategory.trim();
+
+  // A new item that matches one already in the kitchen can top that one up.
+  const refill = useMemo(
+    () => item ? undefined : findRefill({ name: formData.name, brand: productFacts?.brand, barcode: formData.barcode, unit: formData.unit }, items),
+    [item, items, formData.name, formData.barcode, formData.unit, productFacts?.brand]
+  );
+  // Flipping the switch sticks for that item; a different match starts from its own default.
+  const [refillChoice, setRefillChoice] = useState<{ id: string; on: boolean } | null>(null);
+  const refillOn = refill ? (refillChoice?.id === refill.item.id ? refillChoice.on : refill.defaultOn) : false;
+
+  // Where the item goes, strongest reason first: the user's pick, the list's
+  // filter, where this barcode was kept before, the product's own storage
+  // facts (all held in `placed`), then a guess from its name and category,
+  // then the pantry. The guess is worked out as the name and category change.
+  const hasLocation = (id: KitchenLocationId) => !locations.length || locations.some((location) => location.id === id);
+  const [placed, setPlaced] = useState<{ locationId: KitchenLocationId; source: "user" | "filter" | "barcode" | "product" } | null>(() => {
+    // An existing item stays where it is until the user moves it.
+    if (item) return { locationId: item.locationId, source: "user" };
+    if (filterLocationId && hasLocation(filterLocationId)) return { locationId: filterLocationId, source: "filter" };
+    if (prefillData?.locationId && hasLocation(prefillData.locationId)) return { locationId: prefillData.locationId, source: prefillData.locationSource ?? "product" };
+    return null;
+  });
+  const guess = placed ? undefined : matchPlacement(formData.name, resolvedCategory);
+  const guessed = guess && hasLocation(guess.location) ? guess : undefined;
+  const refillLocation = !placed && refill && refillOn ? refill.item.locationId : undefined;
+  const locationId: KitchenLocationId = placed?.locationId ?? refillLocation ?? guessed?.location ?? "pantry";
+  const locationName = (id: KitchenLocationId) => locations.find((location) => location.id === id)?.name;
+  const currentLocation = locations.find((location) => location.id === locationId);
+  const locationHint = item
+    ? undefined
+    : placed?.source === "filter" ? `Matches your ${locationName(placed.locationId) ?? placed.locationId} filter`
+    : placed?.source === "barcode" ? "Where you kept it last time"
+    : placed?.source === "product" ? "Suggested for this product"
+    : placed ? undefined
+    : refillLocation ? `Where your ${refill?.item.name} is kept`
+    : guessed ? `Suggested for ${guessed.reason}`
+    : undefined;
   const perServing = readNutrition(productFacts?.nutritionPerServing);
   const servingSize = productFacts?.serving?.amount && productFacts.serving.unit
     ? `${tidy(productFacts.serving.amount)} ${productFacts.serving.unit}`
@@ -642,8 +711,17 @@ function InventoryItemModal({
           ...previous,
           name: previous.name.trim() ? previous.name : data.prefill.name || previous.name,
           ...(untouched && defaults.quantity && defaults.unit ? { quantity: defaults.quantity, unit: defaults.unit } : {}),
-          locationId: !item && previous.locationId === "pantry" && defaults.location ? defaults.location : previous.locationId,
         };
+      });
+      // The user's pick and the list's filter stand; anything from an earlier
+      // lookup gives way to this product.
+      const stocked = stockedWithBarcode(items, trimmed);
+      const evidenced = evidencedStorage(facts);
+      setPlaced((current) => {
+        if (current?.source === "user" || current?.source === "filter") return current;
+        if (stocked && hasLocation(stocked.locationId)) return { locationId: stocked.locationId, source: "barcode" };
+        if (evidenced && hasLocation(evidenced)) return { locationId: evidenced, source: "product" };
+        return null;
       });
       if (!selectedCategory && data.prefill.category) {
         const next = categoryToFormState(data.prefill.category);
@@ -690,16 +768,11 @@ function InventoryItemModal({
       return;
     }
 
-    const resolvedCategory =
-      selectedCategory === INVENTORY_CUSTOM_CATEGORY_VALUE
-        ? customCategory.trim()
-        : selectedCategory.trim();
-
     setSaving(true);
     try {
       await onSave({
         name: formData.name,
-        locationId: formData.locationId,
+        locationId,
         quantity: formData.quantity,
         unit: formData.unit,
         expiresOn: formData.expiresOn || "",
@@ -708,7 +781,7 @@ function InventoryItemModal({
         barcode: formData.barcode || "",
         // null clears facts that were removed; undefined leaves them untouched.
         nutritionPer100g: formToNutrition(nutrition) ?? (item?.nutritionPer100g ? null : undefined),
-      });
+      }, refill && refillOn ? { item: refill.item, locationChosen: placed?.source === "user" } : undefined);
     } finally {
       setSaving(false);
     }
@@ -717,6 +790,23 @@ function InventoryItemModal({
   return (
     <Modal isOpen onClose={onClose} title={item ? "Edit item" : "Add item"}>
         <form onSubmit={handleSubmit} className="space-y-5">
+          {refill && (
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-700 dark:border-stone-800 dark:text-stone-300">
+              <input
+                type="checkbox"
+                checked={refillOn}
+                onChange={(event) => setRefillChoice({ id: refill.item.id, on: event.target.checked })}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+              />
+              <span className="min-w-0">
+                Refill this instead of adding a new item
+                <span className="block truncate text-xs text-stone-500 dark:text-stone-400">
+                  {refill.item.name} · {refill.out ? "Out" : `${tidy(refill.item.quantity)} ${unitLabel(refill.item.unit, refill.item.quantity)}`}
+                  {locationName(refill.item.locationId) ? ` · ${locationName(refill.item.locationId)}` : ""}
+                </span>
+              </span>
+            </label>
+          )}
           {/* Essentials, grouped in one card like a receipt: name and amount up
               top, where and how long below. */}
           <div className="rounded-2xl border border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/40">
@@ -796,13 +886,19 @@ function InventoryItemModal({
                   aria-label={`Location: ${currentLocation?.name ?? "not set"}`}
                   aria-expanded={panel === "location"}
                   aria-controls="inventory-location-options"
+                  aria-describedby={locationHint ? "inventory-location-hint" : undefined}
                   onClick={() => togglePanel("location")}
                   className="mt-1.5 -ml-1 flex min-h-10 items-center gap-2.5 rounded-full py-1 pl-1 pr-3 text-base text-stone-900 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-emerald-600 dark:text-stone-100 dark:hover:bg-stone-800/60"
                 >
-                  <LocationBadge id={formData.locationId} />
+                  <LocationBadge id={locationId} />
                   <span className="truncate">{currentLocation?.name ?? "Choose"}</span>
                   <ChevronDown className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-300 ${panel === "location" ? "rotate-180" : ""}`} strokeWidth={1.75} />
                 </button>
+                {locationHint && (
+                  <p id="inventory-location-hint" className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                    {locationHint}
+                  </p>
+                )}
               </div>
               <div className="p-4">
                 <span className={eyebrowClassName} aria-hidden="true">
@@ -832,7 +928,7 @@ function InventoryItemModal({
                 className="grid grid-cols-3 gap-1.5 border-t border-stone-200 p-2 dark:border-stone-800"
               >
                 {locations.map((location) => {
-                  const selected = location.id === formData.locationId;
+                  const selected = location.id === locationId;
                   return (
                     <button
                       key={location.id}
@@ -840,7 +936,7 @@ function InventoryItemModal({
                       role="radio"
                       aria-checked={selected}
                       onClick={() => {
-                        setFormData({ ...formData, locationId: location.id });
+                        setPlaced({ locationId: location.id, source: "user" });
                         setPanel(null);
                       }}
                       className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-medium ${
@@ -1196,7 +1292,7 @@ function InventoryItemModal({
               disabled={saving}
               className="min-h-11 flex-[2] rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white shadow-sm shadow-emerald-900/20 hover:bg-emerald-700 disabled:opacity-50"
             >
-              {saving ? "Saving…" : item ? "Save changes" : "Add to kitchen"}
+              {saving ? "Saving…" : item ? "Save changes" : refill && refillOn ? "Refill item" : "Add to kitchen"}
             </button>
           </div>
         </form>

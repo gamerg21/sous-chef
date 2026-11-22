@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { CalendarDays, ChevronDown, Package, Refrigerator, Snowflake } from 'lucide-react'
 import { unitLabel } from '@/lib/units'
+import { locationKind, locationOfKind, suggestPlacement } from '@/lib/storage-placement'
 import { Modal } from '../ui/modal'
 import { Collapse } from '../ui/collapse'
 import { UnitMenu } from '../ui/unit-menu'
@@ -22,10 +23,8 @@ const EXPIRY_SHORTCUTS = [
 
 // Household locations are user-named, so pick an icon from the name.
 function locationIcon(name: string) {
-  const lower = name.toLowerCase()
-  if (lower.includes('freez')) return Snowflake
-  if (lower.includes('fridge') || lower.includes('refrig')) return Refrigerator
-  return Package
+  const kind = locationKind(name)
+  return kind === 'freezer' ? Snowflake : kind === 'fridge' ? Refrigerator : Package
 }
 
 type Panel = { id: string; kind: 'unit' | 'location' | 'expires' } | null
@@ -36,7 +35,8 @@ export function StockPurchasesModal({ items, locations, onClose, onSave }: {
   onClose: () => void
   onSave: (items: PurchaseReview[]) => Promise<void>
 }) {
-  const [rows, setRows] = useState(() => items.map(item => ({ ...item, amount: item.quantity?.toString() ?? '', unit: item.unit ?? '', locationId: locations[0]?.id ?? '', expiresOn: '' })))
+  // Each purchase starts where that food is usually kept: milk in the fridge, rice in the pantry.
+  const [rows, setRows] = useState(() => items.map(item => ({ ...item, amount: item.quantity?.toString() ?? '', unit: item.unit ?? '', locationId: (locationOfKind(locations, suggestPlacement(item.name, item.category)) ?? locations[0])?.id ?? '', expiresOn: '' })))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // One inline drawer open at a time across all purchases.

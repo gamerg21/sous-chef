@@ -111,7 +111,7 @@ struct PantryView: View {
                 }
             }
             .refreshable { await kitchen.server.syncNow() }
-            .sheet(isPresented: $adding) { PantryItemEditor(item: nil).kitchenEnvironment(kitchen) }
+            .sheet(isPresented: $adding) { PantryItemEditor(item: nil, defaultLocation: filter.location).kitchenEnvironment(kitchen) }
             .sheet(item: $editing) { PantryItemEditor(item: $0).kitchenEnvironment(kitchen) }
             .sheet(isPresented: $scanning) {
                 BarcodeLookupSheet { prefill in
@@ -120,7 +120,7 @@ struct PantryView: View {
                 }
                 .kitchenEnvironment(kitchen)
             }
-            .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0).kitchenEnvironment(kitchen) }
+            .sheet(item: $scannedPrefill) { PantryItemEditor(item: nil, prefill: $0, defaultLocation: filter.location).kitchenEnvironment(kitchen) }
             .pastDatePrompt(for: $askingOutcome) { item, kind in withAnimation { kitchen.settle(item, as: kind) } }
             .sheet(isPresented: $showingGlance) { glanceSheet }
         }
@@ -421,6 +421,8 @@ struct PantryView: View {
                         .background(filter.isOn(.location(location)) ? Color.brand : Color.brandSoft, in: .rect(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("pantryScope-\(location.rawValue)")
+                    .accessibilityAddTraits(filter.isOn(.location(location)) ? .isSelected : [])
                 }
             }
             .listRowInsets(EdgeInsets())

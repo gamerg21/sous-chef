@@ -265,6 +265,36 @@ test('stocking a purchase fills an empty pantry placeholder instead of adding a 
   expect(inventory[0]).toMatchObject({ _id: placeholder, quantity: 2 });
 });
 
+test('stocking a purchase finds its placeholder whatever the case or plural, in the same unit and kitchen only', async () => {
+  const t = newTest();
+  const kitchen = await setupKitchen(t);
+  const other = await setupKitchen(t);
+  const placeholder = await addInventory(t, kitchen, 'Cherry Tomatoes', 0, 'lb');
+  const otherUnit = await addInventory(t, kitchen, 'cherry tomato', 0, 'each');
+  const inStock = await addInventory(t, kitchen, 'Cherry tomato', 3, 'lb');
+  const foreign = await addInventory(t, other, 'cherry tomato', 0, 'lb');
+  const buy = async (name: string, quantity: number) => {
+    const { id } = await kitchen.asUser.mutation(api.shoppingList.addItem, { name, quantity, unit: 'lb' });
+    await kitchen.asUser.mutation(api.shoppingList.updateItem, { id, checked: true });
+    await kitchen.asUser.mutation(api.shoppingList.stockChecked, { items: [{ id, quantity, unit: 'lb', locationId: kitchen.locationId, expectedName: name, expectedQuantity: quantity, expectedUnit: 'lb' }] });
+  };
+  await buy('cherry tomato', 2);
+  const quantity = async (id: Id<'inventoryItems'>) => (await t.run(ctx => ctx.db.get(id)))?.quantity;
+  expect(await quantity(placeholder)).toBe(2);
+  expect(await quantity(otherUnit)).toBe(0);
+  expect(await quantity(inStock)).toBe(3);
+  expect(await quantity(foreign)).toBe(0);
+  const rows = () => t.run(ctx => ctx.db.query('inventoryItems').withIndex('by_householdId', q => q.eq('householdId', kitchen.householdId)).collect());
+  expect(await rows()).toHaveLength(3);
+  // The placeholder keeps the name the kitchen gave it.
+  expect((await t.run(async ctx => ctx.db.get((await ctx.db.get(placeholder))!.foodItemId)))?.name).toBe('Cherry Tomatoes');
+  // Nothing is out any more in that unit, and a different food never matches: both add a batch.
+  await buy('CHERRY TOMATOES', 1);
+  await buy('Sun-dried tomatoes', 1);
+  expect(await rows()).toHaveLength(5);
+  expect(await quantity(placeholder)).toBe(2);
+});
+
 test('nutrition entered for a pantry item applies to every batch of that food in the household only', async () => {
   const t = newTest();
   const kitchen = await setupKitchen(t);
