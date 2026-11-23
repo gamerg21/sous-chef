@@ -20,6 +20,13 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.0 (37)
+
+### What to Test
+
+What to test (please focus here)
+- What's New: after updating from 1.2, the 1.3 screen now lists "A smarter pantry" in place of "Updates to saved recipes".
+
 ## 1.3.0 (36)
 
 ### What to Test

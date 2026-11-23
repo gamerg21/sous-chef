@@ -17,40 +17,33 @@ implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 ## 1.3.0
 
 ### App Store
-Community just got a lot more fun. Browse what's new, trending and most liked, see recipes you can cook from what's already in your pantry, and follow the cooks you like.
+A livelier Community! Browse what's new, trending and most liked, or see which recipes you can cook with what's already in your pantry. Like recipes, rate the ones you've made, leave a tip for the next cook and follow the cooks you love.
 
-New in 1.3:
-• Cook from your pantry: community recipes sorted by how much you already have, with what's missing.
-• Like recipes, and after you cook one, give it stars and leave a tip for the next cook.
-• Follow cooks and see their newest recipes in Following. Every cook has a profile.
-• Photos, ratings and likes on every recipe, with tags and search to narrow things down.
-• Updates to saved recipes: when a cook improves a recipe you saved, choose whether to update your copy.
-• Share a recipe with a link that opens right in Sous Chef.
-• Report a recipe or a tip without leaving the app.
+Also new in 1.3:
+• Smarter pantry: new items go to the fridge, freezer or pantry on their own, and restocking something you ran out of refills it instead of adding a copy.
+• Saved recipes stay current: when a cook improves a recipe you saved, choose whether to update your copy.
+• Share a recipe link with anyone. It opens right in Sous Chef.
+• On iPhone Duo held upright, Pantry is one screen with At a Glance tiles on top. Tap one to filter the list.
 
 ### New
-- **Cook from your pantry**: Community's From your pantry list sorts recipes by how many ingredients you already have, and shows what's missing.
-- **New, Trending and Top**: Browse the newest recipes, what's popular right now and the most liked of all time, narrow by tag, and keep scrolling for more.
-- **Likes**: Tap the heart on a recipe to like it. Every recipe shows how many cooks did.
-- **I made this**: After cooking a community recipe, rate it from one to five stars and add a tip for other cooks. You can change or remove yours any time.
-- **Tips from cooks**: Read what others learned making a recipe, right under its steps.
-- **Follow cooks**: Open a cook's profile to see their bio and recipes, and follow them to see their newest in Following.
-- **Your profile**: Add a short bio and change your display name in Settings > Community.
-- **My shared recipes**: Settings > Community lists what you have in the community and whether each recipe is public, unlisted, under review or removed. Swipe one, or open its page, to unpublish it.
-- **Community account button**: Tap the person icon in Community to go straight to your profile, shared recipes and community settings.
-- **Updates to saved recipes**: When a cook changes a recipe you saved, Community and the recipe's page offer the new version. Update your copy or keep it as it is.
-- **Recipe links**: Share a community recipe as a link. Tapping one opens the recipe in Sous Chef.
+- **Community feed**: Browse New, Trending, Top and From your pantry, filter by tag, search, and keep scrolling for more. Every recipe shows its photo, rating and likes.
+- **Cook from your pantry**: Community recipes sorted by how much you already have, with what's missing.
+- **Likes, ratings and tips**: Like recipes, and after cooking one, give it stars and leave a tip for the next cook.
+- **Follow cooks**: Open a cook's profile to see their recipes, and follow them to get their newest in Following.
+- **Updates to saved recipes**: When a cook improves a recipe you saved, choose whether to update your copy.
+- **Share a recipe link**: Send a community recipe to anyone; the link opens in Sous Chef.
+- **Pantry placement**: New items go to the fridge, freezer or pantry on their own, with the reason shown, and follow the location you're filtering by.
+- **Refill instead of duplicate**: Adding or scanning something you ran out of offers to refill it instead of adding a new item.
 
 ### Improved
-- **Recipe photos**: Community recipes load faster and show their photos as you scroll.
-- **Reporting**: Reports on recipes and tips now go straight to the community's moderators from inside the app, and you can hide a recipe without reporting it. Report is in a recipe's menu and at the end of its page.
-- **Blocked cooks**: Blocking a cook also hides their tips.
-- **Community search**: Results appear as you type.
-- **Recipe ideas**: Stop a suggestion from the Drafting button, or cancel the one you got, and your prompt is still there to tweak and try again.
-- **Smarter pantry placement**: New items open on the location you're filtered to. Otherwise Sous Chef suggests Pantry, Fridge or Freezer from the label, where you kept that product before, or the food's name, and tells you why.
-- **Refill instead of duplicating**: Adding something you already have, or have run out of, offers to restock that item instead of making a second one.
-- **Pantry on iPhone Duo**: Unfolded and held upright, Pantry is one screen with At a Glance tiles you can tap to filter the list.
-- **Out of stock**: Items you've run out of now have their own section after Pantry, Fridge and Freezer.
+- **Pantry on iPhone Duo**: Unfolded and held upright, Pantry is one screen with At a Glance tiles on top that filter the list.
+- **Out of stock**: Items you ran out of sit in their own section after the storage locations.
+- **Your community profile**: Add a bio, see My shared recipes, and unpublish a recipe from its menu.
+- **Reporting**: Report a recipe or a tip from inside the app, or hide a recipe without reporting it.
+- **Close buttons**: Settings, Ask Sous Chef and other sheets close with an X.
+
+### Fixed
+- **Recipe ideas**: Stopping a draft or cancelling the editor takes you back to your prompt with your text still there.
 
 ## 1.2.1
 
