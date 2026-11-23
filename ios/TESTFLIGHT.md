@@ -20,6 +20,19 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.0 (36)
+
+### What to Test
+
+What to test (please focus here)
+- New pantry items go to the right place: filter Pantry to Fridge, then scan or add something. The form should open on Fridge. With no filter, typing a name like "milk" or "frozen peas" picks the location for you and says why under the picker.
+- Refill instead of duplicate: mark an item Out, then scan or add it again. You should see "Refill this instead of adding a new item", already switched on, and saving restocks the old item.
+- iPhone Duo, unfolded and held upright: Pantry is now one screen, with At a Glance tiles at the top. Tap a location or "use soon" tile to filter the list, and tap it again to clear the filter.
+
+Fixes to verify
+- Out-of-stock items now sit in their own section after the storage locations, so each location's list matches the count on its tile.
+- Tapping a location tile on the Duo no longer crashes.
+
 ## 1.3.0 (35)
 
 ### What to Test

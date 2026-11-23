@@ -47,6 +47,10 @@ New in 1.3:
 - **Blocked cooks**: Blocking a cook also hides their tips.
 - **Community search**: Results appear as you type.
 - **Recipe ideas**: Stop a suggestion from the Drafting button, or cancel the one you got, and your prompt is still there to tweak and try again.
+- **Smarter pantry placement**: New items open on the location you're filtered to. Otherwise Sous Chef suggests Pantry, Fridge or Freezer from the label, where you kept that product before, or the food's name, and tells you why.
+- **Refill instead of duplicating**: Adding something you already have, or have run out of, offers to restock that item instead of making a second one.
+- **Pantry on iPhone Duo**: Unfolded and held upright, Pantry is one screen with At a Glance tiles you can tap to filter the list.
+- **Out of stock**: Items you've run out of now have their own section after Pantry, Fridge and Freezer.
 
 ## 1.2.1
 
