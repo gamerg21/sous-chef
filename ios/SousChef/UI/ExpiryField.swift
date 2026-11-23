@@ -56,7 +56,7 @@ struct ExpiryField: View {
             .scrollIndicators(.hidden)
             .scrollClipDisabled()
 
-            DatePicker("Use by", selection: Binding(get: { date ?? Self.day(in: 0) }, set: { pick($0) }), displayedComponents: .date)
+            DatePicker("Use by", selection: Binding(get: { date ?? Self.day(in: 0) }, set: { pickFromCalendar($0) }), displayedComponents: .date)
                 .datePickerStyle(.graphical)
                 .labelsHidden()
                 .tint(.brand)
@@ -66,6 +66,29 @@ struct ExpiryField: View {
     private func pick(_ value: Date?) {
         date = value.map { Calendar.current.startOfDay(for: $0) }
         withAnimation(.snappy) { open = false }
+    }
+
+    /// The calendar's month/year wheel moves the selection as it scrolls, so
+    /// only close the drawer when a day was tapped.
+    private func pickFromCalendar(_ value: Date) {
+        let previous = date ?? Self.day(in: 0)
+        guard Self.isDayTap(from: previous, to: value) else {
+            date = Calendar.current.startOfDay(for: value)
+            return
+        }
+        pick(value)
+    }
+
+    /// The month/year wheel keeps the day of the month (clamped to the last
+    /// day when the new month is shorter); a changed day means a tap.
+    static func isDayTap(from old: Date, to new: Date, calendar: Calendar = .current) -> Bool {
+        let oldDay = calendar.component(.day, from: old)
+        let newDay = calendar.component(.day, from: new)
+        if oldDay == newDay {
+            return calendar.isDate(old, equalTo: new, toGranularity: .month)
+        }
+        let lastDay = calendar.range(of: .day, in: .month, for: new)?.count ?? 31
+        return !(oldDay > lastDay && newDay == lastDay)
     }
 
     static func day(in days: Int) -> Date {

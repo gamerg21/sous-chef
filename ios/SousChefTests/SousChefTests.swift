@@ -418,6 +418,20 @@ struct MiscTests {
         #expect(Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now), to: week).day == 7)
     }
 
+    @Test func expiryCalendarKeepsOpenWhileChangingMonthOrYear() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        func date(_ y: Int, _ m: Int, _ d: Int) -> Date { calendar.date(from: DateComponents(year: y, month: m, day: d))! }
+        // Wheel scrolls keep the day of the month, or clamp it to a shorter month.
+        #expect(!ExpiryField.isDayTap(from: date(2026, 11, 23), to: date(2026, 12, 23), calendar: calendar))
+        #expect(!ExpiryField.isDayTap(from: date(2026, 11, 23), to: date(2027, 11, 23), calendar: calendar))
+        #expect(!ExpiryField.isDayTap(from: date(2027, 1, 31), to: date(2027, 2, 28), calendar: calendar))
+        // Tapping a different day, or the selected day again, closes the drawer.
+        #expect(ExpiryField.isDayTap(from: date(2026, 11, 23), to: date(2026, 11, 28), calendar: calendar))
+        #expect(ExpiryField.isDayTap(from: date(2026, 11, 23), to: date(2026, 12, 4), calendar: calendar))
+        #expect(ExpiryField.isDayTap(from: date(2026, 11, 23), to: date(2026, 11, 23), calendar: calendar))
+    }
+
     @Test func infersCategories() {
         #expect(OpenFoodFacts.inferCategory(["en:dairies", "en:cheeses"]) == "Dairy")
         #expect(OpenFoodFacts.inferCategory(["en:unknown"]) == "Other")
