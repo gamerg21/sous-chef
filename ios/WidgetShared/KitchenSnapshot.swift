@@ -180,6 +180,8 @@ nonisolated enum KitchenLink {
         case useItUp
         /// The week's meal plan, inside Cook.
         case plan
+        /// Cook mode, on the recipe being cooked.
+        case cooking
         /// A saved recipe.
         case recipe(UUID)
     }
@@ -190,6 +192,7 @@ nonisolated enum KitchenLink {
     static let plan = URL(string: "souschef://plan")!
     static let useSoon = URL(string: "souschef://pantry/use-soon")!
     static let useItUp = URL(string: "souschef://cook/use-it-up")!
+    static let cooking = URL(string: "souschef://cook/now")!
 
     static func recipe(_ id: UUID) -> URL { URL(string: "souschef://recipe/" + id.uuidString)! }
 
@@ -200,6 +203,7 @@ nonisolated enum KitchenLink {
         switch (host, first?.lowercased()) {
         case ("pantry", "use-soon"): return .useSoon
         case ("cook", "use-it-up"): return .useItUp
+        case ("cook", "now"): return .cooking
         case ("pantry", _): return .pantry
         case ("recipes", _): return .recipes
         case ("cook", _): return .cook

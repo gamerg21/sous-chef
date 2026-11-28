@@ -21,11 +21,12 @@ struct AppNotificationsTests {
         #expect(AppNotifications.presentation(for: "expiry-reminder-2026-09-30").contains(.banner))
     }
 
-    @Test func routesExpiryTapsAndLeavesCookTimersAlone() {
+    @Test func routesExpiryTapsAndSendsCookTimersBackToCookMode() {
         let reminder = ExpiryReminderSchedule.identifierPrefix + "2026-09-30"
         #expect(AppNotifications.destination(for: reminder, action: UNNotificationDefaultActionIdentifier) == .useItUp)
         #expect(AppNotifications.destination(for: reminder, action: ExpiryReminders.showPantryAction) == .useSoon)
-        #expect(AppNotifications.destination(for: CookTimerAlerts.notificationID(UUID()), action: UNNotificationDefaultActionIdentifier) == nil)
+        #expect(AppNotifications.destination(for: CookTimerAlerts.notificationID(UUID()), action: UNNotificationDefaultActionIdentifier) == .cooking)
+        #expect(AppNotifications.destination(for: "something-else", action: UNNotificationDefaultActionIdentifier) == nil)
     }
 
     @Test func timersStaySilentOnlyWhenNotificationsAndAlarmsAreBothOff() {

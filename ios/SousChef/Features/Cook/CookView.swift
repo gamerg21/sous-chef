@@ -9,8 +9,6 @@ struct CookView: View {
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
     @Query(filter: #Predicate<PlannedMeal> { $0.cookedAt == nil }) private var openMeals: [PlannedMeal]
-    @State private var cooking: Recipe?
-    @State private var cookingMeal: PlannedMeal?
     @State private var ideas = false
     @State private var path = NavigationPath()
     @Bindable private var navigator = AppNavigator.shared
@@ -104,13 +102,6 @@ struct CookView: View {
                     }
                 }
             }
-            .fullScreenCover(item: $cooking) { CookModeView(recipe: $0, scale: 1).kitchenEnvironment(kitchen) }
-            .fullScreenCover(item: $cookingMeal) { meal in
-                if let recipe = kitchen.recipe(for: meal) {
-                    CookModeView(recipe: recipe, scale: kitchen.scale(for: meal), meal: meal)
-                        .kitchenEnvironment(kitchen)
-                }
-            }
             .sheet(isPresented: $ideas) {
                 // Reviewed in the editor like any other new recipe.
                 RecipeImportFlow(mode: .ideas)
@@ -141,7 +132,7 @@ struct CookView: View {
                             Text(recipe.title).font(.body.weight(.semibold)).lineLimit(3)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Button("Cook", systemImage: "flame") { cookingMeal = meal }
+                        Button("Cook", systemImage: "flame") { kitchen.startCooking(meal) }
                             .buttonStyle(.glassProminent)
                             .labelStyle(.titleAndIcon)
                             .fixedSize()
@@ -222,7 +213,7 @@ struct CookView: View {
                         PlanDragPreview(title: item.recipe.title, photo: item.recipe.photo)
                     }
                     .swipeActions(edge: .leading) {
-                        Button { cooking = item.recipe } label: { Label("Cook", systemImage: "flame") }.tint(Color.brand)
+                        Button { CookSessionStore.shared.start(item.recipe) } label: { Label("Cook", systemImage: "flame") }.tint(Color.brand)
                     }
                     .swipeActions(edge: .trailing) {
                         if item.missing > 0 {

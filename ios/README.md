@@ -325,13 +325,36 @@ reminders' `expiry-reminder` and cook timers' `SOUSCHEF_COOK_TIMER`), since
 `setNotificationCategories` replaces the whole set. Expiry reminder taps are
 routed as described under Expiry reminders.
 
+**Resuming a recipe.** Cook mode's state (the page, the ingredients ticked
+off, the timers and the planned meal) lives in a `CookSession` kept by
+`CookSessionStore` (`Features/Cook/CookSession.swift`), not in the screen.
+Every "Cook" button calls `CookSessionStore.start`, and `RootView` presents
+cook mode from the store (`hostsCookMode()` in `Features/Cook/CookResume.swift`).
+Closing cook mode sets the recipe aside: a bar above the tab bar
+(`CookResumeBar`, a `tabViewBottomAccessory`; a floating bar on iOS 26.0 and
+on a Mac) shows the recipe, the step and the next timer, and reopens cook mode
+where it was. "Finish", "Finish without updating" and the bar's Stop button end
+the session and its timers; so does closing cook mode after the pantry update.
+A recipe that was only opened, with nothing ticked, no timer and no step past
+the first, isn't kept. One recipe is in flight at a time: starting another asks
+before replacing it. The session is saved in `UserDefaults` (`cook.session`,
+not with `-uiTesting`), so quitting the app keeps it; a relaunch returns to cook
+mode if the app quit there. It's dropped at launch or on returning to the app
+once the recipe is gone or 12 hours have passed since it was touched or its
+last timer finished. Covered by `CookSessionTests` and the `ResumeCookingTests`
+UI tests.
+
 **Cook timers.** Starting a timer in cook mode starts one Live Activity for the
 recipe (`NSSupportsLiveActivities` is in `SousChef-Info.plist`). It lists every
 timer, counts down the next to finish in the Dynamic Island, and uses
 `Text(timerInterval:)` and `ProgressView(timerInterval:)` so it ticks without
-updates from the app. Removing timers updates it, and closing cook mode ends it;
-activities left over from a previous launch end when the app starts
-(`Features/Cook/CookTimerAlerts.swift`). Each timer also schedules a local
+updates from the app. Removing timers updates it, and ending the recipe ends it;
+closing cook mode leaves it and the timers running. After a relaunch the
+restored session's timers take back their activity, notifications and alarms
+(`adopt`), and any that belong to no timer are cleared (`clearLeftovers`, in
+`Features/Cook/CookTimerAlerts.swift`). Tapping the activity, a timer's
+notification or the alarm's Open button goes back into cook mode
+(`souschef://cook/now`). Each timer also schedules a local
 notification with sound (identifiers `souschef.cook-timer.<id>`, category
 `SOUSCHEF_COOK_TIMER`), so it's heard with the app in the background or the phone
 locked. Notification permission is asked the first time a timer starts. With
@@ -341,8 +364,9 @@ the cook may be on another screen, alongside the in-app timer strip and haptic.
 The activity's stale date is the next timer's end, so the system re-renders it
 then and the next timer reads "Done" without the app. A ringing alarm's Stop
 (`StopCookTimerAlarmIntent`) and Open buttons re-sort the activity from its own
-state (`CookTimerAlerts.refreshActivity()`), and cook mode re-syncs when it
-returns to the foreground. The Lock Screen fits two timers under the next one;
+state (`CookTimerAlerts.refreshActivity()`), and `CookSessionStore` re-syncs
+when a timer finishes with the app open and when the app returns to the
+foreground. The Lock Screen fits two timers under the next one;
 from four timers it shows one and "+N more". Smaller rows show timers with an
 hour or more to go as "2h 59m" (`Text(.durationOffset(to:), format:)`, which
 also ticks on its own). A timer without an alarm gets a Time Sensitive

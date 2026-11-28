@@ -7,11 +7,10 @@ struct PlanView: View {
     @Environment(Kitchen.self) private var kitchen
     @State private var weekStart = MealPlanner.weekStart()
     @State private var planningDay: PlanDay?
-    @State private var cooking: PlannedMeal?
     @State private var toast: String?
 
     var body: some View {
-        PlanWeekList(weekStart: weekStart, onPlan: { planningDay = PlanDay(id: $0) }, onCook: { cooking = $0 }, onAddShortages: addShortages)
+        PlanWeekList(weekStart: weekStart, onPlan: { planningDay = PlanDay(id: $0) }, onCook: { kitchen.startCooking($0) }, onAddShortages: addShortages)
             .navigationTitle(weekTitle)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
@@ -36,12 +35,6 @@ struct PlanView: View {
             .sheet(item: $planningDay) { day in
                 PlanRecipePicker(day: day.id)
                     .kitchenEnvironment(kitchen)
-            }
-            .fullScreenCover(item: $cooking) { meal in
-                if let recipe = kitchen.recipe(for: meal) {
-                    CookModeView(recipe: recipe, scale: kitchen.scale(for: meal), meal: meal)
-                        .kitchenEnvironment(kitchen)
-                }
             }
     }
 
