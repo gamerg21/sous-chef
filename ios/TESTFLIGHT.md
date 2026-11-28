@@ -20,6 +20,20 @@ feedback ask at the end, so don't write either. Bold and code formatting are
 dropped, and the whole note must stay under 4,000 characters. App Store
 "What's New" copy comes from [RELEASE_NOTES.md](RELEASE_NOTES.md) instead.
 
+## 1.3.1 (38)
+
+### What to Test
+
+What to test (please focus here)
+- Resume cooking: start a recipe, go a few steps in and start a timer, then close cook mode. A bar above the tabs shows the recipe, your step and the timer; tap it to go back to where you were. Then force-quit the app and reopen it: you should be back in the recipe with the timer still counting.
+- Resume from elsewhere: with a recipe set aside, tap the timer on the Lock Screen or its notification, or the recipe's "Resume cooking" button. Starting a different recipe asks before replacing it, and the X on the bar stops cooking.
+- Week's shortages: in Cook > This week's plan, tap "Add week's shortages to list". The card should then say everything for the week is on your list, and the confirmation appears at the bottom without covering the card.
+
+Fixes to verify
+- Shopping list duplicates: with "Carrots" already on your list, adding a week that needs a carrot tops up or notes that row instead of adding "Carrot" beside it.
+- Aisles: add "red chili", "garlic powder" and "tomato sauce" to the list. They should land under Produce, Spices and Condiments.
+- Cook timers: start a timer and change steps. The countdown should keep ticking once a second without a hitch.
+
 ## 1.3.0 (37)
 
 ### What to Test

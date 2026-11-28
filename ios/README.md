@@ -10,7 +10,7 @@ companion to a self-hosted Sous Chef server.
 | --- | --- | --- |
 | Pantry | Inventory | Pantry, fridge and freezer with brand, amounts, expiry (quick durations or a calendar) and nutrition; VisionKit barcode scanning with Open Food Facts lookup, and label scanning for products it doesn't know. |
 | Recipes | Recipes | Library, editor, import from a link (schema.org JSON-LD), pasted text, or photos and screenshots of cookbook pages, pantry readiness, nutrition, sharing. |
-| Cook | Cooking, Plan | Recipes ranked by what you have, cook mode with timers, and pantry deduction. "This week's plan" plans recipes by day and meal, shows their readiness, and adds the week's combined shortages to the shopping list. |
+| Cook | Cooking, Plan | Recipes ranked by what you have, cook mode with timers, and pantry deduction. "This week's plan" plans recipes by day and meal, shows their readiness, and adds the week's combined shortages to the shopping list, one row per food, showing what's already on it. |
 | Shopping | Shopping list | Aisle grouping, AI aisle sorting, and putting purchases away into the pantry. |
 | Community | Community | Browse new, trending, top and pantry-matched recipes, like, rate, leave tips and follow cooks; save recipes and take their updates; publish with Sign in with Apple or through a server. |
 
