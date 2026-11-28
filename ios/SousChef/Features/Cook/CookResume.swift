@@ -66,7 +66,8 @@ struct CookResumeBar: View {
     /// The timer that finishes next, or a bell once one has.
     @ViewBuilder private var nextTimer: some View {
         if !session.progress.timers.isEmpty {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
+            // Every timer's ticks: the label moves on to the next timer as one ends.
+            TimelineView(CountdownSchedule(session.progress.timers)) { context in
                 let running = session.runningTimers(at: context.date).min { $0.ends < $1.ends }
                 Group {
                     if let running {
