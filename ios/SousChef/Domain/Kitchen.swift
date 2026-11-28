@@ -323,22 +323,7 @@ final class Kitchen {
 
     /// Store-aisle guess used until Apple Intelligence categorizes the list.
     func categoryGuess(for name: String) -> String? {
-        let text = name.lowercased()
-        let rules: [(String, String)] = [
-            (#"apple|banana|lettuce|tomato|onion|garlic|pepper|carrot|potato|lemon|lime|herb|spinach|berry|avocado|cucumber|celery|mushroom|ginger|cilantro|parsley|basil|fruit|vegetable"#, "Produce"),
-            (#"milk|cheese|yogurt|yoghurt|butter|cream|egg"#, "Dairy"),
-            (#"chicken|beef|pork|lamb|turkey|bacon|sausage|fish|salmon|tuna|shrimp|meat"#, "Meat & Seafood"),
-            (#"frozen|ice cream"#, "Frozen"),
-            (#"bread|bun|roll|bagel|tortilla|pastry"#, "Bakery"),
-            (#"juice|soda|coffee|tea|water|wine|beer"#, "Beverages"),
-            (#"canned|can of|beans"#, "Canned Goods"),
-            (#"rice|oat|quinoa|flour|cereal|grain"#, "Grains & Rice"),
-            (#"pasta|noodle|spaghetti|macaroni"#, "Pasta & Noodles"),
-            (#"salt|cumin|paprika|cinnamon|oregano|thyme|spice|seasoning"#, "Spices & Seasonings"),
-            (#"sauce|ketchup|mustard|mayo|vinegar|oil|dressing|soy"#, "Condiments & Sauces"),
-            (#"chip|cracker|cookie|chocolate|snack|candy"#, "Snacks"),
-        ]
-        return rules.first { text.range(of: $0.0, options: .regularExpression) != nil }?.1
+        AisleGuess.category(for: name)
     }
 
     // MARK: Recipes
