@@ -50,11 +50,13 @@ enum MealPlanner {
     /// Folds shortages of the same food into one line per comparable unit,
     /// converting into the first unit seen (250 ml + 1 l = 1250 ml). Units that
     /// can't be compared stay separate; an unspecified amount joins a measured
-    /// line of the same food rather than adding its own.
+    /// line of the same food rather than adding its own. Unlike the web's
+    /// `combineShortages`, "Carrot" and "carrots" are one food (`FoodWords.key`).
     static func combine(_ missing: [CookingPlan.Missing]) -> [CookingPlan.Missing] {
         var combined: [CookingPlan.Missing] = []
         for item in missing {
-            let sameFood = combined.indices.filter { normalizeName(combined[$0].name) == normalizeName(item.name) }
+            let key = FoodWords.key(item.name)
+            let sameFood = combined.indices.filter { FoodWords.key(combined[$0].name) == key }
             guard let quantity = item.quantity else {
                 if sameFood.isEmpty { combined.append(item) }
                 continue

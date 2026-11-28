@@ -178,7 +178,10 @@ struct ShoppingView: View {
                             .foregroundStyle(item.checked ? .secondary : .primary)
                         if let recipe = recipeTitle(for: item) {
                             Label(recipe, systemImage: "book.pages").font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                        } else if let note = item.note?.nilIfEmpty {
+                        }
+                        // Shown beside the recipe too: the note may hold an
+                        // amount the week's meals added (`MealPlanner.planNote`).
+                        if let note = item.note?.nilIfEmpty {
                             Text(note).font(.caption).foregroundStyle(.secondary)
                         }
                     }

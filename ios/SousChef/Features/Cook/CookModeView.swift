@@ -323,7 +323,7 @@ struct CookModeView: View {
 
     /// A step's timer counting down in place of the button that started it.
     private func runningTimer(_ timer: CookTimer) -> some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        TimelineView(CountdownSchedule([timer])) { context in
             let remaining = timer.remaining(at: context.date)
             let name = timer.customStep == nil ? "Timer" : timer.label
             Label(remaining == 0 ? "\(name) done" : "\(name) running · \(CookTimer.clock(remaining))",
@@ -477,7 +477,7 @@ struct CookModeView: View {
         ScrollView(.horizontal) {
             HStack {
                 ForEach(timers) { timer in
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                    TimelineView(CountdownSchedule([timer])) { context in
                         let remaining = timer.remaining(at: context.date)
                         HStack(spacing: 8) {
                             Image(systemName: remaining == 0 ? "bell.and.waves.left.and.right.fill" : "timer")
@@ -512,7 +512,7 @@ struct CookModeView: View {
     private var timerBoard: some View {
         HStack(spacing: 12) {
             ForEach(timers) { timer in
-                TimelineView(.periodic(from: .now, by: 1)) { context in
+                TimelineView(CountdownSchedule([timer])) { context in
                     let remaining = timer.remaining(at: context.date)
                     VStack(spacing: 10) {
                         HStack {
@@ -591,9 +591,20 @@ nonisolated struct CookTimer: Codable, Identifiable, Hashable, Sendable {
 
     var ends: Date { started.addingTimeInterval(TimeInterval(seconds)) }
 
-    func remaining(at date: Date) -> Int { max(0, seconds - Int(date.timeIntervalSince(started))) }
+    /// Keeps a `CountdownSchedule` tick whose date comes back a hair short of
+    /// its second from reading as the second before. Far less than a frame,
+    /// far more than a `Date` can be off by.
+    private static let tickSlack: TimeInterval = 0.0001
 
-    func isDone(at date: Date) -> Bool { ends <= date }
+    /// Whole seconds left, rounded up as the Live Activity's system countdown
+    /// rounds: the full time until a second has passed, 0 from `ends` on.
+    func remaining(at date: Date) -> Int {
+        let left = (ends.timeIntervalSince(date) - Self.tickSlack).rounded(.up)
+        return Int(min(Double(seconds), max(0, left)))
+    }
+
+    /// Done as its countdown reads 0, so the two never disagree.
+    func isDone(at date: Date) -> Bool { remaining(at: date) == 0 }
 
     static func clock(_ seconds: Int) -> String {
         Duration.seconds(seconds).formatted(.time(pattern: seconds >= 3600 ? .hourMinuteSecond : .minuteSecond))

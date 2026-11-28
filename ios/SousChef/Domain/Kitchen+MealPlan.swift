@@ -88,47 +88,35 @@ extension Kitchen {
         return MealPlanner.shortages(for: recipes, stock: stock())
     }
 
-    /// Adds the week's shortages to the list without duplicating what's there.
-    /// Items for the same food in a comparable unit count toward the need,
-    /// including ones already in the cart; any extra tops up an unticked item,
-    /// so doing it twice changes nothing. Mirrors the server's merge.
+    /// Adds the week's shortages to the list, one row per food, so doing it
+    /// twice changes nothing (`MealPlanner.listGap` has the rules). The
+    /// server's merge is stricter about names: it keeps "Carrot" and
+    /// "Carrots" apart, and adds a second row where units can't be compared.
     @discardableResult
     func addWeekShortages(from start: String, days: Int = 7) -> (added: Int, updated: Int) {
-        let shortages = weekShortages(from: start, days: days).missingIngredients
-        var items = fetch(ShoppingItem.self)
-        var added = 0, updated = 0
-        for need in shortages {
-            let sameFood = items.filter { normalizeName($0.name) == normalizeName(need.name) }
-            guard let quantity = need.quantity else {
-                if sameFood.isEmpty { items.append(insertShopping(need.name, quantity: nil, unit: need.unit)); added += 1 }
-                continue
-            }
-            let comparable = sameFood.filter { $0.quantity != nil && Units.convert(1, from: $0.unit, to: need.unit) != nil }
-            let covered = comparable.reduce(0) { $0 + (Units.convert($1.quantity!, from: $1.unit, to: need.unit) ?? 0) }
-            guard covered + 0.000001 < quantity else { continue }
-            let extra = quantity - covered
-            if let open = comparable.first(where: { !$0.checked }) {
-                open.quantity = MealPlanner.rounded(open.quantity! + (Units.convert(extra, from: need.unit, to: open.unit) ?? 0))
-                open.touch()
-                updated += 1
-            } else if let unmeasured = sameFood.first(where: { !$0.checked && $0.quantity == nil }) {
-                unmeasured.quantity = MealPlanner.rounded(extra)
-                unmeasured.unit = need.unit
-                unmeasured.touch()
-                updated += 1
-            } else {
-                items.append(insertShopping(need.name, quantity: MealPlanner.rounded(extra), unit: need.unit))
-                added += 1
-            }
+        let items = fetch(ShoppingItem.self)
+        let gap = MealPlanner.listGap(for: weekShortages(from: start, days: days).missingIngredients, on: items.map(\.listRow))
+        let byID = Dictionary(items.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+        for update in gap.updates {
+            guard let item = byID[update.id] else { continue }
+            if item.quantity != update.quantity { item.quantity = update.quantity }
+            if item.unit != update.unit { item.unit = update.unit }
+            if item.note != update.note { item.note = update.note }
+            item.touch()
+        }
+        for addition in gap.additions {
+            let item = ShoppingItem(name: addition.name, quantity: addition.quantity, unit: addition.unit, source: .mealPlan)
+            item.note = addition.note
+            item.category = categoryGuess(for: addition.name)
+            context.insert(item)
         }
         changed()
-        return (added, updated)
+        return (gap.additions.count, gap.updates.count)
     }
+}
 
-    private func insertShopping(_ name: String, quantity: Double?, unit: String?) -> ShoppingItem {
-        let item = ShoppingItem(name: name, quantity: quantity, unit: unit, source: .mealPlan)
-        item.category = categoryGuess(for: name)
-        context.insert(item)
-        return item
+extension ShoppingItem {
+    var listRow: MealPlanner.ListRow {
+        MealPlanner.ListRow(id: uuid, name: name, quantity: quantity, unit: unit, checked: checked, note: note, createdAt: createdAt)
     }
 }

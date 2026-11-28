@@ -22,6 +22,15 @@ nonisolated enum FoodWords {
     }
 
     static func stems(_ text: String?) -> [String] { words(text).map(stem) }
+
+    /// One spelling per food for names with no brand to set aside, such as
+    /// recipe ingredients and shopping list rows: "Carrots" and "carrot"
+    /// share a key, by the same rule as `RefillMatch.sameFood`. A name with no
+    /// letters or digits keeps its own spelling, so it still matches itself.
+    static func key(_ name: String?) -> String {
+        let words = stems(name)
+        return words.isEmpty ? normalizeName(name) : words.joined(separator: " ")
+    }
 }
 
 /// Where a food normally goes before it's opened, from its name and, failing

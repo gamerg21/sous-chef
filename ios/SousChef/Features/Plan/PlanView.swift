@@ -7,7 +7,7 @@ struct PlanView: View {
     @Environment(Kitchen.self) private var kitchen
     @State private var weekStart = MealPlanner.weekStart()
     @State private var planningDay: PlanDay?
-    @State private var toast: String?
+    @State private var toast: Toast?
 
     var body: some View {
         PlanWeekList(weekStart: weekStart, onPlan: { planningDay = PlanDay(id: $0) }, onCook: { kitchen.startCooking($0) }, onAddShortages: addShortages)
@@ -21,17 +21,7 @@ struct PlanView: View {
                     Button("Next week", systemImage: "chevron.right") { move(by: 7) }
                 }
             }
-            .overlay(alignment: .top) {
-                if let toast {
-                    Text(toast)
-                        .font(.callout.weight(.medium))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .glassEffect(.regular, in: .capsule)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .padding(.top, 8)
-                }
-            }
+            .toast($toast)
             .sheet(item: $planningDay) { day in
                 PlanRecipePicker(day: day.id)
                     .kitchenEnvironment(kitchen)
@@ -53,15 +43,7 @@ struct PlanView: View {
     private func addShortages() {
         let result = kitchen.addWeekShortages(from: weekStart)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        show(result.added + result.updated == 0 ? "Your list already covers this week" : "Added \(result.added), topped up \(result.updated)")
-    }
-
-    private func show(_ message: String) {
-        withAnimation(.snappy) { toast = message }
-        Task {
-            try? await Task.sleep(for: .seconds(2.2))
-            withAnimation(.snappy) { toast = nil }
-        }
+        toast = Toast(MealPlanner.listToast(added: result.added, updated: result.updated))
     }
 }
 

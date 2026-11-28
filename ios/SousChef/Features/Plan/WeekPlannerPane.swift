@@ -12,8 +12,7 @@ struct WeekPlannerPane: View {
     @Environment(\.isStackedPane) private var isStacked
     @State private var weekStart = MealPlanner.weekStart()
     @State private var planning: PlanSlotTarget?
-    @State private var toast: String?
-    @State private var toastTask: Task<Void, Never>?
+    @State private var toast: Toast?
     @State private var landed = 0
 
     var body: some View {
@@ -40,18 +39,7 @@ struct WeekPlannerPane: View {
                     Button("Next week", systemImage: "chevron.right") { move(to: MealPlanner.day(weekStart, adding: 7)) }
                 }
             }
-            .overlay(alignment: .top) {
-                if let toast {
-                    Label(toast, systemImage: "checkmark.circle.fill")
-                        .font(.callout.weight(.medium))
-                        .symbolRenderingMode(.multicolor)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .glassEffect(.regular, in: .capsule)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .padding(.top, 8)
-                }
-            }
+            .toast($toast)
             .sensoryFeedback(.success, trigger: landed)
             .sheet(item: $planning) { target in
                 PlanRecipePicker(day: target.day, slot: target.slot)
@@ -76,23 +64,13 @@ struct WeekPlannerPane: View {
         landed += 1
         let title = kitchen.recipe(for: meal)?.title ?? "Meal"
         let day = MealPlanner.date(meal.day).formatted(.dateTime.weekday(.wide))
-        show("\(title) · \(day) \(meal.slot.title.lowercased())")
+        toast = Toast("\(title) · \(day) \(meal.slot.title.lowercased())")
     }
 
     private func addShortages() {
         let result = kitchen.addWeekShortages(from: weekStart)
         landed += 1
-        show(result.added + result.updated == 0 ? "Your list already covers this week" : "Added \(result.added), topped up \(result.updated)")
-    }
-
-    private func show(_ message: String) {
-        toastTask?.cancel()
-        withAnimation(.snappy) { toast = message }
-        toastTask = Task {
-            try? await Task.sleep(for: .seconds(2.2))
-            guard !Task.isCancelled else { return }
-            withAnimation(.snappy) { toast = nil }
-        }
+        toast = Toast(MealPlanner.listToast(added: result.added, updated: result.updated))
     }
 }
 
@@ -116,6 +94,7 @@ private struct WeekTimeline: View {
     @Query private var meals: [PlannedMeal]
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
+    @Query private var shopping: [ShoppingItem]
     /// The day scrolled to, starting on today when it's in the week shown.
     @State private var shownDay: String?
 
@@ -143,7 +122,8 @@ private struct WeekTimeline: View {
         let byDay = Dictionary(grouping: meals, by: \.day)
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                WeekSummaryCard(weekStart: weekStart, meals: meals, recipesByID: recipesByID, stock: stock, onAddShortages: onAddShortages)
+                WeekSummaryCard(weekStart: weekStart, meals: meals, recipesByID: recipesByID, stock: stock,
+                                list: shopping.map(\.listRow), onAddShortages: onAddShortages)
                 LazyVStack(spacing: 10) {
                     ForEach(MealPlanner.week(from: weekStart), id: \.self) { day in
                         DayRow(day: day, today: today, meals: byDay[day] ?? [], recipesByID: recipesByID, stock: stock,
@@ -176,6 +156,8 @@ private struct WeekSummaryCard: View {
     let meals: [PlannedMeal]
     let recipesByID: [UUID: Recipe]
     let stock: [StockLine]
+    /// The shopping list, to show what the week's shortages still need from it.
+    let list: [MealPlanner.ListRow]
     var onAddShortages: () -> Void
 
     var body: some View {
@@ -189,6 +171,7 @@ private struct WeekSummaryCard: View {
             }
         }, stock: stock)
         let missing = shortages.missingIngredients.count
+        let gap = MealPlanner.listGap(for: shortages.missingIngredients, on: list)
         let total = days.count * slots.count
         VStack(alignment: .leading, spacing: 14) {
             // The dots move below once large text needs the width.
@@ -231,12 +214,16 @@ private struct WeekSummaryCard: View {
                 Label(open.isEmpty ? "Every meal is cooked" : "Your pantry covers every meal", systemImage: "checkmark.circle.fill")
                     .font(.callout.weight(.medium))
                     .foregroundStyle(Color.brand)
+            } else if gap.remaining == 0 {
+                Label("Everything for the week is on your list", systemImage: "checkmark.circle.fill")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Color.brand)
             } else {
                 AdaptiveStack(spacing: 12, verticalSpacing: 8) {
-                    Label("\(missing) item\(missing == 1 ? "" : "s") short", systemImage: "cart")
+                    Label("\(missing) item\(missing == 1 ? "" : "s") short" + (gap.covered > 0 ? ", \(gap.covered) on your list" : ""), systemImage: "cart")
                         .font(.callout.weight(.medium))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Add to list", systemImage: "cart.badge.plus", action: onAddShortages)
+                    Button(gap.covered == 0 ? "Add to list" : "Add \(gap.remaining) more", systemImage: "cart.badge.plus", action: onAddShortages)
                         .font(.callout.weight(.semibold))
                         .buttonStyle(.glassProminent)
                         .controlSize(.small)
