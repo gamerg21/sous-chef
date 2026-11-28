@@ -5,9 +5,10 @@ import UserNotifications
 /// Carries cook mode's timers outside the app: a Live Activity on the Lock
 /// Screen and in the Dynamic Island, a local notification with sound for each
 /// timer, and, where alarms are allowed, an alarm (`CookTimerAlarms`) that
-/// rings like the Clock app's, even in silent mode. Cook mode calls `sync`
-/// whenever its timers change and with no timers when it closes; the in-app
-/// timers never depend on any of them.
+/// rings like the Clock app's, even in silent mode. `CookSessionStore` calls
+/// `sync` whenever the timers of the recipe being cooked change, and with no
+/// timers when that recipe ends; closing cook mode leaves them running. The
+/// in-app timers never depend on any of them.
 ///
 /// Where Live Activities aren't available (a Mac running the iPad app, or
 /// the person turned them off) only the notifications are used.
@@ -74,15 +75,38 @@ final class CookTimerAlerts {
         }
     }
 
-    /// Ends activities left over from a previous launch; their timers lived
-    /// in a cook mode that's gone. Notifications already scheduled still fire.
-    func endLeftoverActivities() {
-        let current = activityID
-        Task {
-            for leftover in Activity<CookTimerAttributes>.activities where leftover.id != current {
-                await leftover.end(nil, dismissalPolicy: .immediate)
-            }
+    /// At launch, before the first `sync`: takes back the alerts given to the
+    /// restored session's timers before the app quit. The Live Activity,
+    /// notifications and alarms outlive the app; this object's record of them
+    /// doesn't. Follow with `clearLeftovers`.
+    func adopt(_ timers: [CookTimer]) {
+        let ids = Set(timers.map(\.id))
+        // Counted as scheduled even if the notification was refused back
+        // then, so each timer is treated as it was before the app quit.
+        scheduled.formUnion(ids)
+        alarms.formUnion(CookTimerAlarms.scheduled().intersection(ids))
+        if activityID == nil, !timers.isEmpty {
+            activityID = Activity<CookTimerAttributes>.activities.first { $0.activityState == .active || $0.activityState == .stale }?.id
         }
+    }
+
+    /// Ends the activities, alarms and notifications that belong to no timer
+    /// any more: their session ended, or went stale, while the app was closed.
+    /// Checked against the timers as they are once the system answers, which
+    /// can take a while, so a timer started in the meantime is left alone.
+    func clearLeftovers() async {
+        for alarm in CookTimerAlarms.scheduled() where !scheduled.contains(alarm) { CookTimerAlarms.cancel(alarm) }
+        for leftover in Activity<CookTimerAttributes>.activities where leftover.id != activityID {
+            await leftover.end(nil, dismissalPolicy: .immediate)
+        }
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests().map(\.identifier)
+        let delivered = await center.deliveredNotifications().map(\.request.identifier)
+        let kept = Set(scheduled.map(Self.notificationID))
+        let strays = (pending + delivered).filter { $0.hasPrefix(Self.notificationPrefix) && !kept.contains($0) }
+        guard !strays.isEmpty else { return }
+        center.removePendingNotificationRequests(withIdentifiers: strays)
+        center.removeDeliveredNotifications(withIdentifiers: strays)
     }
 
     private nonisolated static func activity(id: String?) -> Activity<CookTimerAttributes>? {

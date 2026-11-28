@@ -51,6 +51,13 @@ enum CookTimerAlarms {
         _ = try await AlarmManager.shared.schedule(id: timer.id, configuration: configuration)
     }
 
+    /// The timers with an alarm waiting or ringing, including alarms
+    /// scheduled before the app last quit.
+    static func scheduled() -> Set<UUID> {
+        guard isAvailable, let alarms = try? AlarmManager.shared.alarms else { return [] }
+        return Set(alarms.map(\.id))
+    }
+
     /// Cancels a timer's alarm, silencing it if it's ringing. Does nothing
     /// if the timer never had one.
     static func cancel(_ id: UUID) {
@@ -60,7 +67,7 @@ enum CookTimerAlarms {
 }
 
 /// The alarm's "Open" button: stops the ringing and brings Sous Chef back to
-/// cook mode, which is still open.
+/// cook mode, reopening it if the recipe was set aside.
 struct OpenCookModeIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Open Cook Mode"
     static let isDiscoverable = false
@@ -68,6 +75,7 @@ struct OpenCookModeIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         await CookTimerAlerts.shared.refreshActivity()
+        await MainActor.run { _ = CookSessionStore.shared.resume() }
         return .result()
     }
 }

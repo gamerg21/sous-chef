@@ -24,6 +24,9 @@ struct SousChefApp: App {
             UserDefaults.standard.register(defaults: ["onboarding.done": true])
         }
         AppNotifications.shared.activate()
+        // Before the first screen, so a recipe that was being cooked when the
+        // app quit is there to resume, or back on screen, from the start.
+        CookSessionStore.shared.restore { Kitchen.shared.recipe(id: $0) != nil }
     }
 
     var body: some Scene {
@@ -34,7 +37,13 @@ struct SousChefApp: App {
                 .task { SampleKitchen.seedIfRequested(into: kitchen) }
                 .task { await account.checkCredentialState() }
                 .task { AppNavigator.shared.receiveSharedRecipes() }
-                .task { CookTimerAlerts.shared.endLeftoverActivities() }
+                .task {
+                    // Timers started before the app quit are still counting.
+                    let cooking = CookSessionStore.shared
+                    CookTimerAlerts.shared.adopt(cooking.session?.progress.timers ?? [])
+                    cooking.refresh()
+                    await CookTimerAlerts.shared.clearLeftovers()
+                }
                 .onOpenURL { url in
                     if HouseholdSharing.shared.open(inviteLink: url) { return }
                     if AppNavigator.shared.open(communityLink: url) { return }
@@ -53,6 +62,7 @@ struct SousChefApp: App {
                 Task { await account.checkCredentialState() }
                 // Newer versions of saved community recipes; spaced out by the checker.
                 Task { await CommunityUpdateChecker.shared.checkIfDue() }
+                CookSessionStore.shared.refresh()
             }
             // Reminders reflect whatever synced or changed while the app was open.
             if phase != .inactive { ExpiryReminders.shared.reschedule(kitchen) }
@@ -181,6 +191,8 @@ final class AppNavigator {
             tab = .cook
         case .recipe(let id):
             open(recipe: id)
+        case .cooking:
+            CookSessionStore.shared.resume()
         }
     }
 
@@ -216,6 +228,7 @@ struct RootView: View {
         // Rebuild on the new store when iCloud sync is switched on or off.
         .id(kitchen.storeGeneration)
         .undoDeleteOnShake()
+        .hostsCookMode()
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .kitchenEnvironment(kitchen)
@@ -265,6 +278,7 @@ struct RootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .cookResumeAccessory()
     }
 
     /// On a Mac the adaptable tab view's sidebar button turns the sidebar into
@@ -289,6 +303,7 @@ struct RootView: View {
         } detail: {
             screen(for: navigator.tab)
         }
+        .cookResumeOverlay()
     }
 
     @ViewBuilder private func screen(for tab: AppTab) -> some View {

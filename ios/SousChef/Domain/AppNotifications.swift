@@ -30,8 +30,9 @@ final class AppNotifications: NSObject, UNUserNotificationCenterDelegate {
     }
 
     /// Where tapping a notification (or one of its actions) leads. A cook
-    /// timer just brings the app back to cook mode, which is still open.
+    /// timer goes back to cook mode, reopening it if the recipe was set aside.
     nonisolated static func destination(for identifier: String, action: String) -> KitchenLink.Destination? {
+        if identifier.hasPrefix(CookTimerAlerts.notificationPrefix) { return .cooking }
         guard identifier.hasPrefix(ExpiryReminderSchedule.identifierPrefix) else { return nil }
         return action == ExpiryReminders.showPantryAction ? .useSoon : .useItUp
     }

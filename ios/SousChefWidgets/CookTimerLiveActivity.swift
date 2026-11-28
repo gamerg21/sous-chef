@@ -2,7 +2,8 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// Cook mode's timers on the Lock Screen and in the Dynamic Island. The
+/// Cook mode's timers on the Lock Screen and in the Dynamic Island. Tapping
+/// either goes back into cook mode, even if it was closed. The
 /// countdowns are `Text(timerInterval:)`, `Text(.durationOffset(to:), format:)` and
 /// `ProgressView(timerInterval:)`, so they tick without the app sending
 /// updates.
@@ -13,6 +14,7 @@ struct CookTimerLiveActivity: Widget {
                 .padding()
                 .activityBackgroundTint(nil)
                 .activitySystemActionForegroundColor(.brand)
+                .widgetURL(KitchenLink.cooking)
         } dynamicIsland: { context in
             let state = context.state
             let next = state.next
@@ -71,6 +73,7 @@ struct CookTimerLiveActivity: Widget {
                 }
             }
             .keylineTint(.brand)
+            .widgetURL(KitchenLink.cooking)
         }
     }
 }

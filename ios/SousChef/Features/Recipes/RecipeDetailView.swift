@@ -9,7 +9,6 @@ struct RecipeDetailView: View {
     @Query private var pantry: [PantryItem]
     @State private var servings: Int?
     @State private var editing = false
-    @State private var cooking = false
     @State private var chatting = false
     @State private var publishing = false
     @State private var planning = false
@@ -65,10 +64,6 @@ struct RecipeDetailView: View {
             RecipeEditorView(draft: kitchen.draft(from: recipe), recipe: recipe)
                 .kitchenEnvironment(kitchen)
         }
-        .fullScreenCover(isPresented: $cooking) {
-            CookModeView(recipe: recipe, scale: scale)
-                .kitchenEnvironment(kitchen)
-        }
         .sheet(isPresented: $chatting) {
             RecipeChatView(recipe: recipe)
                 .kitchenEnvironment(kitchen)
@@ -95,7 +90,7 @@ struct RecipeDetailView: View {
         .task(id: AppNavigator.shared.recipeToCook) {
             guard AppNavigator.shared.recipeToCook == recipe.uuid else { return }
             AppNavigator.shared.recipeToCook = nil
-            cooking = true
+            CookSessionStore.shared.start(recipe, scale: scale)
         }
         // Lets Siri resolve "this recipe" to the one on screen.
         .userActivity(RecipeEntity.activityType) { activity in
@@ -189,11 +184,12 @@ struct RecipeDetailView: View {
         }
     }
 
+    /// "Resume cooking" while this recipe is set aside part-way through.
     private var startCooking: some View {
         Button {
-            cooking = true
+            CookSessionStore.shared.start(recipe, scale: scale)
         } label: {
-            Label("Start cooking", systemImage: "flame.fill")
+            Label(CookSessionStore.shared.session?.recipeID == recipe.uuid ? "Resume cooking" : "Start cooking", systemImage: "flame.fill")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)

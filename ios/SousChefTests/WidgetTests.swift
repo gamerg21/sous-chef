@@ -254,5 +254,8 @@ struct WidgetTests {
 
         #expect(KitchenLink.destination(of: try #require(URL(string: "souschef://recipe/not-a-uuid"))) == nil)
         #expect(KitchenLink.destination(of: try #require(URL(string: "SousChef://Plan"))) == .plan)
+        // The cook timer Live Activity's link, which goes back into cook mode.
+        #expect(KitchenLink.destination(of: KitchenLink.cooking) == .cooking)
+        #expect(KitchenLink.destination(of: KitchenLink.cook) == .cook)
     }
 }

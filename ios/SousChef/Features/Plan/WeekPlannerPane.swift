@@ -12,7 +12,6 @@ struct WeekPlannerPane: View {
     @Environment(\.isStackedPane) private var isStacked
     @State private var weekStart = MealPlanner.weekStart()
     @State private var planning: PlanSlotTarget?
-    @State private var cooking: PlannedMeal?
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
     @State private var landed = 0
@@ -23,7 +22,7 @@ struct WeekPlannerPane: View {
                 weekStart: weekStart,
                 onOpen: onOpen,
                 onPlan: { planning = $0 },
-                onCook: { cooking = $0 },
+                onCook: { kitchen.startCooking($0) },
                 onDropped: dropped,
                 onAddShortages: addShortages
             )
@@ -57,12 +56,6 @@ struct WeekPlannerPane: View {
             .sheet(item: $planning) { target in
                 PlanRecipePicker(day: target.day, slot: target.slot)
                     .kitchenEnvironment(kitchen)
-            }
-            .fullScreenCover(item: $cooking) { meal in
-                if let recipe = kitchen.recipe(for: meal) {
-                    CookModeView(recipe: recipe, scale: kitchen.scale(for: meal), meal: meal)
-                        .kitchenEnvironment(kitchen)
-                }
             }
         }
     }

@@ -3,18 +3,23 @@ import SwiftUI
 
 /// Step-by-step cooking with big type, the screen kept awake, timers found in
 /// the steps, and a pantry update at the end.
+///
+/// Closing it sets the recipe aside: the page, the gathered ingredients and
+/// the timers go to `CookSessionStore` as they change, and cook mode starts
+/// from them the next time it opens.
 struct CookModeView: View {
     let recipe: Recipe
-    let scale: Double
+    /// The cook's place in the recipe as cook mode opened.
+    let session: CookSession
     /// Set when cooking a planned meal: the pantry update uses its servings and marks it cooked.
     var meal: PlannedMeal?
 
     @Environment(Kitchen.self) private var kitchen
     @Environment(\.dismiss) private var dismiss
-    @State private var page = 0
-    @State private var gathered: Set<UUID> = []
-    @State private var timers: [CookTimer] = []
-    @State private var addMissing = true
+    @State private var page: Int
+    @State private var gathered: Set<UUID>
+    @State private var timers: [CookTimer]
+    @State private var addMissing: Bool
     @State private var finishing = false
     @State private var result: Kitchen.CookResult?
     @State private var chatting = false
@@ -33,6 +38,22 @@ struct CookModeView: View {
     /// the half lying on the counter holds the ingredients or the timers.
     /// Propped like a book, the phone keeps its two panes.
     private var onCounter: Bool { posture == .laptop }
+    private var sessions: CookSessionStore { .shared }
+    private var scale: Double { session.scale }
+    private var progress: CookProgress {
+        CookProgress(page: page, gathered: gathered, timers: timers, addMissing: addMissing)
+    }
+
+    init(recipe: Recipe, session: CookSession, meal: PlannedMeal? = nil) {
+        self.recipe = recipe
+        self.session = session
+        self.meal = meal
+        _page = State(initialValue: session.progress.page)
+        _gathered = State(initialValue: session.progress.gathered)
+        _timers = State(initialValue: session.progress.timers)
+        _addMissing = State(initialValue: session.progress.addMissing)
+    }
+
     /// Steps on the upper half, the rest on the lower: propped on the counter,
     /// or held upright and open flat.
     private var stepsAbove: Bool { onCounter || layout == .stacked }
@@ -60,6 +81,8 @@ struct CookModeView: View {
             .tracksPaneLayout($layout)
             .tracksFoldPosture($posture)
             .onChange(of: ingredientsBeside) { page = max(page, firstPage) }
+            // The recipe may have lost steps since it was set aside.
+            .onAppear { page = min(page, pageCount - 1) }
             .navigationTitle(recipe.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -78,15 +101,16 @@ struct CookModeView: View {
                     timers.append(CookTimer(label: label, seconds: seconds, customStep: target.id))
                 }
             }
+            // Siri can ask for another recipe while this one is open.
+            .asksBeforeSwitchingRecipes()
         }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-        .onDisappear {
-            UIApplication.shared.isIdleTimerDisabled = false
-            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: [])
-        }
-        // Mirrors the timers to a Live Activity and schedules their alerts.
-        .onChange(of: timers) { _, timers in
-            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
+        // The timers keep running with cook mode closed; the session owns them.
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        // Keeps the cook's place, and mirrors the timers to a Live Activity
+        // and their alerts.
+        .onChange(of: progress) { _, progress in
+            sessions.update(progress, for: session.id)
         }
         // Rechecked once the first timer's permission prompts are answered,
         // and after a visit to the Settings app.
@@ -95,11 +119,8 @@ struct CookModeView: View {
             try? await Task.sleep(for: .seconds(1))
             timersCanAlert = await AlertPermissions.current().timersCanAlert
         }
-        // Timers that finished while Sous Chef was in the background move
-        // behind the running ones and say "Done" on the Lock Screen.
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, !timers.isEmpty else { return }
-            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
             Task { timersCanAlert = await AlertPermissions.current().timersCanAlert }
         }
     }
@@ -385,6 +406,7 @@ struct CookModeView: View {
                         finishing = true
                         Task {
                             result = await kitchen.cook(recipe, addMissing: addMissing && !plan.missingIngredients.isEmpty, meal: meal)
+                            sessions.markCooked(session.id)
                             finishing = false
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
                         }
@@ -399,12 +421,18 @@ struct CookModeView: View {
                     .buttonStyle(.glassProminent)
                     .disabled(finishing)
                     .accessibilityIdentifier("updatePantry")
-                    Button("Finish without updating") { dismiss() }
+                    Button("Finish without updating") { finish() }
                         .frame(maxWidth: .infinity)
                 }
             }
             .padding()
         }
+    }
+
+    /// Done cooking, unlike Close: the session ends and its timers stop.
+    private func finish() {
+        sessions.end()
+        dismiss()
     }
 
     private var controls: some View {
@@ -420,7 +448,7 @@ struct CookModeView: View {
 
                 // Once the pantry is updated, "Finish" becomes the button that ends cooking.
                 if result != nil && page == pageCount - 1 {
-                    Button { dismiss() } label: {
+                    Button { finish() } label: {
                         Text("Finish").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.glassProminent)
@@ -469,10 +497,7 @@ struct CookModeView: View {
                         .glassEffect(.regular.tint(remaining == 0 ? .orange : Color.brand).interactive(), in: .capsule)
                         .transition(.scale(scale: 0.6).combined(with: .opacity))
                         .onChange(of: remaining == 0) { _, done in
-                            guard done else { return }
-                            UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                            // Moves the finished timer behind the running ones.
-                            CookTimerAlerts.shared.sync(recipeTitle: recipe.title, timers: timers)
+                            if done { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
                         }
                     }
                 }
@@ -555,7 +580,7 @@ private struct CustomTimerStep: Identifiable {
     let id: Int
 }
 
-nonisolated struct CookTimer: Identifiable, Hashable, Sendable {
+nonisolated struct CookTimer: Codable, Identifiable, Hashable, Sendable {
     var id = UUID()
     let label: String
     let seconds: Int
