@@ -14,6 +14,28 @@ highlights the release, printed as-is in place of the list of titles. Include
 recognizable bug fixes, but never architecture, frameworks, vendors or other
 implementation detail; that belongs in [CHANGELOG.md](../CHANGELOG.md).
 
+## 1.3.1
+
+### App Store
+Pick up where you left off. Close cook mode, or the app, in the middle of a recipe, and a bar above the tabs takes you back to your step with your timers still running.
+
+Also in 1.3.1:
+• After you add the week's shortages, the plan shows what's already on your shopping list.
+• No more "Carrot" next to "Carrots" on the list.
+• More items land in the right aisle.
+• Cook timers keep a steady tick when you change steps.
+
+### New
+- **Resume cooking**: Close cook mode, or the app, in the middle of a recipe and pick up where you left off. A bar above the tabs shows your step and next timer, and your timers keep running.
+
+### Improved
+- **Week's shopping**: After you add the week's shortages, the plan shows what's already on your list and adds only the rest.
+- **Shopping aisles**: More items land in the right aisle, like chilies under Produce and garlic powder under Spices.
+
+### Fixed
+- **Duplicate list items**: Adding the week's shortages tops up "Carrots" instead of adding "Carrot" beside it.
+- **Cook timers**: Countdowns keep a steady tick when you change steps.
+
 ## 1.3.0
 
 ### App Store
