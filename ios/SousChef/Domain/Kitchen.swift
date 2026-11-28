@@ -223,7 +223,7 @@ final class Kitchen {
         var grouped: [String: CookingPlan.Missing] = [:]
         var order: [String] = []
         for item in missing {
-            let key = normalizeName(item.name) + "|" + (item.unit ?? "")
+            let key = FoodWords.key(item.name) + "|" + (item.unit ?? "")
             if let previous = grouped[key] {
                 grouped[key]?.quantity = previous.quantity == nil || item.quantity == nil ? nil : previous.quantity! + item.quantity!
             } else {
@@ -235,7 +235,7 @@ final class Kitchen {
         var added = 0
         for key in order {
             guard let item = grouped[key] else { continue }
-            let matches = existing.filter { !$0.checked && $0.recipeUUID == recipe.uuid && normalizeName($0.name) == normalizeName(item.name) && ($0.unit ?? "") == (item.unit ?? "") }
+            let matches = existing.filter { !$0.checked && $0.recipeUUID == recipe.uuid && FoodWords.key($0.name) == FoodWords.key(item.name) && ($0.unit ?? "") == (item.unit ?? "") }
             if let first = matches.first {
                 let amount = matches.reduce(0) { $0 + ($1.quantity ?? 0) }
                 if let quantity = item.quantity, amount < quantity {
@@ -313,7 +313,8 @@ final class Kitchen {
                 let item = PantryItem(name: purchase.item.name, location: purchase.location, quantity: purchase.quantity, unit: unit)
                 item.expiresOn = purchase.expiresOn
                 item.category = purchase.item.category
-                item.notes = purchase.item.note
+                // What the week's meals added to the row is about shopping, not the food.
+                item.notes = MealPlanner.withoutPlanNote(purchase.item.note)
                 context.insert(item)
             }
             delete(purchase.item)

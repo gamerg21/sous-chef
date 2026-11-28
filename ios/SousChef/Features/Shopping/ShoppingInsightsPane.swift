@@ -16,7 +16,7 @@ struct ShoppingInsightsPane: View {
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
     @Query private var meals: [PlannedMeal]
-    @State private var toast: String?
+    @State private var toast: Toast?
 
     private var open: [ShoppingItem] { items.filter { !$0.checked } }
     private var inCart: [ShoppingItem] { items.filter(\.checked) }
@@ -40,17 +40,7 @@ struct ShoppingInsightsPane: View {
             .ignoresRailInset()
             .navigationTitle("At a Glance")
             .paneTitleDisplayMode(isStacked)
-            .overlay(alignment: .top) {
-                if let toast {
-                    Label(toast, systemImage: "checkmark.circle.fill")
-                        .font(.callout.weight(.medium))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .glassEffect(.regular, in: .capsule)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .padding(.top, 8)
-                }
-            }
+            .toast($toast)
         }
     }
 
@@ -158,8 +148,8 @@ struct ShoppingInsightsPane: View {
     private var planCard: some View {
         let weekStart = MealPlanner.weekStart()
         let forPlan = open.filter { $0.source == .mealPlan }.count
-        let short = kitchen.weekShortages(from: weekStart).missingIngredients
-        let notListed = short.filter { need in !open.contains { normalizeName($0.name) == normalizeName(need.name) } }
+        // The same answer the button acts on (`MealPlanner.listGap`).
+        let gap = MealPlanner.listGap(for: kitchen.weekShortages(from: weekStart).missingIngredients, on: items.map(\.listRow))
         let planned = meals.filter { $0.day >= weekStart && $0.day < MealPlanner.day(weekStart, adding: 7) && !$0.isCooked }.count
         return InsightCard {
             Eyebrow("This week's meals", systemImage: "calendar")
@@ -174,17 +164,18 @@ struct ShoppingInsightsPane: View {
                     metric(forPlan, forPlan == 1 ? "item for them" : "items for them")
                 }
             }
-            if notListed.isEmpty {
-                Label(planned == 0 ? "Plan meals in Cook to shop for them here." : "Your list covers the week.", systemImage: planned == 0 ? "calendar.badge.plus" : "checkmark.circle.fill")
+            if gap.remaining == 0 {
+                Label(planned == 0 ? "Plan meals in Cook to shop for them here." : gap.needs == 0 ? "Your list covers the week." : "Everything for the week is on your list",
+                      systemImage: planned == 0 ? "calendar.badge.plus" : "checkmark.circle.fill")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(planned == 0 ? Color.secondary : Color.brand)
             } else {
                 Button {
                     let result = kitchen.addWeekShortages(from: weekStart)
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    show("Added \(result.added), topped up \(result.updated)")
+                    toast = Toast(MealPlanner.listToast(added: result.added, updated: result.updated))
                 } label: {
-                    Label("Add \(notListed.count) missing for the week", systemImage: "cart.badge.plus")
+                    Label("Add \(gap.remaining) missing for the week", systemImage: "cart.badge.plus")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                 }
@@ -245,13 +236,5 @@ struct ShoppingInsightsPane: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-
-    private func show(_ message: String) {
-        withAnimation(.snappy) { toast = message }
-        Task {
-            try? await Task.sleep(for: .seconds(2.2))
-            withAnimation(.snappy) { toast = nil }
-        }
     }
 }

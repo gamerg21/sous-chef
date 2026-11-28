@@ -12,6 +12,7 @@ struct PlanWeekList: View {
     @Query private var meals: [PlannedMeal]
     @Query private var recipes: [Recipe]
     @Query private var pantry: [PantryItem]
+    @Query private var shopping: [ShoppingItem]
 
     init(weekStart: String, onPlan: @escaping (String) -> Void, onCook: @escaping (PlannedMeal) -> Void, onAddShortages: @escaping () -> Void) {
         self.weekStart = weekStart
@@ -57,6 +58,8 @@ struct PlanWeekList: View {
             meal.recipeUUID.flatMap { recipesByID[$0] }.map { MealPlanner.scaled($0.ingredients, by: MealPlanner.scale(servings: meal.servings, recipeServings: $0.servings)) }
         }, stock: stock)
         let count = shortages.missingIngredients.count
+        // The same answer the button acts on, so the card shows what a tap did.
+        let gap = MealPlanner.listGap(for: shortages.missingIngredients, on: shopping.map(\.listRow))
         return Section {
             VStack(alignment: .leading, spacing: 8) {
                 Eyebrow("Shopping for the week", systemImage: "cart")
@@ -66,12 +69,24 @@ struct PlanWeekList: View {
                     Text(shortages.missingIngredients.prefix(4).map { "\(Units.amount($0.quantity, $0.unit)) \($0.name)".trimmingCharacters(in: .whitespaces) }.joined(separator: " · ") + (count > 4 ? " …" : ""))
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                    Button(action: onAddShortages) {
-                        Label("Add week's shortages to list", systemImage: "cart.badge.plus")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    if gap.remaining == 0 {
+                        Label("Everything for the week is on your list", systemImage: "checkmark.circle.fill")
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(Color.brand)
+                            .padding(.top, 4)
+                    } else {
+                        if gap.covered > 0 {
+                            Text("\(gap.covered) already on your list")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button(action: onAddShortages) {
+                            Label(gap.covered == 0 ? "Add week's shortages to list" : "Add \(gap.remaining) more to list", systemImage: "cart.badge.plus")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .padding(.top, 4)
                     }
-                    .buttonStyle(.glassProminent)
-                    .padding(.top, 4)
                 }
                 if !shortages.checks.isEmpty {
                     Label("\(shortages.checks.count) ingredient\(shortages.checks.count == 1 ? "" : "s") need an amount or unit check by hand.", systemImage: "exclamationmark.circle")
